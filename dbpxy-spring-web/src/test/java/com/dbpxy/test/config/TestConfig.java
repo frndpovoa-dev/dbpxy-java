@@ -21,8 +21,8 @@ package com.dbpxy.test.config;
  */
 
 import com.dbpxy.ConnectionHolder;
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
-import com.dbpxy.config.DatabaseProxyProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
+import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.jdbc.DataSource;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.cfg.Environment;
@@ -52,10 +52,10 @@ public class TestConfig {
     @Primary
     public DataSource dataSource(
             final ConnectionHolder connectionHolder,
-            final DatabaseProxyProperties databaseProxyProperties,
-            final DatabaseProxyDataSourceProperties databaseProxyDataSourceProperties
+            final DbpxyProperties dbpxyProperties,
+            final DbpxyDatasourceProperties dbpxyDatasourceProperties
     ) {
-        return new DataSource(connectionHolder, databaseProxyDataSourceProperties, databaseProxyProperties);
+        return new DataSource(connectionHolder, dbpxyDatasourceProperties, dbpxyProperties);
     }
 
     @Bean("entityManagerFactory")

@@ -21,8 +21,8 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.ConnectionHolder;
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
-import com.dbpxy.config.DatabaseProxyProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
+import com.dbpxy.config.DbpxyProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -36,14 +36,14 @@ import java.util.logging.Logger;
 public class DataSource implements javax.sql.DataSource {
     private static final Logger LOGGER = Logger.getLogger(DataSource.class.getName());
     private final ConnectionHolder connectionHolder;
-    private final DatabaseProxyDataSourceProperties databaseProxyDataSourceProperties;
-    private final DatabaseProxyProperties databaseProxyProperties;
+    private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
+    private final DbpxyProperties dbpxyProperties;
     private PrintWriter printWriter;
     private int loginTimeout;
 
     @Override
     public Connection getConnection() throws SQLException {
-        return new Connection(connectionHolder, databaseProxyProperties, databaseProxyDataSourceProperties);
+        return new Connection(connectionHolder, dbpxyProperties, dbpxyDatasourceProperties);
     }
 
     @Override

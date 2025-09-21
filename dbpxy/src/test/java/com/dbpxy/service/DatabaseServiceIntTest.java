@@ -38,7 +38,7 @@ import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterrup
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class DatabaseProxyServiceIntTest extends BaseIntTest {
+class DatabaseServiceIntTest extends BaseIntTest {
     private static final List<Value> ARGS_ID_1 = List.of(Value.newBuilder()
             .setCode(ValueCode.INT64)
             .setData(ValueInt64.newBuilder().setValue(1L).build().toByteString())
@@ -86,11 +86,11 @@ class DatabaseProxyServiceIntTest extends BaseIntTest {
 
     @Autowired
     private GrpcProperties grpcProperties;
-    private DatabaseProxyGrpc.DatabaseProxyBlockingStub databaseProxyServiceClient;
+    private DbpxyGrpc.DbpxyBlockingStub databaseProxyServiceClient;
 
     @BeforeEach
     void setUp() throws Exception {
-        this.databaseProxyServiceClient = DatabaseProxyGrpc.newBlockingStub(ManagedChannelBuilder
+        this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(ManagedChannelBuilder
                 .forAddress("localhost", grpcProperties.getPort())
                 .usePlaintext()
                 .build());

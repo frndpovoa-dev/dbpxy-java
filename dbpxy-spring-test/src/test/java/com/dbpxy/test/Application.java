@@ -20,8 +20,8 @@ package com.dbpxy.test;
  * #L%
  */
 
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
-import com.dbpxy.config.DatabaseProxyProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
+import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.test.config.TestConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,8 +41,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 @EnableTransactionManagement
 @EnableConfigurationProperties({
-        DatabaseProxyProperties.class,
-        DatabaseProxyDataSourceProperties.class
+        DbpxyProperties.class,
+        DbpxyDatasourceProperties.class
 })
 @SpringBootApplication(
         scanBasePackageClasses = {

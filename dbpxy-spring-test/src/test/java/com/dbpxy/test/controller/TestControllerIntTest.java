@@ -20,8 +20,8 @@ package com.dbpxy.test.controller;
  * #L%
  */
 
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
-import com.dbpxy.config.DatabaseProxyProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
+import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.proto.*;
 import com.dbpxy.test.BaseIntTest;
 import com.dbpxy.test.dto.TestDto;
@@ -46,11 +46,11 @@ class TestControllerIntTest extends BaseIntTest {
     @Autowired
     private RestTemplate restTemplate;
     @Autowired
-    private DatabaseProxyProperties databaseProxyProperties;
+    private DbpxyProperties dbpxyProperties;
     @Autowired
-    private DatabaseProxyDataSourceProperties databaseProxyDataSourceProperties;
+    private DbpxyDatasourceProperties dbpxyDatasourceProperties;
     private ManagedChannel channel;
-    private DatabaseProxyGrpc.DatabaseProxyBlockingStub blockingStub;
+    private DbpxyGrpc.DbpxyBlockingStub blockingStub;
     private Transaction tx1Transaction;
     private String tx1TransactionId;
     private Transaction tx2Transaction;
@@ -62,16 +62,16 @@ class TestControllerIntTest extends BaseIntTest {
                 .trustManager(new ClassPathResource("certs/grpc-cert.pem").getInputStream())
                 .build();
         this.channel = Grpc.newChannelBuilderForAddress(
-                        databaseProxyProperties.getHostname(),
-                        databaseProxyProperties.getPort(),
+                        dbpxyProperties.getHostname(),
+                        dbpxyProperties.getPort(),
                         credentials)
                 .build();
-        this.blockingStub = DatabaseProxyGrpc
+        this.blockingStub = DbpxyGrpc
                 .newBlockingStub(channel);
 
         final ConnectionString connectionString = ConnectionString.newBuilder()
-                .setUrl(databaseProxyDataSourceProperties.getUrl())
-                .addAllProps(databaseProxyDataSourceProperties.getProps().entrySet().stream()
+                .setUrl(dbpxyDatasourceProperties.getUrl())
+                .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
                         .map(e -> ConnectionStringProp.newBuilder()
                                 .setName(e.getKey())
                                 .setValue(e.getValue())

@@ -21,8 +21,8 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.ConnectionHolder;
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
-import com.dbpxy.config.DatabaseProxyProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
+import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
 import io.grpc.ChannelCredentials;
@@ -52,7 +52,7 @@ public class Connection implements java.sql.Connection {
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
     private final ManagedChannel channel;
-    private final DatabaseProxyGrpc.DatabaseProxyBlockingStub blockingStub;
+    private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
     private final ConnectionHolder connectionHolder;
     private final ConnectionString connectionString;
     private boolean autoCommit = true;
@@ -121,23 +121,23 @@ public class Connection implements java.sql.Connection {
 
     public Connection(
             final ConnectionHolder connectionHolder,
-            final DatabaseProxyProperties databaseProxyProperties,
-            final DatabaseProxyDataSourceProperties databaseProxyDataSourceProperties
+            final DbpxyProperties dbpxyProperties,
+            final DbpxyDatasourceProperties dbpxyDatasourceProperties
     ) throws SQLException {
         try {
             final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(new ClassPathResource("certs/grpc-cert.pem").getInputStream())
                     .build();
             this.channel = Grpc.newChannelBuilderForAddress(
-                            databaseProxyProperties.getHostname(),
-                            databaseProxyProperties.getPort(),
+                            dbpxyProperties.getHostname(),
+                            dbpxyProperties.getPort(),
                             credentials)
                     .build();
-            this.blockingStub = DatabaseProxyGrpc.newBlockingStub(channel);
+            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
             this.connectionHolder = connectionHolder;
             this.connectionString = ConnectionString.newBuilder()
-                    .setUrl(databaseProxyDataSourceProperties.getUrl())
-                    .addAllProps(databaseProxyDataSourceProperties.getProps().entrySet().stream()
+                    .setUrl(dbpxyDatasourceProperties.getUrl())
+                    .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
                             .map(e -> ConnectionStringProp.newBuilder()
                                     .setName(e.getKey())
                                     .setValue(e.getValue())

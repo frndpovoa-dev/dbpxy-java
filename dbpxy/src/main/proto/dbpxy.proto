@@ -2,12 +2,12 @@ syntax = "proto3";
 
 option java_multiple_files = true;
 option java_package = "com.dbpxy.proto";
-option java_outer_classname = "DatabaseProxyProto";
+option java_outer_classname = "DbpxyProto";
 option objc_class_prefix = "DP";
 
 package com.dbpxy.proto;
 
-service DatabaseProxy {
+service Dbpxy {
   rpc BeginTransaction (BeginTransactionConfig) returns (Transaction) {}
   rpc CommitTransaction (Transaction) returns (Transaction) {}
   rpc RollbackTransaction (Transaction) returns (Transaction) {}

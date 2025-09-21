@@ -20,7 +20,7 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.DatabaseProxyDataSourceProperties;
+import com.dbpxy.config.DbpxyDatasourceProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,5 +33,5 @@ import org.springframework.test.context.ActiveProfiles;
 @ActiveProfiles({"integration"})
 public abstract class BaseIntTest {
     @Autowired
-    protected DatabaseProxyDataSourceProperties dataSourceProperties;
+    protected DbpxyDatasourceProperties dataSourceProperties;
 }

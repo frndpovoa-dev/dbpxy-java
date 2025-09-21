@@ -53,19 +53,19 @@ import static java.util.function.Predicate.not;
 
 @Slf4j
 @Service
-public class DatabaseProxyService extends DatabaseProxyGrpc.DatabaseProxyImplBase {
+public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final ConcurrentHashMap<String, DatabaseOperation> transactionMap = new ConcurrentHashMap<>();
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final SQLFormatter defaultSqlFormatter;
     private final String node;
 
-    public DatabaseProxyService(
+    public DatabaseService(
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node
     ) {
-        log.info("database proxy node {}", node);
+        log.info("dbpxy node {}", node);
 
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;

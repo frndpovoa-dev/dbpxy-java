@@ -26,8 +26,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @Getter
 @Setter
-@ConfigurationProperties(prefix = "app.db-proxy")
-public class DatabaseProxyProperties {
+@ConfigurationProperties(prefix = "app.dbpxy")
+public class DbpxyProperties {
     private String hostname;
     private Integer port;
 }

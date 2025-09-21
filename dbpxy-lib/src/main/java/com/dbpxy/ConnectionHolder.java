@@ -37,7 +37,7 @@ public class ConnectionHolder {
         connections.get().push(connection);
     }
 
-    public boolean popConnection(final Connection connection) {
-        return connections.get().remove(connection);
+    public void popConnection(final Connection connection) {
+        connections.get().remove(connection);
     }
 }

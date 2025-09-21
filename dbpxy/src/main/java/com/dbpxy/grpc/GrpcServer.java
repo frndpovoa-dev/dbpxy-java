@@ -21,7 +21,7 @@ package com.dbpxy.grpc;
  */
 
 import com.dbpxy.config.GrpcProperties;
-import com.dbpxy.service.DatabaseProxyService;
+import com.dbpxy.service.DatabaseService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import lombok.RequiredArgsConstructor;
@@ -36,7 +36,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class GrpcServer implements InitializingBean, DisposableBean {
     private final GrpcProperties grpcProperties;
-    private final DatabaseProxyService databaseProxyService;
+    private final DatabaseService databaseService;
     private Server server;
 
     @Override
@@ -55,7 +55,7 @@ public class GrpcServer implements InitializingBean, DisposableBean {
                     .useTransportSecurity(
                             new ClassPathResource("certs/cert.pem").getInputStream(),
                             new ClassPathResource("certs/key.pem").getInputStream())
-                    .addService(databaseProxyService)
+                    .addService(databaseService)
                     .build()
                     .start();
         }

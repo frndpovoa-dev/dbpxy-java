@@ -3,10 +3,10 @@ _pod_name: localhost
 app:
   grpc:
     port: 9090
-  db-proxy:
+  dbpxy:
     hostname: localhost
     port: 9090
-  db-proxy-datasource:
+  dbpxy-datasource:
     url: jdbc:postgresql://localhost:5432/postgres
     props:
       user: postgres

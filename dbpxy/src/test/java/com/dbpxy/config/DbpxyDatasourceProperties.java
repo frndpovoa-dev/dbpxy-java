@@ -2,7 +2,7 @@ package com.dbpxy.config;
 
 /*-
  * #%L
- * dbpxy-lib
+ * dbpxy
  * %%
  * Copyright (C) 2025 Fernando Lemes Povoa
  * %%
@@ -31,8 +31,8 @@ import java.util.Map;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@ConfigurationProperties(prefix = "app.db-proxy-datasource")
-public class DatabaseProxyDataSourceProperties {
+@ConfigurationProperties(prefix = "app.dbpxy-datasource")
+public class DbpxyDatasourceProperties {
     private String url;
     @Builder.Default
     private Map<String, String> props = new HashMap<>();
