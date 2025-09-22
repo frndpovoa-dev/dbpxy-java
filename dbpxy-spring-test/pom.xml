@@ -16,7 +16,7 @@
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
         <org.postgresql_postgresql.version>42.7.7</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.38</org.projectlombok_lombok.version>
+        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <spring-boot.version>3.5.5</spring-boot.version>
     </properties>
     <dependencyManagement>
