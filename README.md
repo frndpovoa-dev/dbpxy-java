@@ -15,6 +15,5 @@ true \
     -p $GCP_PROJECT_ID \
     -r $GCP_REGION \
     -m $MAVEN_REPOSITORY \
-    -d $DOCKER_REPOSITORY \
-    -i $DOCKER_IMAGE
+    -d $DOCKER_REPOSITORY
 ```

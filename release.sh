@@ -7,7 +7,6 @@ while getopts "v:p:r:m:d:i:" opt; do
     r) gcp_region="$OPTARG" ;;
     m) maven_repository="$OPTARG" ;;
     d) docker_repository="$OPTARG" ;;
-    i) docker_image="$OPTARG" ;;
     \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
     :) echo "Option -$OPTARG requires an argument." >&2; exit 1 ;;
   esac
@@ -24,7 +23,6 @@ command="$command,_GCP_PROJECT_ID=$gcp_project_id"
 command="$command,_GCP_REGION=$gcp_region"
 command="$command,_MAVEN_REPOSITORY=$maven_repository"
 command="$command,_DOCKER_REPOSITORY=$docker_repository"
-command="$command,_DOCKER_IMAGE=$docker_image"
 command="$command "
 
 echo "Executing command: $command"
