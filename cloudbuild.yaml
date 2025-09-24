@@ -1,0 +1,15 @@
+steps:
+  - name: 'maven:3.9-amazoncorretto-25-debian-trixie'
+    entrypoint: mvn
+    args: ['install', '-T', '2C', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '--rm', '--tag=${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/${_DOCKER_IMAGE}:${_VERSION}', '-f', './dbpxy/Dockerfile', './dbpxy']
+artifacts:
+  mavenArtifacts:
+    - repository: 'https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}'
+      path: './dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar'
+      groupId: 'com.dbpxy'
+      artifactId: 'dbpxy-lib'
+      version: '${_VERSION}'
+images:
+  - '${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/${_DOCKER_IMAGE}:${_VERSION}'

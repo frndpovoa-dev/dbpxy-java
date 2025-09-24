@@ -9,15 +9,15 @@
     <properties>
         <revision>0.1.0-SNAPSHOT</revision>
         <file.encoding>UTF-8</file.encoding>
-        <java.version>24</java.version>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.protobuf_protoc.version>4.32.0</com.google.protobuf_protoc.version>
+        <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
-        <org.postgresql_postgresql.version>42.7.7</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.40</org.projectlombok_lombok.version>
-        <spring-boot.version>3.5.5</spring-boot.version>
+        <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
+        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
+        <spring-boot.version>3.5.6</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>

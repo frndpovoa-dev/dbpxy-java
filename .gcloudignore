@@ -1,0 +1,7 @@
+.github
+.idea
+.mvn
+.env
+*.drawio
+mvnw*
+*.sh

@@ -9,20 +9,20 @@
     <properties>
         <revision>0.1.0-SNAPSHOT</revision>
         <file.encoding>UTF-8</file.encoding>
-        <java.version>24</java.version>
+        <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.google.cloud.sql_postgres-socket-factory.version>1.25.3</com.google.cloud.sql_postgres-socket-factory.version>
-        <com.google.guava_guava.version>33.4.8-jre</com.google.guava_guava.version>
-        <com.google.protobuf_protoc.version>4.32.0</com.google.protobuf_protoc.version>
+        <com.google.guava_guava.version>33.5.0-jre</com.google.guava_guava.version>
+        <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
         <org.apache.commons_commons-lang3.version>3.18.0</org.apache.commons_commons-lang3.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
-        <org.postgresql_postgresql.version>42.7.7</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.40</org.projectlombok_lombok.version>
+        <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
+        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <org.testcontainers_testcontainers-java.version>1.21.3</org.testcontainers_testcontainers-java.version>
-        <spring-boot.version>3.5.5</spring-boot.version>
+        <spring-boot.version>3.5.6</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>

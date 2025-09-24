@@ -4,8 +4,17 @@
 
 ![image](https://github.com/user-attachments/assets/5f279bae-743f-4ac8-8bc6-275fc34d3a5b)
 
-### Build
+## Build & dockerize
+
+Don't forget to change version number.
 
 ```bash
-./mvnw clean install -DskipTests
+true \
+  && source .env \
+  && ./release.sh -v "0.2.0-4-SNAPSHOT" \
+    -p $GCP_PROJECT_ID \
+    -r $GCP_REGION \
+    -m $MAVEN_REPOSITORY \
+    -d $DOCKER_REPOSITORY \
+    -i $DOCKER_IMAGE
 ```
