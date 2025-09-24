@@ -1,0 +1,30 @@
+name: Build from a feature branch
+on:
+  push:
+    branches-ignore:
+      - main
+    paths:
+      - version-dev.txt
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/cache@v4
+        env:
+          cache-name: cache-m2-repository
+        with:
+          path: ~/.m2/repository
+          key: ${{runner.os}}-build-${{env.cache-name}}-${{hashFiles('**/pom.xml')}}
+          restore-keys: |
+            ${{runner.os}}-build-${{env.cache-name}}-
+      - run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
+      - uses: google-github-actions/auth@v3
+        with:
+          credentials_json: '${{secrets.GCP_CREDENTIALS}}'
+      - uses: google-github-actions/setup-gcloud@v3
+        with:
+          version: '>= 540.0.0'
+          install_components: core
+      - run: gcloud info
+      - run: ./release.sh -v $APP_VERSION -p ${{secrets.GCP_PROJECT_ID}} -r ${{secrets.GCP_REGION}} -m ${{secrets.MAVEN_REPOSITORY}} -d ${{secrets.DOCKER_REPOSITORY}} -i ${{secrets.DOCKER_IMAGE}}

@@ -11,7 +11,7 @@ Don't forget to change version number.
 ```bash
 true \
   && source .env \
-  && ./release.sh -v "0.2.0-4-SNAPSHOT" \
+  && ./release.sh -v "0.0.0-0-SNAPSHOT" \
     -p $GCP_PROJECT_ID \
     -r $GCP_REGION \
     -m $MAVEN_REPOSITORY \
