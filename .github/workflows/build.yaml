@@ -28,4 +28,6 @@ jobs:
           version: '>= 540.0.0'
           install_components: core
       - run: gcloud info
-      - run: ./release.sh -v $APP_VERSION -p ${{secrets.GCP_PROJECT_ID}} -r ${{secrets.GCP_REGION}} -m ${{secrets.MAVEN_REPOSITORY}} -d ${{secrets.DOCKER_REPOSITORY}} -i ${{secrets.DOCKER_IMAGE}}
+      - run: |
+          chmod +x ./release.sh
+          ./release.sh -v $APP_VERSION -p ${{secrets.GCP_PROJECT_ID}} -r ${{secrets.GCP_REGION}} -m ${{secrets.MAVEN_REPOSITORY}} -d ${{secrets.DOCKER_REPOSITORY}} -i ${{secrets.DOCKER_IMAGE}}
