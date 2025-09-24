@@ -1,8 +1,9 @@
 name: Build from a feature branch
 on:
   push:
-    branches-ignore:
-      - main
+    branches:
+      - 'bugfix/**'
+      - 'feature/**'
     paths:
       - version-dev.txt
 jobs:
