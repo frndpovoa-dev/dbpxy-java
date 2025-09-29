@@ -12,7 +12,7 @@
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
-        <io.grpc_grpc.version>1.74.0</io.grpc_grpc.version>
+        <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
         <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
