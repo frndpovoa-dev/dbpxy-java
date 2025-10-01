@@ -45,6 +45,9 @@ jobs:
           distribution: corretto
           architecture: x64
 
+      - name: Set app version
+        run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
+
       # begin compile
       - name: Build
         run: mvn compile -T 2C -Drevision=$APP_VERSION
@@ -60,9 +63,6 @@ jobs:
         run: snyk test --all-projects --dev --severity-threshold=high
         env:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
-
-      - name: Set app version
-        run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
 
       # begin testing
       - name: Generate testing SSL key/cert files
