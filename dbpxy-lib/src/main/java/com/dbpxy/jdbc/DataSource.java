@@ -38,12 +38,17 @@ public class DataSource implements javax.sql.DataSource {
     private final ConnectionHolder connectionHolder;
     private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
     private final DbpxyProperties dbpxyProperties;
+    private final String dbpxyCertPath;
     private PrintWriter printWriter;
     private int loginTimeout;
 
     @Override
     public Connection getConnection() throws SQLException {
-        return new Connection(connectionHolder, dbpxyProperties, dbpxyDatasourceProperties);
+        return new Connection(
+                connectionHolder,
+                dbpxyProperties,
+                dbpxyDatasourceProperties,
+                dbpxyCertPath);
     }
 
     @Override

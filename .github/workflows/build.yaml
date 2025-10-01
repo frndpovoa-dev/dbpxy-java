@@ -2,32 +2,95 @@ name: Build from a feature branch
 on:
   push:
     branches:
-      - 'bugfix/**'
-      - 'feature/**'
+      - bugfix/**
+      - feature/**
     paths:
       - version-dev.txt
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/cache@v4
+      - name: Git checkout
+        uses: actions/checkout@v5
+
+      # begin package manager cache
+      - name: .m2/repository cache
+        uses: actions/cache@v4
         env:
-          cache-name: cache-m2-repository
+          CACHE_NAME: cache-m2-repository
         with:
           path: ~/.m2/repository
-          key: ${{runner.os}}-build-${{env.cache-name}}-${{hashFiles('**/pom.xml')}}
-          restore-keys: |
-            ${{runner.os}}-build-${{env.cache-name}}-
-      - run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
-      - uses: google-github-actions/auth@v3
+          key: ${{runner.os}}-build-${{env.CACHE_NAME}}-${{hashFiles('**/pom.xml')}}
+          restore-keys: ${{runner.os}}-build-${{env.CACHE_NAME}}-
+      # end
+
+      - name: Google auth
+        uses: google-github-actions/auth@v3
         with:
-          credentials_json: '${{secrets.GCP_CREDENTIALS}}'
-      - uses: google-github-actions/setup-gcloud@v3
+          credentials_json: ${{secrets.GCP_CREDENTIALS}}
+
+      - id: secret-manager
+        name: Get secrets
+        uses: google-github-actions/get-secretmanager-secrets@v3
+        with:
+          secrets: |-
+            docker-repository:projects/${{secrets.GCP_PROJECT_ID}}/locations/${{secrets.GCP_REGION}}/secrets/DOCKER_REPOSITORY
+            maven-repository:projects/${{secrets.GCP_PROJECT_ID}}/locations/${{secrets.GCP_REGION}}/secrets/MAVEN_REPOSITORY
+            snyk-token:projects/${{secrets.GCP_PROJECT_ID}}/locations/${{secrets.GCP_REGION}}/secrets/SNYK_TOKEN
+
+      - name: Setup JDK
+        uses: actions/setup-java@v5
+        with:
+          java-version: '25'
+          distribution: corretto
+          architecture: x64
+
+      # begin compile
+      - name: Build
+        run: mvn compile -T 2C -Drevision=$APP_VERSION
+      # end
+
+      - name: Setup Snyk
+        uses: snyk/actions/setup@master
+      - name: Setup Go
+        uses: actions/setup-go@v6
+        with:
+          go-version: '1.25'
+      - name: Snyk test
+        run: snyk test --all-projects --dev --severity-threshold=high
+        env:
+          SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
+
+      - name: Set app version
+        run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
+
+      # begin testing
+      - name: Generate testing SSL key/cert files
+        run: |
+          openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+            -keyout $CERTS_DIR/key.pem \
+            -out $CERTS_DIR/cert.pem \
+            -config $CERTS_DIR/localhost.cnf-template
+        env:
+          CERTS_DIR: ./dbpxy/src/main/resources/certs
+      - name: Build
+        run: mvn install -T 2C -Drevision=$APP_VERSION
+      # end
+
+      - name: Clean up
+        run: mvn clean
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v3
         with:
           version: '>= 540.0.0'
           install_components: core
-      - run: gcloud info
-      - run: |
-          chmod +x ./release.sh
-          ./release.sh -v $APP_VERSION -p ${{secrets.GCP_PROJECT_ID}} -r ${{secrets.GCP_REGION}} -m ${{secrets.MAVEN_REPOSITORY}} -d ${{secrets.DOCKER_REPOSITORY}}
+
+      - name: Publish artifacts
+        run: |
+          chmod +x ./publish.sh
+          ./publish.sh -v $APP_VERSION \
+            -p ${{secrets.GCP_PROJECT_ID}} \
+            -r ${{secrets.GCP_REGION}} \
+            -m ${{steps.secret-manager.outputs.maven-repository}} \
+            -d ${{steps.secret-manager.outputs.docker-repository}}

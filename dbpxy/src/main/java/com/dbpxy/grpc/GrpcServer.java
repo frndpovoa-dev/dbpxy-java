@@ -30,27 +30,23 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
-import java.util.concurrent.TimeUnit;
-
 @Component
 @RequiredArgsConstructor
 public class GrpcServer implements InitializingBean, DisposableBean {
+    private static Server server;
     private final GrpcProperties grpcProperties;
     private final DatabaseService databaseService;
-    private Server server;
 
     @Override
     public void destroy() throws Exception {
-        if (!server.shutdown().awaitTermination(20, TimeUnit.SECONDS)) {
-            server.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        }
-        this.server = null;
+        server.shutdownNow().awaitTermination();
+        server = null;
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        if (server == null) {
-            this.server = ServerBuilder
+        if (server == null || server.isShutdown()) {
+            server = ServerBuilder
                     .forPort(grpcProperties.getPort())
                     .useTransportSecurity(
                             new ClassPathResource("certs/cert.pem").getInputStream(),

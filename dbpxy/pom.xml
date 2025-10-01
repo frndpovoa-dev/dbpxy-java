@@ -47,6 +47,12 @@
     </repositories>
     <dependencies>
         <dependency>
+            <groupId>com.dbpxy</groupId>
+            <artifactId>dbpxy-lib</artifactId>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
             <version>${com.google.cloud.sql_postgres-socket-factory.version}</version>
@@ -313,7 +319,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
                 <configuration>
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
         </plugins>

@@ -1,4 +1,4 @@
-package com.dbpxy;
+package com.dbpxy.dto;
 
 /*-
  * #%L
@@ -20,18 +20,22 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.DbpxyDatasourceProperties;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
+import jakarta.persistence.Id;
+import lombok.*;
 
-@Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@ExtendWith({PostgresExtension.class})
-@ActiveProfiles({"integration"})
-public abstract class BaseIntTest {
-    @Autowired
-    protected DbpxyDatasourceProperties dataSourceProperties;
+@Getter
+@Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@ToString
+public class TestDto {
+    @Id
+    @EqualsAndHashCode.Include
+    private Long id;
+    @EqualsAndHashCode.Include
+    private String name;
+    @EqualsAndHashCode.Include
+    private String groupName;
 }

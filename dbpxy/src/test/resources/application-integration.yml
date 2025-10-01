@@ -2,6 +2,7 @@ _pod_name: localhost
 
 app:
   grpc:
+    cert-path: certs/cert.pem
     port: 9090
   dbpxy:
     hostname: localhost
@@ -13,13 +14,13 @@ app:
       password: postgres
 
 server:
-  port: 8050
+  port: 9091
   servlet:
     context-path: /
 
 management:
   server:
-    port: 8051
+    port: 9051
 
 logging:
   level:

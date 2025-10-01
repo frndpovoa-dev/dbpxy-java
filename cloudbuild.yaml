@@ -1,15 +1,36 @@
 steps:
-  - name: 'maven:3.9-amazoncorretto-25-debian-trixie'
+  - name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    secretEnv:
+      - GRPC_KEY_PEM
+      - GRPC_CERT_PEM
+    args:
+      - '-c'
+      - |
+        cat << EOF > ./dbpxy/src/main/resources/certs/key.pem
+        $$GRPC_KEY_PEM
+        EOF
+        cat << EOF > ./dbpxy/src/main/resources/certs/cert.pem
+        $$GRPC_CERT_PEM
+        EOF
+  - name: maven:3.9-amazoncorretto-25-debian-trixie
     entrypoint: mvn
     args: ['install', '-T', '2C', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
-  - name: 'gcr.io/cloud-builders/docker'
+  - name: gcr.io/cloud-builders/docker
     args: ['build', '--rm', '--tag=${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}', '-f', './dbpxy/Dockerfile', './dbpxy']
 artifacts:
   mavenArtifacts:
-    - repository: 'https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}'
-      path: './dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar'
-      groupId: 'com.dbpxy'
-      artifactId: 'dbpxy-lib'
-      version: '${_VERSION}'
+    - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
+      path: ./dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar
+      groupId: com.dbpxy
+      artifactId: dbpxy-lib
+      version: ${_VERSION}
 images:
-  - '${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}'
+  - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
+availableSecrets:
+  - secretManager:
+      version: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_KEY_PEM/versions/latest
+    env: GRPC_KEY_PEM
+  - secretManager:
+      version: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_CERT_PEM/versions/latest
+    env: GRPC_CERT_PEM

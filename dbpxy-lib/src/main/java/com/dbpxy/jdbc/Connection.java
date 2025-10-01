@@ -122,11 +122,12 @@ public class Connection implements java.sql.Connection {
     public Connection(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
-            final DbpxyDatasourceProperties dbpxyDatasourceProperties
+            final DbpxyDatasourceProperties dbpxyDatasourceProperties,
+            final String dbpxyCertPath
     ) throws SQLException {
         try {
             final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
-                    .trustManager(new ClassPathResource("certs/grpc-cert.pem").getInputStream())
+                    .trustManager(new ClassPathResource(dbpxyCertPath).getInputStream())
                     .build();
             this.channel = Grpc.newChannelBuilderForAddress(
                             dbpxyProperties.getHostname(),

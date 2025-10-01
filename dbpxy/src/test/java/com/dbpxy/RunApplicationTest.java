@@ -35,9 +35,9 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest
 @ExtendWith({PostgresExtension.class})
 @ActiveProfiles({"integration"})
+@EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
 class RunApplicationTest {
     @Test
-    @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
     void run() {
         log.info("App is running in testing mode");
         await()
