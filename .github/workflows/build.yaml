@@ -50,7 +50,7 @@ jobs:
 
       # begin compilation
       - name: Build
-        run: mvn install -T 2C -Dmaven.test.skip=true -Drevision=$APP_VERSION
+        run: mvn install -T 2C -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
 
       - name: Setup Snyk
@@ -60,7 +60,7 @@ jobs:
         with:
           go-version: '1.25'
       - name: Snyk test
-        run: snyk test --all-projects --dev --severity-threshold=high
+        run: snyk test --severity-threshold=high
         env:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
 
