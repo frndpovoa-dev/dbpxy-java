@@ -48,9 +48,9 @@ jobs:
       - name: Set app version
         run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
 
-      # begin compile
+      # begin compilation
       - name: Build
-        run: mvn compile -T 2C -Drevision=$APP_VERSION
+        run: mvn install -T 2C -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
 
       - name: Setup Snyk
@@ -74,7 +74,7 @@ jobs:
         env:
           CERTS_DIR: ./dbpxy/src/main/resources/certs
       - name: Build
-        run: mvn install -T 2C -Drevision=$APP_VERSION
+        run: mvn test -T 2C -Drevision=$APP_VERSION
       # end
 
       - name: Clean up
