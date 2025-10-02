@@ -156,6 +156,13 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
+            <!--Infinite loop [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296] in org.apache.commons:commons-compress@1.24.0-->
+            <!--introduced by org.testcontainers:junit-jupiter@1.21.3 > org.testcontainers:testcontainers@1.21.3 > org.apache.commons:commons-compress@1.24.0-->
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.0</version>
+        </dependency>
+        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${org.testcontainers_testcontainers-java.version}</version>
