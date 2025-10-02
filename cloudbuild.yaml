@@ -1,17 +1,15 @@
 steps:
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash
-    secretEnv:
-      - GRPC_KEY_PEM
-      - GRPC_CERT_PEM
+    secretEnv: ['GRPC_KEY_PEM', 'GRPC_CERT_PEM']
     args:
       - '-c'
       - |
         cat << EOF > ./dbpxy/src/main/resources/certs/key.pem
-        $$GRPC_KEY_PEM
+        $${GRPC_KEY_PEM}
         EOF
         cat << EOF > ./dbpxy/src/main/resources/certs/cert.pem
-        $$GRPC_CERT_PEM
+        $${GRPC_CERT_PEM}
         EOF
   - name: maven:3.9-amazoncorretto-25-debian-trixie
     entrypoint: mvn
