@@ -1,3 +1,4 @@
+serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 steps:
   - name: gcr.io/cloud-builders/gcloud
     entrypoint: bash

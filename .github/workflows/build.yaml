@@ -5,7 +5,7 @@ on:
       - bugfix/**
       - feature/**
     paths:
-      - version-dev.txt
+      - version.txt
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -49,10 +49,10 @@ jobs:
             snyk-token:projects/${{secrets.GCP_PROJECT_ID}}/locations/${{secrets.GCP_REGION}}/secrets/SNYK_TOKEN
 
       - name: Set app version
-        run: echo "APP_VERSION=$(cat version-dev.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
+        run: echo "APP_VERSION=$(cat version.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
 
       # begin compilation
-      - name: Build
+      - name: Compile
         run: mvn install -T 2C -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
 
@@ -74,7 +74,7 @@ jobs:
             -config $CERTS_DIR/localhost.cnf-template
         env:
           CERTS_DIR: ./dbpxy/src/main/resources/certs
-      - name: Build
+      - name: Test
         run: mvn test -Drevision=$APP_VERSION
       # end
 
@@ -91,6 +91,7 @@ jobs:
         run: |
           chmod +x ./publish.sh
           ./publish.sh -v $APP_VERSION \
+            -a ${{secrets.GCP_SVC_ACCOUNT}} \
             -p ${{secrets.GCP_PROJECT_ID}} \
             -r ${{secrets.GCP_REGION}} \
             -m ${{steps.secret-manager.outputs.maven-repository}} \

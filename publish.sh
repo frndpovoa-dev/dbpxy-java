@@ -1,8 +1,9 @@
 #!/bin/bash
 
-while getopts "v:p:r:m:d:i:" opt; do
+while getopts "v:a:p:r:m:d:i:" opt; do
   case "$opt" in
     v) version="$OPTARG" ;;
+    a) gcp_svc_account="$OPTARG" ;;
     p) gcp_project_id="$OPTARG" ;;
     r) gcp_region="$OPTARG" ;;
     m) maven_repository="$OPTARG" ;;
@@ -19,6 +20,7 @@ command="$command --region=$gcp_region "
 command="$command --machine-type=e2-medium "
 command="$command --config=./cloudbuild.yaml "
 command="$command --substitutions=_VERSION=$version"
+command="$command,_GCP_SVC_ACCOUNT=$gcp_svc_account"
 command="$command,_GCP_PROJECT_ID=$gcp_project_id"
 command="$command,_GCP_REGION=$gcp_region"
 command="$command,_MAVEN_REPOSITORY=$maven_repository"
