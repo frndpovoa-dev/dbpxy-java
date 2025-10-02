@@ -26,9 +26,8 @@ artifacts:
 images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
-  - secretManager:
-      version: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_KEY_PEM/versions/latest
-    env: GRPC_KEY_PEM
-  - secretManager:
-      version: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_CERT_PEM/versions/latest
-    env: GRPC_CERT_PEM
+  secretManager:
+    - versionName: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_KEY_PEM/versions/latest
+      env: GRPC_KEY_PEM
+    - versionName: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_CERT_PEM/versions/latest
+      env: GRPC_CERT_PEM
