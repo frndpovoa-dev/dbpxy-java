@@ -27,7 +27,7 @@ images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
   secretManager:
-    - versionName: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_KEY_PEM/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_KEY_PEM/versions/1
       env: GRPC_KEY_PEM
-    - versionName: projects/${_GCP_PROJECT_ID}/locations/${_GCP_REGION}/secrets/GRPC_CERT_PEM/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_CERT_PEM/versions/1
       env: GRPC_CERT_PEM
