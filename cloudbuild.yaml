@@ -33,4 +33,4 @@ availableSecrets:
       env: GRPC_CERT_PEM
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
-  defaultLogsBucketBehavior: REGIONAL_USER_OWNED_BUCKET
+  logging: CLOUD_LOGGING_ONLY
