@@ -16,6 +16,7 @@ done
 command="true"
 command="$command && gcloud builds submit . "
 command="$command --async "
+command="$command --verbosity=debug "
 command="$command --region=$gcp_region "
 command="$command --machine-type=e2-medium "
 command="$command --config=./cloudbuild.yaml "
