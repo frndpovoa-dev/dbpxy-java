@@ -10,10 +10,8 @@
         <revision>0.1.0-SNAPSHOT</revision>
     </properties>
     <modules>
-        <module>dbpxy</module>
         <module>dbpxy-lib</module>
-        <module>dbpxy-spring-test</module>
-        <module>dbpxy-spring-web</module>
+        <module>dbpxy</module>
     </modules>
     <build>
         <plugins>

@@ -1,4 +1,4 @@
-package com.dbpxy;
+package com.dbpxy.bo;
 
 /*-
  * #%L
@@ -20,18 +20,5 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.DbpxyDatasourceProperties;
-import lombok.extern.slf4j.Slf4j;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-
-@Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@ExtendWith({PostgresExtension.class})
-@ActiveProfiles({"integration"})
-public abstract class BaseIntTest {
-    @Autowired
-    protected DbpxyDatasourceProperties dataSourceProperties;
+public interface Package {
 }

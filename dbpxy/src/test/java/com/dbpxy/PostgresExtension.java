@@ -47,7 +47,7 @@ public class PostgresExtension implements BeforeAllCallback {
         final String username = "postgres";
         final String password = "postgres";
         postgresql = new GenericContainer(DockerImageName
-                .parse("bitnami/postgresql")
+                .parse("bitnamilegacy/postgresql")
                 .withTag(context.getConfigurationParameter("postgresql.version").orElse("latest"))
         ) {
         }

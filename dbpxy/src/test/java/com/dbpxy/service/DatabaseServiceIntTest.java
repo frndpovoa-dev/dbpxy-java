@@ -23,10 +23,15 @@ package com.dbpxy.service;
 import com.dbpxy.BaseIntTest;
 import com.dbpxy.config.GrpcProperties;
 import com.dbpxy.proto.*;
-import io.grpc.ManagedChannelBuilder;
+import io.grpc.ChannelCredentials;
+import io.grpc.Grpc;
+import io.grpc.ManagedChannel;
+import io.grpc.TlsChannelCredentials;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.io.ClassPathResource;
 
 import java.time.Duration;
 import java.util.AbstractMap;
@@ -51,6 +56,9 @@ class DatabaseServiceIntTest extends BaseIntTest {
             .addCols(Value.newBuilder()
                     .setCode(ValueCode.STRING)
                     .setData(ValueString.newBuilder().setValue("dummy").build().toByteString())
+                    .setSize(2147483647)
+                    .setName("name")
+                    .setLabel("name")
                     .build()
             )
             .build());
@@ -58,6 +66,9 @@ class DatabaseServiceIntTest extends BaseIntTest {
             .addCols(Value.newBuilder()
                     .setCode(ValueCode.STRING)
                     .setData(ValueString.newBuilder().setValue("foobar").build().toByteString())
+                    .setSize(2147483647)
+                    .setName("name")
+                    .setLabel("name")
                     .build()
             )
             .build());
@@ -86,17 +97,28 @@ class DatabaseServiceIntTest extends BaseIntTest {
 
     @Autowired
     private GrpcProperties grpcProperties;
+    private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub databaseProxyServiceClient;
 
     @BeforeEach
     void setUp() throws Exception {
-        this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(ManagedChannelBuilder
-                .forAddress("localhost", grpcProperties.getPort())
-                .usePlaintext()
-                .build());
+        final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
+                .trustManager(new ClassPathResource("certs/cert.pem").getInputStream())
+                .build();
+        this.channel = Grpc.newChannelBuilderForAddress(
+                        "localhost",
+                        grpcProperties.getPort(),
+                        credentials)
+                .build();
+        this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(channel);
 
         ddl(DROP_TABLE_IF_EXISTS_TEST);
         ddl(CREATE_TABLE_TEST);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        this.channel.shutdownNow();
     }
 
     @Test

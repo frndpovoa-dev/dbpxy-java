@@ -47,6 +47,12 @@
     </repositories>
     <dependencies>
         <dependency>
+            <groupId>com.dbpxy</groupId>
+            <artifactId>dbpxy-lib</artifactId>
+            <version>${revision}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
             <version>${com.google.cloud.sql_postgres-socket-factory.version}</version>
@@ -148,6 +154,13 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <!--Infinite loop [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296] in org.apache.commons:commons-compress@1.24.0-->
+            <!--introduced by org.testcontainers:junit-jupiter@1.21.3 > org.testcontainers:testcontainers@1.21.3 > org.apache.commons:commons-compress@1.24.0-->
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-compress</artifactId>
+            <version>1.26.0</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
@@ -313,7 +326,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.5.3</version>
                 <configuration>
-                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
         </plugins>
