@@ -21,6 +21,7 @@ Don't forget to change version number.
 true \
   && source .env \
   && ./publish.sh -v "0.0.0-0-SNAPSHOT" \
+    -a $GCP_SVC_ACCOUNT \
     -p $GCP_PROJECT_ID \
     -r $GCP_REGION \
     -m $MAVEN_REPOSITORY \
