@@ -53,7 +53,7 @@ jobs:
 
       # begin compilation
       - name: Compile
-        run: mvn install -T 2C -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
+        run: mvn clean install -T 2C -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
 
       - name: Setup Snyk
@@ -73,9 +73,9 @@ jobs:
             -out $CERTS_DIR/cert.pem \
             -config $CERTS_DIR/localhost.cnf-template
         env:
-          CERTS_DIR: ./dbpxy/src/main/resources/certs
+          CERTS_DIR: dbpxy/src/main/resources/certs
       - name: Test
-        run: mvn test -Drevision=$APP_VERSION
+        run: mvn test -Dmaven.test.skip=false -Drevision=$APP_VERSION
       # end
 
       - name: Clean up

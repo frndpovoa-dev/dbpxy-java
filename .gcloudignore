@@ -13,3 +13,4 @@ gha-creds-*.json
 **/*.drawio
 **/*.pem
 **/*.cnf
+**/certs/*.pem

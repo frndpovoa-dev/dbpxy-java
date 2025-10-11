@@ -188,10 +188,10 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void commit() throws SQLException {
-        if (readOnly) {
+        final Transaction transaction = getTransaction(false, 0);
+        if (readOnly || transaction == null) {
             log.debug("commit skipped (conn: {})", id);
         } else {
-            final Transaction transaction = getTransaction(false, 0);
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                 final Transaction newTransaction = getBlockingStub().commitTransaction(transaction);
@@ -202,10 +202,10 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void rollback() throws SQLException {
-        if (readOnly) {
+        final Transaction transaction = getTransaction(false, 0);
+        if (readOnly || transaction == null) {
             log.debug("rollback skipped (conn: {})", id);
         } else {
-            final Transaction transaction = getTransaction(false, 0);
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                 final Transaction newTransaction = getBlockingStub().rollbackTransaction(transaction);
