@@ -6,7 +6,7 @@
 
 ## Build
 
-[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.3.0)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
+[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.4.0)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
 
 ```bash
 true \
