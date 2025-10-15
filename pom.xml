@@ -2,17 +2,43 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>dev.frndpovoa.project1</groupId>
-    <artifactId>database-proxy-parent</artifactId>
+    <groupId>com.dbpxy</groupId>
+    <artifactId>dbpxy-parent</artifactId>
     <version>${revision}</version>
     <packaging>pom</packaging>
     <properties>
-        <revision>0.0.1-SNAPSHOT</revision>
+        <revision>0.1.0-SNAPSHOT</revision>
     </properties>
     <modules>
-        <module>proxy</module>
-        <module>proxy-lib</module>
-        <module>spring-test</module>
-        <module>spring-web</module>
+        <module>dbpxy-lib</module>
+        <module>dbpxy</module>
     </modules>
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>license-maven-plugin</artifactId>
+                <version>2.6.0</version>
+                <configuration>
+                    <organizationName>Fernando Lemes Povoa</organizationName>
+                    <licenseName>apache_v2</licenseName>
+                    <inceptionYear>2025</inceptionYear>
+                    <addSvnKeyWords>true</addSvnKeyWords>
+                    <verbose>false</verbose>
+                    <encoding>${file.encoding}</encoding>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>default-cli</id>
+                        <phase>process-sources</phase>
+                        <goals>
+                            <goal>add-third-party</goal>
+                            <goal>update-file-header</goal>
+                            <goal>update-project-license</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
 </project>

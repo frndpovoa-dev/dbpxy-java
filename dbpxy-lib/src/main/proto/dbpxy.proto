@@ -1,0 +1,146 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "com.dbpxy.proto";
+option java_outer_classname = "DbpxyProto";
+option objc_class_prefix = "DP";
+
+package com.dbpxy.proto;
+
+service Dbpxy {
+  rpc BeginTransaction (BeginTransactionConfig) returns (Transaction) {}
+  rpc CommitTransaction (Transaction) returns (Transaction) {}
+  rpc RollbackTransaction (Transaction) returns (Transaction) {}
+  rpc Execute (ExecuteConfig) returns (ExecuteResult) {}
+  rpc ExecuteTx (ExecuteTxConfig) returns (ExecuteResult) {}
+  rpc Query (QueryConfig) returns (QueryResult) {}
+  rpc QueryTx (QueryTxConfig) returns (QueryResult) {}
+  rpc Next (NextConfig) returns (QueryResult) {}
+  rpc CloseResultSet (NextConfig) returns (Empty) {}
+  rpc CloseStatement (Empty) returns (Empty) {}
+}
+
+message Empty {
+}
+
+message ConnectionString {
+  string url = 1;
+  repeated ConnectionStringProp props = 2;
+}
+
+message ConnectionStringProp {
+  string name = 1;
+  string value = 2;
+}
+
+message BeginTransactionConfig {
+  int64 timeout = 1;
+  bool readOnly = 2;
+  ConnectionString connectionString = 3;
+}
+
+message Transaction {
+  string id = 1;
+  Status status = 2;
+  string node = 3;
+
+  enum Status {
+    NOT_STARTED = 0;
+    ACTIVE = 1;
+    COMMITTED = 2;
+    ROLLED_BACK = 3;
+    UNKNOWN = 4;
+    JOINED = 5;
+  }
+}
+
+message ExecuteConfig {
+  string query = 1;
+  repeated Value args = 2;
+  int64 timeout = 3;
+  ConnectionString connectionString = 4;
+}
+
+message ExecuteTxConfig {
+  Transaction transaction = 1;
+  ExecuteConfig executeConfig = 2;
+}
+
+message QueryConfig {
+  string query = 1;
+  repeated Value args = 2;
+  int64 timeout = 3;
+  int64 fetchSize = 4;
+  ConnectionString connectionString = 5;
+}
+
+message QueryTxConfig {
+  Transaction transaction = 1;
+  QueryConfig queryConfig = 2;
+}
+
+message NextConfig {
+  Transaction transaction = 1;
+  string queryResultId = 2;
+}
+
+message ExecuteResult {
+  int32 rowsAffected = 1;
+}
+
+message QueryResult {
+  string id = 1;
+  repeated Row rows = 2;
+}
+
+message Row {
+  repeated Value cols = 1;
+}
+
+message Value {
+  ValueCode code = 1;
+  bytes data = 2;
+  int32 size = 3;
+  int32 scale = 4;
+  int32 precision = 5;
+  string name = 6;
+  string label = 7;
+}
+
+enum ValueCode {
+  INT32 = 0;
+  INT64 = 1;
+  FLOAT64 = 2;
+  BOOL = 3;
+  BYTES = 4;
+  STRING = 5;
+  TIME = 6;
+  NULL = 7;
+}
+
+message ValueInt32 {
+  int32 value = 1;
+}
+
+message ValueInt64 {
+  int64 value = 1;
+}
+
+message ValueFloat64 {
+  double value = 1;
+}
+
+message ValueBool {
+  bool value = 1;
+}
+
+message ValueString {
+  string value = 1;
+}
+
+message ValueTime {
+  string value = 1;
+}
+
+message ValueNull {
+}

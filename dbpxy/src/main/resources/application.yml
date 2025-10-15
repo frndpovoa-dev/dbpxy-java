@@ -1,0 +1,60 @@
+app:
+  node: ${_pod_name:${HOSTNAME}}
+  grpc:
+    port: ${GRPC_PORT}
+  postgresql:
+    database: ${POSTGRESQL_DATABASE}
+    hostname: ${POSTGRESQL_HOSTNAME}
+    port: ${POSTGRESQL_PORT}
+    username: ${POSTGRESQL_USERNAME}
+    password: ${POSTGRESQL_PASSWORD}
+    url: ${POSTGRESQL_URL:jdbc:postgresql://${app.postgresql.hostname}:${app.postgresql.port}/${app.postgresql.database}?user=${app.postgresql.username}&password=${app.postgresql.password}}
+    show-sql: true
+  encryption:
+    enabled: ${USE_ENCRYPTION:true}
+
+server:
+  port: ${PORT}
+  shutdown: graceful
+  error:
+    whitelabel:
+      enabled: false
+  servlet:
+    context-path: ${APP_CONTEXT}
+
+spring:
+  main:
+    banner-mode: off
+  profiles:
+    group:
+      integration: integration
+      qa: qa
+      pr: pr
+
+management:
+  server:
+    port: ${MGMT_PORT}
+  endpoint:
+    health:
+      enabled: true
+      probes:
+        enabled: true
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState
+  endpoints:
+    enabled-by-default: false
+    web:
+      base-path: /manage
+      exposure:
+        include:
+          - health
+
+logging:
+  pattern:
+    console: '%clr(%d{${LOG_DATEFORMAT_PATTERN:yyyy-MM-dd HH:mm:ss.SSS}}){faint} %clr(${LOG_LEVEL_PATTERN:%5p}) %clr(${PID: }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %clr(tx=%X{transaction.id},query=%X{query.id} :) %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}}'
+  level:
+    root: ${ROOT_LOG_LEVEL:INFO}
+    com.dbpxy: ${APP_LOG_LEVEL:INFO}
