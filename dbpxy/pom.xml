@@ -160,7 +160,7 @@
             <!--introduced by org.testcontainers:junit-jupiter@1.21.3 > org.testcontainers:testcontainers@1.21.3 > org.apache.commons:commons-compress@1.24.0-->
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
-            <version>1.26.0</version>
+            <version>1.28.0</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
