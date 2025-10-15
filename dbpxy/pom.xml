@@ -15,7 +15,7 @@
         <com.google.guava_guava.version>33.5.0-jre</com.google.guava_guava.version>
         <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
-        <org.apache.commons_commons-lang3.version>3.18.0</org.apache.commons_commons-lang3.version>
+        <org.apache.commons_commons-lang3.version>3.19.0</org.apache.commons_commons-lang3.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
@@ -187,7 +187,7 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>2.6.0</version>
+                <version>2.7.0</version>
                 <configuration>
                     <organizationName>Fernando Lemes Povoa</organizationName>
                     <licenseName>apache_v2</licenseName>
@@ -281,7 +281,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.0</version>
+                <version>3.14.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
