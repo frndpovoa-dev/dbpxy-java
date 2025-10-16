@@ -12,13 +12,11 @@
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.google.cloud.sql_postgres-socket-factory.version>1.25.3</com.google.cloud.sql_postgres-socket-factory.version>
-        <com.google.guava_guava.version>33.5.0-jre</com.google.guava_guava.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.76.0</io.grpc_grpc.version>
         <org.apache.commons_commons-lang3.version>3.19.0</org.apache.commons_commons-lang3.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
         <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <org.testcontainers_testcontainers-java.version>1.21.3</org.testcontainers_testcontainers-java.version>
@@ -56,11 +54,6 @@
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
             <version>${com.google.cloud.sql_postgres-socket-factory.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${com.google.guava_guava.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
@@ -114,17 +107,6 @@
             <artifactId>awaitility</artifactId>
             <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -285,16 +267,6 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${org.projectlombok_lombok.version}</version>
-                        </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct_mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>

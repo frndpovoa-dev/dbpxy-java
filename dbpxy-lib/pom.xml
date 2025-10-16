@@ -14,8 +14,6 @@
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.76.0</io.grpc_grpc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
-        <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <spring-boot.version>3.5.6</spring-boot.version>
     </properties>
@@ -85,17 +83,6 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-            <optional>true</optional>
-        </dependency>
-        <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <version>${org.projectlombok_lombok.version}</version>
@@ -161,6 +148,7 @@
                         </goals>
                         <configuration>
                             <sources>
+                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
                                 <source>${basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
@@ -215,16 +203,6 @@
                             <groupId>org.projectlombok</groupId>
                             <artifactId>lombok</artifactId>
                             <version>${org.projectlombok_lombok.version}</version>
-                        </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct_mapstruct.version}</version>
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
