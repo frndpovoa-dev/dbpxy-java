@@ -11,7 +11,7 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.25.3</com.google.cloud.sql_postgres-socket-factory.version>
+        <com.google.cloud.sql_postgres-socket-factory.version>1.27.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.76.0</io.grpc_grpc.version>
         <org.apache.commons_commons-lang3.version>3.19.0</org.apache.commons_commons-lang3.version>
