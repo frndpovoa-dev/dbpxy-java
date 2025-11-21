@@ -22,25 +22,24 @@ package com.dbpxy.service;
  * #L%
  */
 
-import org.apache.commons.lang3.RandomUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.*;
 import javax.crypto.spec.GCMParameterSpec;
-import javax.crypto.spec.SecretKeySpec;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 @Service
 public class CryptoService {
-    private static final int AES_KEY_LENGTH = 32;
+    private static final int AES_KEY_LENGTH = 256;
     private static final int GCM_IV_LENGTH = 12;
-    private static final int GCM_TAG_LENGTH = 16;
+    private static final int GCM_TAG_LENGTH = 128;
     private static final SecretKey key = CryptoService.getAesKey();
     @Value("${app.encryption.enabled}")
     private boolean useEncryption;
@@ -50,10 +49,11 @@ public class CryptoService {
             return text;
         }
         try {
-            final byte[] iv = RandomUtils.secure().randomBytes(GCM_IV_LENGTH);
+            final byte[] iv = new byte[GCM_IV_LENGTH];
+            SecureRandom.getInstanceStrong().nextBytes(iv);
 
             final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
 
             final byte[] encryptedText = cipher.doFinal(text.getBytes(StandardCharsets.UTF_8));
@@ -87,7 +87,7 @@ public class CryptoService {
             byteBuffer.get(ciphertext);
 
             final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
-            final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
+            final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
 
             final byte[] decryptedText = cipher.doFinal(ciphertext);
@@ -103,7 +103,12 @@ public class CryptoService {
     }
 
     private static SecretKey getAesKey() {
-        final byte[] keyBytes = RandomUtils.secureStrong().randomBytes(AES_KEY_LENGTH);
-        return new SecretKeySpec(keyBytes, "AES");
+        try {
+            final KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
+            keyGenerator.init(AES_KEY_LENGTH);
+            return keyGenerator.generateKey();
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
