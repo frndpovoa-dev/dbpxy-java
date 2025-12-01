@@ -11,7 +11,7 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
+        <com.google.protobuf_protoc.version>4.33.1</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.76.0</io.grpc_grpc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
