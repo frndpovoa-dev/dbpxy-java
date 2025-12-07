@@ -92,7 +92,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setNode(node)
                 .build();
 
-        MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()));
+        MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
         log.debug("beginTransaction(timeout: {}) -> {}", config.getTimeout(), transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
@@ -378,7 +378,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
-                .filter(it -> Objects.equals(it.getNode(), node))
+                .filter(it -> {
+                    final var matches = Objects.equals(it.getNode(), node);
+                    if (!matches) {
+                        log.debug("getDatabaseOperationByTransaction() -> incorrect node");
+                    }
+                    return matches;
+                })
                 .map(it -> cryptoService.decrypt(it.getId()))
                 .map(transactionMap::get);
     }
@@ -464,6 +470,7 @@ class DatabaseOperation {
                         .build());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
             final Properties props = new Properties();
             connectionString.getPropsList()
                     .forEach(prop -> props.put(prop.getName(), prop.getValue()));
@@ -490,7 +497,6 @@ class DatabaseOperation {
                 log.error(t.getMessage(), t);
                 future.completeExceptionally(t);
             } finally {
-                MDC.clear();
                 taskExecutor.shutdownNow();
             }
         }, taskExecutor);
@@ -769,7 +775,7 @@ class DatabaseOperation {
                 });
     }
 
-    Boolean isReadOnly(final Connection conn) {
+    boolean isReadOnly(final Connection conn) {
         try {
             return conn != null && conn.isReadOnly();
         } catch (final SQLException e) {
