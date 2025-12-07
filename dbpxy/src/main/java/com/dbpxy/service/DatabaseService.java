@@ -92,6 +92,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setNode(node)
                 .build();
 
+        MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()));
         log.debug("beginTransaction(timeout: {}) -> {}", config.getTimeout(), transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
@@ -463,7 +464,6 @@ class DatabaseOperation {
                         .build());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
-            MDC.put("transaction.id", getMaskedId(transaction.getId()));
             final Properties props = new Properties();
             connectionString.getPropsList()
                     .forEach(prop -> props.put(prop.getName(), prop.getValue()));
@@ -637,7 +637,7 @@ class DatabaseOperation {
         final String queryResultId = uniqueIdGenerator.generate(QueryResult.class);
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
-            MDC.put("query.id", getMaskedId(queryResultId));
+            MDC.put("query.id", DatabaseUtil.getMaskedId(queryResultId));
             log.debug("before prepare statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setFetchSize(getFetchSize(config.getFetchSize()));
@@ -806,7 +806,7 @@ class DatabaseOperation {
                 });
     }
 
-    private Value nullValue() {
+    private static Value nullValue() {
         return Value.newBuilder()
                 .setCode(ValueCode.NULL)
                 .setData(ValueNull.newBuilder()
@@ -816,7 +816,7 @@ class DatabaseOperation {
                 .build();
     }
 
-    private Value getSqlArg(final ResultSet rs, final int i) {
+    private static Value getSqlArg(final ResultSet rs, final int i) {
         final Predicate<Object> wasNotNull = ignored -> {
             try {
                 return !rs.wasNull();
@@ -875,7 +875,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case BOOLEAN, BIT -> {
                     return Optional.of(rs.getBoolean(i))
@@ -891,7 +891,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
 
                 }
                 case DATE -> {
@@ -910,7 +910,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case NUMERIC, DOUBLE -> {
                     return Optional.of(rs.getDouble(i))
@@ -928,7 +928,7 @@ class DatabaseOperation {
                                     .setScale(getScale.getAsInt())
                                     .setPrecision(getPrecision.getAsInt())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case SMALLINT, INTEGER -> {
                     return Optional.of(rs.getInt(i))
@@ -944,7 +944,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case TIMESTAMP -> {
                     return Optional.ofNullable(rs.getTimestamp(i))
@@ -962,7 +962,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case VARCHAR -> {
                     return Optional.ofNullable(rs.getString(i))
@@ -978,7 +978,7 @@ class DatabaseOperation {
                                     .setName(getColumnName.get())
                                     .setLabel(getColumnLabel.get())
                                     .build())
-                            .orElseGet(this::nullValue);
+                            .orElseGet(DatabaseOperation::nullValue);
                 }
                 case NULL -> {
                     return nullValue();
@@ -992,7 +992,7 @@ class DatabaseOperation {
         }
     }
 
-    private void setSqlArg(final PreparedStatement stmt, final int i, final Value value) {
+    private static void setSqlArg(final PreparedStatement stmt, final int i, final Value value) {
         try {
             switch (value.getCode()) {
                 case INT64 -> stmt.setLong(i, ValueInt64.parseFrom(value.getData()).getValue());
@@ -1012,19 +1012,21 @@ class DatabaseOperation {
         }
     }
 
-    private String getMaskedId(final String id) {
-        return id.replaceFirst("^(.{32}).*$", "$1");
-    }
-
-    private int getFetchSize(final long fetchSize) {
+    private static int getFetchSize(final long fetchSize) {
         return Math.clamp(fetchSize, 25, Integer.MAX_VALUE);
     }
 
-    private int getQueryTimeout(final long timeout) {
+    private static int getQueryTimeout(final long timeout) {
         return (int) Math.min(timeout, Integer.MAX_VALUE);
     }
 
     private void logQuery(final String query) {
         log.debug("{}", Objects.toString(sqlFormatter.prettyPrint(query)).trim());
+    }
+}
+
+class DatabaseUtil {
+    public static String getMaskedId(final String id) {
+        return id.replaceFirst("^(.{32}).*$", "$1");
     }
 }
