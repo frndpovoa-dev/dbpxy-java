@@ -113,6 +113,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -148,6 +149,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -185,6 +187,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -237,6 +240,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -286,6 +290,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -304,6 +309,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -326,6 +332,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -344,6 +351,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
@@ -370,6 +378,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Throwable t) {
             responseObserver.onError(Status.UNKNOWN
+                    .augmentDescription(node)
                     .withDescription(t.getMessage())
                     .withCause(t)
                     .asRuntimeException());
