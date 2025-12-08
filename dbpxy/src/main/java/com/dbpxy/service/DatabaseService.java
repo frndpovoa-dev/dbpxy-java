@@ -125,6 +125,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
             final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
@@ -163,6 +164,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
             final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
@@ -206,6 +208,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .setStatus(Transaction.Status.ACTIVE)
                     .setNode(node)
                     .build();
+
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
             final DatabaseOperation ops = DatabaseOperation.builder()
                     .cryptoService(cryptoService)
@@ -258,6 +262,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .setNode(node)
                     .build();
 
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+
             final DatabaseOperation ops = DatabaseOperation.builder()
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
@@ -302,6 +308,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final ExecuteTxConfig config,
             final StreamObserver<ExecuteResult> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
@@ -321,6 +328,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final QueryTxConfig config,
             final StreamObserver<QueryResult> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
@@ -344,6 +352,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final NextConfig config,
             final StreamObserver<QueryResult> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final QueryResult result = ops.next(config);
@@ -371,6 +380,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final NextConfig config,
             final StreamObserver<Empty> responseObserver) {
         try {
+            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
             getDatabaseOperationByTransaction(config.getTransaction())
                     .ifPresent(ops -> ops.closeResultSet(config));
 
