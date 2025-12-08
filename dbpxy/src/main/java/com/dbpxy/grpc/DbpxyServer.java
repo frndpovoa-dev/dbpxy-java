@@ -32,7 +32,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class GrpcServer implements InitializingBean, DisposableBean {
+public class DbpxyServer implements InitializingBean, DisposableBean {
     private static Server server;
     private final GrpcProperties grpcProperties;
     private final DatabaseService databaseService;

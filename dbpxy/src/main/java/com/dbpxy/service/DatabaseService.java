@@ -20,6 +20,7 @@ package com.dbpxy.service;
  * #L%
  */
 
+import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.proto.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Status;
@@ -55,18 +56,21 @@ import static java.util.function.Predicate.not;
 @Service
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final ConcurrentHashMap<String, DatabaseOperation> transactionMap = new ConcurrentHashMap<>();
+    private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final SQLFormatter defaultSqlFormatter;
     private final String node;
 
     public DatabaseService(
+            final DbpxyClient dbpxyClient,
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node
     ) {
         log.info("dbpxy node {}", node);
 
+        this.dbpxyClient = dbpxyClient;
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
         this.node = node;
@@ -126,6 +130,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<Transaction> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+
+            if (shouldNotExecuteOnThisNode(transaction)) {
+                dbpxyClient.invoke(transaction.getNode(), blockingStub -> {
+                    final Transaction result = blockingStub.commitTransaction(transaction);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
@@ -165,6 +179,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<Transaction> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+
+            if (shouldNotExecuteOnThisNode(transaction)) {
+                dbpxyClient.invoke(transaction.getNode(), blockingStub -> {
+                    final Transaction result = blockingStub.rollbackTransaction(transaction);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
@@ -309,6 +333,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<ExecuteResult> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+
+            if (shouldNotExecuteOnThisNode(config.getTransaction())) {
+                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                    final ExecuteResult result = blockingStub.executeTx(config);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
@@ -329,6 +363,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<QueryResult> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+
+            if (shouldNotExecuteOnThisNode(config.getTransaction())) {
+                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                    final QueryResult result = blockingStub.queryTx(config);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
@@ -353,6 +397,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<QueryResult> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+
+            if (shouldNotExecuteOnThisNode(config.getTransaction())) {
+                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                    final QueryResult result = blockingStub.next(config);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final QueryResult result = ops.next(config);
@@ -381,6 +435,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final StreamObserver<Empty> responseObserver) {
         try {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+
+            if (shouldNotExecuteOnThisNode(config.getTransaction())) {
+                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                    final Empty result = blockingStub.closeResultSet(config);
+                    responseObserver.onNext(result);
+                    responseObserver.onCompleted();
+                });
+                return;
+            }
+
             getDatabaseOperationByTransaction(config.getTransaction())
                     .ifPresent(ops -> ops.closeResultSet(config));
 
@@ -395,15 +459,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         }
     }
 
+    private boolean shouldNotExecuteOnThisNode(final Transaction transaction) {
+        final var matches = Objects.equals(transaction.getNode(), node);
+        if (!matches) {
+            log.debug("incorrect node {}", node);
+        }
+        return !matches;
+    }
+
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
-                .filter(it -> {
-                    final var matches = Objects.equals(it.getNode(), node);
-                    if (!matches) {
-                        log.debug("incorrect node {}", node);
-                    }
-                    return matches;
-                })
                 .map(it -> cryptoService.decrypt(it.getId()))
                 .map(transactionMap::get);
     }
@@ -558,8 +623,8 @@ class DatabaseOperation {
                         taskQueue.add(params1 -> {
                             log.debug("timed out, trying to rollback...");
                             final boolean rolledBack = Optional.ofNullable(params1.getConnection())
-                                    .filter(this::isActive)
-                                    .flatMap(this::rollback)
+                                    .filter(DatabaseOperation::isActive)
+                                    .flatMap(DatabaseOperation::rollback)
                                     .orElse(false);
                             log.debug("rolledBack -> {}", rolledBack);
                             params1.getShouldContinue().set(false);
@@ -586,8 +651,8 @@ class DatabaseOperation {
         final boolean accepted = taskQueue.add(params -> {
             try {
                 final boolean committed = Optional.ofNullable(params.getConnection())
-                        .filter(this::isActive)
-                        .flatMap(this::commit)
+                        .filter(DatabaseOperation::isActive)
+                        .flatMap(DatabaseOperation::commit)
                         .orElse(false);
                 log.debug("committed -> {}", committed);
                 params.getShouldContinue().set(false);
@@ -610,8 +675,8 @@ class DatabaseOperation {
         final boolean accepted = taskQueue.add(params -> {
             try {
                 final boolean rolledBack = Optional.ofNullable(params.getConnection())
-                        .filter(this::isActive)
-                        .flatMap(this::rollback)
+                        .filter(DatabaseOperation::isActive)
+                        .flatMap(DatabaseOperation::rollback)
                         .orElse(false);
                 log.debug("rolledBack -> {}", rolledBack);
                 params.getShouldContinue().set(false);
@@ -782,7 +847,7 @@ class DatabaseOperation {
         }
     }
 
-    boolean isActive(final Connection conn) {
+    static boolean isActive(final Connection conn) {
         return Optional.ofNullable(conn).stream()
                 .anyMatch(it -> {
                     try {
@@ -794,7 +859,7 @@ class DatabaseOperation {
                 });
     }
 
-    boolean isReadOnly(final Connection conn) {
+    static boolean isReadOnly(final Connection conn) {
         try {
             return conn != null && conn.isReadOnly();
         } catch (final SQLException e) {
@@ -803,9 +868,9 @@ class DatabaseOperation {
         }
     }
 
-    Optional<Boolean> commit(final Connection conn) {
+    static Optional<Boolean> commit(final Connection conn) {
         return Optional.ofNullable(conn)
-                .filter(not(this::isReadOnly))
+                .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {
                     try {
                         it.commit();
@@ -817,9 +882,9 @@ class DatabaseOperation {
                 });
     }
 
-    Optional<Boolean> rollback(final Connection conn) {
+    static Optional<Boolean> rollback(final Connection conn) {
         return Optional.ofNullable(conn)
-                .filter(not(this::isReadOnly))
+                .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {
                     try {
                         it.rollback();
