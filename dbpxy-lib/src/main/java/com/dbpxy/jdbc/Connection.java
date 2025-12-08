@@ -57,6 +57,8 @@ public class Connection implements java.sql.Connection {
     private final ConnectionString connectionString;
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    private ManagedChannel onHoldChannel;
+    private DbpxyGrpc.DbpxyBlockingStub onHoldBlockingStub;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
@@ -157,26 +159,17 @@ public class Connection implements java.sql.Connection {
     }
 
     private void reconnect(final String node, final int port) throws SQLException {
-        try {
-            log.debug("disconnected({} -> {})", id, node);
+        this.onHoldChannel = channel;
+        this.onHoldBlockingStub = blockingStub;
 
-            connectionHolder.popConnection(this);
-            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        this.channel = Grpc.newChannelBuilderForAddress(
+                        node,
+                        port,
+                        credentials)
+                .build();
+        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
 
-            log.debug("reconnecting({} -> {})", id, node);
-
-            this.channel = Grpc.newChannelBuilderForAddress(
-                            node,
-                            port,
-                            credentials)
-                    .build();
-            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            connectionHolder.pushConnection(this);
-
-            log.debug("reconnected({} -> {})", id, node);
-        } catch (final InterruptedException e) {
-            throw new SQLException(e);
-        }
+        log.debug("reconnected({} -> {})", id, node);
     }
 
     @Override
@@ -221,8 +214,16 @@ public class Connection implements java.sql.Connection {
         } else {
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = getBlockingStub().commitTransaction(transaction);
+                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                try {
+                    channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+                    this.channel = onHoldChannel;
+                    this.blockingStub = onHoldBlockingStub;
+                } catch (final InterruptedException e) {
+                    throw new SQLException(e);
+                }
             }
         }
     }
@@ -235,8 +236,16 @@ public class Connection implements java.sql.Connection {
         } else {
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = getBlockingStub().rollbackTransaction(transaction);
+                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                try {
+                    channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+                    this.channel = onHoldChannel;
+                    this.blockingStub = onHoldBlockingStub;
+                } catch (final InterruptedException e) {
+                    throw new SQLException(e);
+                }
             }
         }
     }
