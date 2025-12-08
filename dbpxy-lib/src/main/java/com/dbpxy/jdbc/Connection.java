@@ -51,10 +51,12 @@ public class Connection implements java.sql.Connection {
     private static final Integer DEFAULT_QUERY_TIMEOUT = 1_000;
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
-    private final ManagedChannel channel;
-    private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    private final ChannelCredentials credentials;
+    private final DbpxyProperties dbpxyProperties;
     private final ConnectionHolder connectionHolder;
     private final ConnectionString connectionString;
+    private ManagedChannel channel;
+    private DbpxyGrpc.DbpxyBlockingStub blockingStub;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
@@ -116,6 +118,7 @@ public class Connection implements java.sql.Connection {
                 .setNode(m.group(2))
                 .setStatus(Transaction.Status.JOINED)
                 .build();
+        reconnect(transaction.getNode(), dbpxyProperties.getPort());
         pushTransaction(transaction);
     }
 
@@ -126,7 +129,7 @@ public class Connection implements java.sql.Connection {
             final String dbpxyCertPath
     ) throws SQLException {
         try {
-            final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
+            this.credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(new ClassPathResource(dbpxyCertPath).getInputStream())
                     .build();
             this.channel = Grpc.newChannelBuilderForAddress(
@@ -135,6 +138,7 @@ public class Connection implements java.sql.Connection {
                             credentials)
                     .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+            this.dbpxyProperties = dbpxyProperties;
             this.connectionHolder = connectionHolder;
             this.connectionString = ConnectionString.newBuilder()
                     .setUrl(dbpxyDatasourceProperties.getUrl())
@@ -148,6 +152,29 @@ public class Connection implements java.sql.Connection {
             connectionHolder.pushConnection(this);
             log.debug("open({})", id);
         } catch (final IOException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    private void reconnect(final String node, final int port) throws SQLException {
+        try {
+            log.debug("disconnected({} -> {})", id, node);
+
+            connectionHolder.popConnection(this);
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+
+            log.debug("reconnecting({} -> {})", id, node);
+
+            this.channel = Grpc.newChannelBuilderForAddress(
+                            node,
+                            port,
+                            credentials)
+                    .build();
+            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+            connectionHolder.pushConnection(this);
+
+            log.debug("reconnected({} -> {})", id, node);
+        } catch (final InterruptedException e) {
             throw new SQLException(e);
         }
     }
