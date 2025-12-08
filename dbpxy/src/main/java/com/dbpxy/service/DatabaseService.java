@@ -400,7 +400,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .filter(it -> {
                     final var matches = Objects.equals(it.getNode(), node);
                     if (!matches) {
-                        log.debug("getDatabaseOperationByTransaction() -> incorrect node");
+                        log.debug("incorrect node {}", node);
                     }
                     return matches;
                 })
