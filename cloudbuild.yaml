@@ -11,7 +11,7 @@ steps:
         cat << EOF > dbpxy/src/main/resources/certs/cert.pem
         $${GRPC_CERT_PEM}
         EOF
-  - name: maven:3.9-amazoncorretto-25-alpine
+  - name: maven:3.9-amazoncorretto-25-debian-trixie
     entrypoint: mvn
     args: ['install', '-T', '2C', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
   - name: gcr.io/cloud-builders/docker
