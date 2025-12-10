@@ -96,12 +96,17 @@ public class Connection implements java.sql.Connection {
                 .orElse(null);
     }
 
-    public void pushTransaction(final Transaction transaction) {
+    public synchronized void pushTransaction(final Transaction transaction) {
         transactions.push(transaction);
     }
 
-    public boolean popTransaction(final Transaction transaction) {
-        return transactions.remove(transaction);
+    public synchronized void popTransaction(final Transaction transaction) {
+        final Stack<Transaction> temp = new Stack<>();
+        temp.addAll(transactions);
+        transactions.clear();
+        transactions.addAll(temp.stream()
+                .filter(it -> !(Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode())))
+                .toList());
     }
 
     public void replaceTransaction(final Transaction out, final Transaction in) {
@@ -120,8 +125,37 @@ public class Connection implements java.sql.Connection {
                 .setNode(m.group(2))
                 .setStatus(Transaction.Status.JOINED)
                 .build();
-        reconnect(transaction.getNode(), dbpxyProperties.getPort());
+        this.onHoldChannel = channel;
+        this.onHoldBlockingStub = blockingStub;
+        this.channel = Grpc.newChannelBuilderForAddress(
+                        transaction.getNode(),
+                        dbpxyProperties.getPort(),
+                        credentials)
+                .build();
+        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+        log.debug("reconnected({} -> {})", id, transaction.getNode());
         pushTransaction(transaction);
+    }
+
+    public void leaveSharedTransaction(final String transactionId) throws SQLException {
+        log.debug("leaveSharedTransaction({})", transactionId);
+        final Matcher m = transactionIdPattern.matcher(transactionId);
+        if (!m.matches()) {
+            throw new SQLException("Invalid transaction id format");
+        }
+        final Transaction transaction = Transaction.newBuilder()
+                .setId(m.group(1))
+                .setNode(m.group(2))
+                .build();
+        try {
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            throw new SQLException(e);
+        } finally {
+            this.channel = onHoldChannel;
+            this.blockingStub = onHoldBlockingStub;
+        }
+        popTransaction(transaction);
     }
 
     public Connection(
@@ -156,20 +190,6 @@ public class Connection implements java.sql.Connection {
         } catch (final IOException e) {
             throw new SQLException(e);
         }
-    }
-
-    private void reconnect(final String node, final int port) throws SQLException {
-        this.onHoldChannel = channel;
-        this.onHoldBlockingStub = blockingStub;
-
-        this.channel = Grpc.newChannelBuilderForAddress(
-                        node,
-                        port,
-                        credentials)
-                .build();
-        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-
-        log.debug("reconnected({} -> {})", id, node);
     }
 
     @Override

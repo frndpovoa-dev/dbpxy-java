@@ -460,7 +460,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     }
 
     private boolean shouldNotExecuteOnThisNode(final Transaction transaction) {
-        final var matches = Objects.equals(transaction.getNode(), node);
+        final boolean matches = Objects.equals(transaction.getNode(), node);
         if (!matches) {
             log.debug("incorrect node {}", node);
         }
