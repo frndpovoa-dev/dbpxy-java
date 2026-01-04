@@ -31,6 +31,7 @@ import java.net.URL;
 import java.sql.*;
 import java.sql.Date;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -108,11 +109,12 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                         .build()
                                         .toByteString())
                                 .build();
-                    } else if (it instanceof OffsetDateTime v) {
+                    } else if (it instanceof Timestamp v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.TIME)
                                 .setData(ValueTime.newBuilder()
-                                        .setValue(v.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                        .setValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                                         .build()
                                         .toByteString())
                                 .build();
