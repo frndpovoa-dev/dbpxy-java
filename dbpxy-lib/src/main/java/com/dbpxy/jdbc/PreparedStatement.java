@@ -100,6 +100,14 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                         .build()
                                         .toByteString())
                                 .build();
+                    } else if (it instanceof BigDecimal v) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.FLOAT64)
+                                .setData(ValueFloat64.newBuilder()
+                                        .setValue(v.doubleValue())
+                                        .build()
+                                        .toByteString())
+                                .build();
                     } else if (it instanceof OffsetDateTime v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.TIME)
@@ -322,7 +330,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        params.put(parameterIndex, x);
     }
 
     @Override
