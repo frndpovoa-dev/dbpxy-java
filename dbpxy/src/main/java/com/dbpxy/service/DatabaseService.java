@@ -21,14 +21,16 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.grpc.DbpxyClient;
+import com.dbpxy.jdbc.Array;
 import com.dbpxy.proto.*;
+import com.dbpxy.proto.Value;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NonNull;
-import lombok.Setter;
+import lombok.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.openjpa.lib.jdbc.SQLFormatter;
@@ -1095,9 +1097,19 @@ class DatabaseOperation {
                     stmt.setTimestamp(i, new Timestamp(odt.toInstant().toEpochMilli()));
                 }
                 case NULL -> stmt.setNull(i, Types.NULL);
+                case ARRAY -> {
+                    final ArrayMirror mirror = new ObjectMapper().readValue(
+                            ValueString.parseFrom(value.getData()).getValue(),
+                                    new TypeReference<>() {
+                                    });
+                    stmt.setArray(i, new Array(
+                            mirror.getBaseTypeName(),
+                            mirror.getBaseType(),
+                            mirror.getArray().toArray()));
+                }
                 default -> stmt.setNull(i, Types.NULL);
             }
-        } catch (final InvalidProtocolBufferException | SQLException e) {
+        } catch (final InvalidProtocolBufferException | SQLException | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -1119,4 +1131,12 @@ class DatabaseUtil {
     public static String getMaskedId(final String id) {
         return id.replaceFirst("^(.{32}).*$", "$1");
     }
+}
+
+@Getter
+@Setter
+class ArrayMirror {
+    private String baseTypeName;
+    private int baseType;
+    private List<Object> array;
 }

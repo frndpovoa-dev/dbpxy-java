@@ -21,8 +21,11 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.proto.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -35,6 +38,7 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+@Slf4j
 @Getter
 @Setter
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
@@ -56,58 +60,37 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                     if (it instanceof Short v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof Integer v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof Long v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.INT64)
-                                .setData(ValueInt64.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof String v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.STRING)
-                                .setData(ValueString.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueString.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof Boolean v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.BOOL)
-                                .setData(ValueBool.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof Double v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder()
-                                        .setValue(v)
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueFloat64.newBuilder().setValue(v).build().toByteString())
                                 .build();
                     } else if (it instanceof BigDecimal v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder()
-                                        .setValue(v.doubleValue())
-                                        .build()
-                                        .toByteString())
+                                .setData(ValueFloat64.newBuilder().setValue(v.doubleValue()).build().toByteString())
                                 .build();
                     } else if (it instanceof Timestamp v) {
                         return Value.newBuilder()
@@ -118,6 +101,22 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                         .build()
                                         .toByteString())
                                 .build();
+                    } else if (it instanceof Array v) {
+                        try {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.ARRAY)
+                                    .setData(ValueTime.newBuilder()
+                                            .setValue(new ObjectMapper().writeValueAsString(Map.of(
+                                                    "baseType", v.getBaseType(),
+                                                    "baseTypeName", v.getBaseTypeName(),
+                                                    "array", v.getArray()
+                                            )))
+                                            .build()
+                                            .toByteString())
+                                    .build();
+                        } catch (final SQLException | JsonProcessingException e) {
+                            throw new RuntimeException(e);
+                        }
                     }
                     return null;
                 })
@@ -252,17 +251,20 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setAsciiStream(int parameterIndex, InputStream x, int length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setUnicodeStream(int parameterIndex, InputStream x, int length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBinaryStream(int parameterIndex, InputStream x, int length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -272,12 +274,14 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setObject(int parameterIndex, Object x, int targetSqlType) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setObject(int parameterIndex, Object x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -287,32 +291,37 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void addBatch() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void addBatch() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setCharacterStream(int parameterIndex, Reader reader, int length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setRef(int parameterIndex, Ref x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setRef(int parameterIndex, Ref x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBlob(int parameterIndex, Blob x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBlob(int parameterIndex, Blob x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setClob(int parameterIndex, Clob x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClob(int parameterIndex, Clob x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
-    public void setArray(int parameterIndex, Array x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+    public void setArray(int parameterIndex, java.sql.Array x) throws SQLException {
+        params.put(parameterIndex, x);
     }
 
     @Override
@@ -322,12 +331,14 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setDate(int parameterIndex, Date x, Calendar cal) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setTime(int parameterIndex, Time x, Calendar cal) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -337,12 +348,14 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNull(int parameterIndex, int sqlType, String typeName) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setURL(int parameterIndex, URL x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setURL(int parameterIndex, URL x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -352,96 +365,115 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setRowId(int parameterIndex, RowId x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setRowId(int parameterIndex, RowId x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNString(int parameterIndex, String value) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNString(int parameterIndex, String value) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNCharacterStream(int parameterIndex, Reader value, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNCharacterStream(int parameterIndex, Reader value, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNClob(int parameterIndex, NClob value) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNClob(int parameterIndex, NClob value) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClob(int parameterIndex, Reader reader, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBlob(int parameterIndex, InputStream inputStream, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBlob(int parameterIndex, InputStream inputStream, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNClob(int parameterIndex, Reader reader, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setSQLXML(int parameterIndex, SQLXML xmlObject) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setObject(int parameterIndex, Object x, int targetSqlType, int scaleOrLength) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setObject(int parameterIndex, Object x, int targetSqlType, int scaleOrLength) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setAsciiStream(int parameterIndex, InputStream x, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBinaryStream(int parameterIndex, InputStream x, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setCharacterStream(int parameterIndex, Reader reader, long length) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setCharacterStream(int parameterIndex, Reader reader, long length) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setAsciiStream(int parameterIndex, InputStream x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBinaryStream(int parameterIndex, InputStream x) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setCharacterStream(int parameterIndex, Reader reader) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNCharacterStream(int parameterIndex, Reader value) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setClob(int parameterIndex, Reader reader) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClob(int parameterIndex, Reader reader) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setBlob(int parameterIndex, InputStream inputStream) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNClob(int parameterIndex, Reader reader) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNClob(int parameterIndex, Reader reader) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 }

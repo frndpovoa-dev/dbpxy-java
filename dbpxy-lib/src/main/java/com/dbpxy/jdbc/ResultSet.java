@@ -972,13 +972,13 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public void updateArray(int columnIndex, Array x) throws SQLException {
+    public void updateArray(int columnIndex, java.sql.Array x) throws SQLException {
         log.trace("public void updateArray(int columnIndex, Array x) throws SQLException {");
         throw new SQLException("Not supported yet.");
     }
 
     @Override
-    public void updateArray(String columnLabel, Array x) throws SQLException {
+    public void updateArray(String columnLabel, java.sql.Array x) throws SQLException {
         log.trace("public void updateArray(String columnLabel, Array x) throws SQLException {");
         throw new SQLException("Not supported yet.");
     }

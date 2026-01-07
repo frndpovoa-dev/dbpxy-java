@@ -116,6 +116,7 @@ enum ValueCode {
   STRING = 5;
   TIME = 6;
   NULL = 7;
+  ARRAY = 8;
 }
 
 message ValueInt32 {

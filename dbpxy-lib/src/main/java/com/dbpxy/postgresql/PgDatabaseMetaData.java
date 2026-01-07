@@ -257,25 +257,25 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     @SuppressWarnings("deprecation")
     public String getNumericFunctions() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public String getStringFunctions() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public String getSystemFunctions() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public String getTimeDateFunctions() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -691,7 +691,7 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public int getDefaultTransactionIsolation() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -736,20 +736,20 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     public java.sql.ResultSet getProcedures(String catalog, String schemaPattern,
                                             String procedureNamePattern)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getProcedureColumns(String catalog, String schemaPattern,
                                                   String procedureNamePattern, String columnNamePattern)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getTables(String catalog, String schemaPattern,
                                         String tableNamePattern, String[] types) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -760,68 +760,68 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     public java.sql.ResultSet getSchemas(String catalog, String schemaPattern)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getCatalogs() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getTableTypes() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getColumns(String catalog, String schemaPattern,
                                          String tableNamePattern,
                                          String columnNamePattern) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getColumnPrivileges(String catalog, String schema,
                                                   String table, String columnNamePattern) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getTablePrivileges(String catalog, String schemaPattern,
                                                  String tableNamePattern) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getBestRowIdentifier(
             String catalog, String schema, String table,
             int scope, boolean nullable) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getVersionColumns(
             String catalog, String schema, String table)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getPrimaryKeys(String catalog, String schema, String table)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getImportedKeys(String catalog, String schema, String table)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getExportedKeys(String catalog, String schema, String table)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -829,19 +829,19 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
             String primaryCatalog, String primarySchema, String primaryTable,
             String foreignCatalog, String foreignSchema, String foreignTable)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getTypeInfo() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getIndexInfo(
             String catalog, String schema, String tableName,
             boolean unique, boolean approximate) throws SQLException {
-        throw new UnsupportedOperationException("not implemented");
+        throw new SQLException("not implemented");
     }
 
     // ** JDBC 2 Extensions **
@@ -923,7 +923,7 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     public java.sql.ResultSet getUDTs(String catalog, String schemaPattern,
                                       String typeNamePattern, int[] types) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -963,7 +963,7 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public java.sql.ResultSet getClientInfoProperties() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -980,14 +980,14 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     public java.sql.ResultSet getFunctions(String catalog, String schemaPattern,
                                            String functionNamePattern)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public java.sql.ResultSet getFunctionColumns(String catalog, String schemaPattern,
                                                  String functionNamePattern, String columnNamePattern)
             throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override

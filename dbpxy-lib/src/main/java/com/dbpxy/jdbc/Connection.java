@@ -204,7 +204,8 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -315,7 +316,8 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setTransactionIsolation(int level) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -334,7 +336,8 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -347,22 +350,26 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Map<String, Class<?>> getTypeMap() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Map<String, Class<?>> getTypeMap() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setTypeMap(Map<String, Class<?>> map) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setHoldability(int holdability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setHoldability(int holdability) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -372,72 +379,86 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public Savepoint setSavepoint() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Savepoint setSavepoint() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Savepoint setSavepoint(String name) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Savepoint setSavepoint(String name) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void rollback(Savepoint savepoint) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void releaseSavepoint(Savepoint savepoint) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Clob createClob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Clob createClob() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Blob createBlob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Blob createBlob() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public NClob createNClob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public NClob createNClob() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public SQLXML createSQLXML() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -448,52 +469,65 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void setClientInfo(String name, String value) throws SQLClientInfoException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClientInfo(String name, String value) throws SQLClientInfoException {");
+        throw new SQLClientInfoException();
     }
 
     @Override
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClientInfo(Properties properties) throws SQLClientInfoException {");
+        throw new SQLClientInfoException();
     }
 
     @Override
     public String getClientInfo(String name) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public String getClientInfo(String name) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Properties getClientInfo() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Properties getClientInfo() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        if (Objects.equals("varchar", typeName)) {
+            return new Array(typeName, Types.VARCHAR, elements);
+        }
+        log.trace("public Array createArrayOf(String typeName, Object[] elements) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Struct createStruct(String typeName, Object[] attributes) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setSchema(String schema) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setSchema(String schema) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public String getSchema() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public String getSchema() throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void abort(Executor executor) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void abort(Executor executor) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {");
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
