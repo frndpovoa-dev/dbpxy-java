@@ -39,18 +39,28 @@ import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
-@RequiredArgsConstructor
 public class ResultSet implements java.sql.ResultSet {
     private final Connection connection;
     private final Statement statement;
-    private final QueryResult queryResult;
+    private QueryResult queryResult;
     private ResultSetMetaData resultSetMetaData;
-    private int row = -1;
+    private boolean last = false;
+    private int totalRow = -1;
+    private int localRow = -1;
     private int col = 0;
+
+    public ResultSet(
+            final Connection connection,
+            final Statement statement,
+            final QueryResult queryResult) {
+        this.connection = connection;
+        this.statement = statement;
+        this.queryResult = queryResult;
+    }
 
     protected Value getCurrentRowColValue(final int col) {
         this.col = col;
-        return queryResult.getRows(row).getCols(col - 1);
+        return queryResult.getRows(localRow).getCols(col - 1);
     }
 
     protected String getCurrentRowColValueDataAsString(final int col) throws SQLException {
@@ -91,10 +101,25 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public boolean next() throws SQLException {
         log.trace("public boolean next() throws SQLException {");
-        if (row + 1 < queryResult.getRowsCount()) {
-            row++;
+        if (localRow + 1 < queryResult.getRowsCount()) {
+            localRow++;
+            totalRow++;
             return true;
         }
+
+        this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
+                .setQueryResultId(queryResult.getId())
+                .setTransaction(Optional.ofNullable(connection.getTransaction(false, 0))
+                        .orElseGet(Transaction::getDefaultInstance))
+                .build());
+
+        if (queryResult.getRowsCount() > 0) {
+            localRow = 0;
+            totalRow++;
+            return true;
+        }
+
+        last = true;
         return false;
     }
 
@@ -396,94 +421,73 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public boolean isBeforeFirst() throws SQLException {
         log.trace("public boolean isBeforeFirst() throws SQLException {");
-        return row < 0;
+        return totalRow < 0;
     }
 
     @Override
     public boolean isAfterLast() throws SQLException {
         log.trace("public boolean isAfterLast() throws SQLException {");
-        return row >= queryResult.getRowsCount();
+        return last && (localRow >= queryResult.getRowsCount());
     }
 
     @Override
     public boolean isFirst() throws SQLException {
         log.trace("public boolean isFirst() throws SQLException {");
-        return row == 0;
+        return totalRow == 0;
     }
 
     @Override
     public boolean isLast() throws SQLException {
         log.trace("public boolean isLast() throws SQLException {");
-        return row == queryResult.getRowsCount() - 1;
+        return last && (localRow == queryResult.getRowsCount() - 1);
     }
 
     @Override
     public void beforeFirst() throws SQLException {
         log.trace("public void beforeFirst() throws SQLException {");
-        this.row = -1;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public void afterLast() throws SQLException {
         log.trace("public void afterLast() throws SQLException {");
-        this.row = queryResult.getRowsCount();
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public boolean first() throws SQLException {
         log.trace("public boolean first() throws SQLException {");
-        if (queryResult.getRowsCount() == 0) {
-            return false;
-        }
-        this.row = 0;
-        return true;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public boolean last() throws SQLException {
         log.trace("public boolean last() throws SQLException {");
-        if (queryResult.getRowsCount() == 0) {
-            return false;
-        }
-        this.row = queryResult.getRowsCount() - 1;
-        return true;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public int getRow() throws SQLException {
         log.trace("public int getRow() throws SQLException {");
-        return row;
+        return totalRow;
     }
 
     @Override
     public boolean absolute(int row) throws SQLException {
         log.trace("public boolean absolute(int row) throws SQLException {");
-        if (row >= 0 && row < queryResult.getRowsCount()) {
-            this.row = row;
-            return true;
-        }
-        return false;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public boolean relative(int rows) throws SQLException {
         log.trace("public boolean relative(int rows) throws SQLException {");
-        final int newRow = row + rows;
-        if (newRow >= 0 && newRow < queryResult.getRowsCount()) {
-            this.row = newRow;
-            return true;
-        }
-        return false;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
     public boolean previous() throws SQLException {
         log.trace("public boolean previous() throws SQLException {");
-        if (row > 0) {
-            row--;
-            return true;
-        }
-        return false;
+        throw new SQLException("Not supported yet.");
     }
 
     @Override
@@ -911,7 +915,7 @@ public class ResultSet implements java.sql.ResultSet {
                 .map(text -> OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                 .map(odt -> Optional.ofNullable(cal)
                         .map(calendar -> odt.atZoneSameInstant(calendar.getTimeZone().toZoneId()))
-                        .orElseGet(() -> odt.toZonedDateTime()))
+                        .orElseGet(odt::toZonedDateTime))
                 .map(ZonedDateTime::toInstant)
                 .map(Timestamp::from)
                 .orElse(null);

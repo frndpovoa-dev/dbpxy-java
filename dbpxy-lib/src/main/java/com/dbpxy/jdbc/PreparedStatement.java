@@ -35,6 +35,7 @@ import java.sql.*;
 import java.sql.Date;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
@@ -343,7 +344,14 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
-        params.put(parameterIndex, x);
+        params.put(parameterIndex, Optional.ofNullable(x)
+                .map(t -> OffsetDateTime.ofInstant(t.toInstant(), ZoneId.systemDefault()))
+                .map(odt -> Optional.ofNullable(cal)
+                        .map(calendar -> odt.atZoneSameInstant(calendar.getTimeZone().toZoneId()))
+                        .orElseGet(odt::toZonedDateTime))
+                .map(ZonedDateTime::toInstant)
+                .map(Timestamp::from)
+                .orElse(null));
     }
 
     @Override
