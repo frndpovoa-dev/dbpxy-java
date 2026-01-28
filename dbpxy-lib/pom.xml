@@ -11,7 +11,7 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.protobuf_protoc.version>4.33.4</com.google.protobuf_protoc.version>
+        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc.version>1.78.0</io.grpc_grpc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
@@ -23,6 +23,13 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>26.74.0</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -53,12 +60,10 @@
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
