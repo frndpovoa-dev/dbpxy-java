@@ -1,10 +1,10 @@
-package com.dbpxy.config;
+package com.dbpxy.service;
 
 /*-
  * #%L
- * dbpxy-lib
+ * dbpxy
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,24 @@ package com.dbpxy.config;
  * #L%
  */
 
+
 import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 
-@Getter
-@Setter
+@Slf4j
 @Builder
-@ConfigurationProperties(prefix = "app.dbpxy-datasource")
-public class DbpxyDatasourceProperties {
-    private String url;
+class ThreadFactory implements java.util.concurrent.ThreadFactory {
+    private final String namePrefix;
     @Builder.Default
-    private Map<String, String> props = new HashMap<>();
+    private final AtomicInteger nextId = new AtomicInteger(0);
+
+    @Override
+    public Thread newThread(@NonNull final Runnable r) {
+        final Thread thread = new Thread(r, namePrefix + "-" + nextId.getAndIncrement());
+        log.trace("created thread {}", thread.getName());
+        return thread;
+    }
 }

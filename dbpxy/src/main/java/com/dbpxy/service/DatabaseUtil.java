@@ -1,10 +1,10 @@
-package com.dbpxy.config;
+package com.dbpxy.service;
 
 /*-
  * #%L
- * dbpxy-lib
+ * dbpxy
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,8 @@ package com.dbpxy.config;
  * #L%
  */
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@Getter
-@Setter
-@Builder
-@ConfigurationProperties(prefix = "app.dbpxy-datasource")
-public class DbpxyDatasourceProperties {
-    private String url;
-    @Builder.Default
-    private Map<String, String> props = new HashMap<>();
+class DatabaseUtil {
+    public static String getMaskedId(final String id) {
+        return id.replaceFirst("^(.{32}).*$", "$1");
+    }
 }

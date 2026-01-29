@@ -53,7 +53,7 @@ jobs:
 
       # begin compilation
       - name: Compile
-        run: mvn clean install -T 2C -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
+        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
 
       - name: Setup Snyk

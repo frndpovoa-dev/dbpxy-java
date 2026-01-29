@@ -1,10 +1,10 @@
-package com.dbpxy.config;
+package com.dbpxy.service;
 
 /*-
  * #%L
- * dbpxy-lib
+ * dbpxy
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,20 +20,23 @@ package com.dbpxy.config;
  * #L%
  */
 
+
 import lombok.Builder;
 import lombok.Getter;
-import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.sql.ResultSet;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.atomic.AtomicBoolean;
 
-@Getter
-@Setter
-@Builder
-@ConfigurationProperties(prefix = "app.dbpxy-datasource")
-public class DbpxyDatasourceProperties {
-    private String url;
-    @Builder.Default
-    private Map<String, String> props = new HashMap<>();
+@FunctionalInterface
+interface DoWithResultSet {
+    void doWithResultSet(Params params);
+
+    @Getter
+    @Builder
+    class Params {
+        private final ResultSet rs;
+        private final ExecutorService taskExecutor;
+        private final AtomicBoolean shouldContinue;
+    }
 }

@@ -37,6 +37,7 @@ import java.util.Base64;
 
 @Service
 public class CryptoService {
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final int AES_KEY_LENGTH = 256;
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
@@ -44,19 +45,19 @@ public class CryptoService {
     @Value("${app.encryption.enabled}")
     private boolean useEncryption;
 
-    public String encrypt(final String text) {
+    public String encrypt(final String plainText) {
         if (!useEncryption) {
-            return text;
+            return plainText;
         }
         try {
             final byte[] iv = new byte[GCM_IV_LENGTH];
-            SecureRandom.getInstanceStrong().nextBytes(iv);
+            SECURE_RANDOM.nextBytes(iv);
 
             final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
             final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
 
-            final byte[] encryptedText = cipher.doFinal(text.getBytes(StandardCharsets.UTF_8));
+            final byte[] encryptedText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
             final ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + encryptedText.length);
             byteBuffer.put(iv);
@@ -107,7 +108,7 @@ public class CryptoService {
             final KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(AES_KEY_LENGTH);
             return keyGenerator.generateKey();
-        } catch (NoSuchAlgorithmException e) {
+        } catch (final NoSuchAlgorithmException e) {
             throw new RuntimeException(e);
         }
     }

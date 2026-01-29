@@ -33,6 +33,7 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.InputStream;
 import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
@@ -45,9 +46,11 @@ public class DbpxyClient implements InitializingBean {
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        this.credentials = TlsChannelCredentials.newBuilder()
-                .trustManager(new ClassPathResource("certs/cert.pem").getInputStream())
-                .build();
+        try (final InputStream cert = new ClassPathResource("certs/cert.pem").getInputStream()) {
+            this.credentials = TlsChannelCredentials.newBuilder()
+                    .trustManager(cert)
+                    .build();
+        }
     }
 
     public void invoke(
@@ -65,8 +68,9 @@ public class DbpxyClient implements InitializingBean {
         } finally {
             if (channel != null) {
                 try {
-                    channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
                 } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
                     throw new SQLException(e);
                 }
             }

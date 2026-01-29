@@ -13,7 +13,7 @@ steps:
         EOF
   - name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: ['install', '-T', '2C', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
+    args: ['install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
   - name: gcr.io/cloud-builders/docker
     args: ['build', '--rm', '--tag=${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}', '-f', 'dbpxy/Dockerfile', 'dbpxy']
 artifacts:

@@ -57,8 +57,16 @@ public class Array implements java.sql.Array {
     }
 
     @Override
-    public Object getArray(long index, int count) throws SQLException {
-        return Arrays.copyOfRange(array, (int) index, (int) index + count);
+    public Object getArray(final long index, final int count) throws SQLException {
+        if (index < 1) {
+            throw new SQLException("Array index must be at least 1");
+        }
+        final int startIndex = (int) index - 1;
+        if (startIndex >= array.length) {
+            throw new SQLException("Array index out of bounds: " + index);
+        }
+        final int endIndex = Math.min(startIndex + count, array.length);
+        return Arrays.copyOfRange(array, startIndex, endIndex);
     }
 
     @Override
@@ -88,5 +96,6 @@ public class Array implements java.sql.Array {
 
     @Override
     public void free() throws SQLException {
+        // No resources to free
     }
 }

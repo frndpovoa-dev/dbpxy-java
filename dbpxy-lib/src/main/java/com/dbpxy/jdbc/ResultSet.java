@@ -22,7 +22,6 @@ package com.dbpxy.jdbc;
 
 import com.dbpxy.proto.*;
 import com.google.protobuf.InvalidProtocolBufferException;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
@@ -44,6 +43,7 @@ public class ResultSet implements java.sql.ResultSet {
     private final Statement statement;
     private QueryResult queryResult;
     private ResultSetMetaData resultSetMetaData;
+    private boolean closed = false;
     private boolean last = false;
     private int totalRow = -1;
     private int localRow = -1;
@@ -126,11 +126,15 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public void close() throws SQLException {
         log.trace("public void close() throws SQLException {");
-        connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
-                .setQueryResultId(queryResult.getId())
-                .setTransaction(Optional.ofNullable(connection.getTransaction(false, 0))
-                        .orElseGet(Transaction::getDefaultInstance))
-                .build());
+        try {
+            connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
+                    .setQueryResultId(queryResult.getId())
+                    .setTransaction(Optional.ofNullable(connection.getTransaction(false, 0))
+                            .orElseGet(Transaction::getDefaultInstance))
+                    .build());
+        } finally {
+            this.closed = true;
+        }
     }
 
     @Override
@@ -156,7 +160,7 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public byte getByte(int columnIndex) throws SQLException {
         log.trace("public byte getByte(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -210,7 +214,7 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
         log.trace("public byte[] getBytes(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -240,115 +244,115 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public InputStream getAsciiStream(int columnIndex) throws SQLException {
         log.trace("public InputStream getAsciiStream(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public InputStream getUnicodeStream(int columnIndex) throws SQLException {
         log.trace("public InputStream getUnicodeStream(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public InputStream getBinaryStream(int columnIndex) throws SQLException {
         log.trace("public InputStream getBinaryStream(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getString(String columnLabel) throws SQLException {
         log.trace("public String getString(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean getBoolean(String columnLabel) throws SQLException {
         log.trace("public boolean getBoolean(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public byte getByte(String columnLabel) throws SQLException {
         log.trace("public byte getByte(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public short getShort(String columnLabel) throws SQLException {
         log.trace("public short getShort(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public int getInt(String columnLabel) throws SQLException {
         log.trace("public int getInt(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public long getLong(String columnLabel) throws SQLException {
         log.trace("public long getLong(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public float getFloat(String columnLabel) throws SQLException {
         log.trace("public float getFloat(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public double getDouble(String columnLabel) throws SQLException {
         log.trace("public double getDouble(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public byte[] getBytes(String columnLabel) throws SQLException {
         log.trace("public byte[] getBytes(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Date getDate(String columnLabel) throws SQLException {
         log.trace("public Date getDate(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Time getTime(String columnLabel) throws SQLException {
         log.trace("public Time getTime(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Timestamp getTimestamp(String columnLabel) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public InputStream getAsciiStream(String columnLabel) throws SQLException {
         log.trace("public InputStream getAsciiStream(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public InputStream getUnicodeStream(String columnLabel) throws SQLException {
         log.trace("public InputStream getUnicodeStream(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public InputStream getBinaryStream(String columnLabel) throws SQLException {
         log.trace("public InputStream getBinaryStream(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -379,43 +383,45 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public Object getObject(int columnIndex) throws SQLException {
         log.trace("public Object getObject(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Object getObject(String columnLabel) throws SQLException {
         log.trace("public Object getObject(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public int findColumn(String columnLabel) throws SQLException {
         log.trace("public int findColumn(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Reader getCharacterStream(int columnIndex) throws SQLException {
         log.trace("public Reader getCharacterStream(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Reader getCharacterStream(String columnLabel) throws SQLException {
         log.trace("public Reader getCharacterStream(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
+    public BigDecimal getBigDecimal(final int columnIndex) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(int columnIndex) throws SQLException {");
-        return BigDecimal.valueOf(Double.parseDouble(getCurrentRowColValueDataAsString(columnIndex)));
+        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
+                .map(BigDecimal::new)
+                .orElse(null);
     }
 
     @Override
     public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -445,25 +451,25 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public void beforeFirst() throws SQLException {
         log.trace("public void beforeFirst() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void afterLast() throws SQLException {
         log.trace("public void afterLast() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean first() throws SQLException {
         log.trace("public boolean first() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean last() throws SQLException {
         log.trace("public boolean last() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -475,26 +481,26 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public boolean absolute(int row) throws SQLException {
         log.trace("public boolean absolute(int row) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean relative(int rows) throws SQLException {
         log.trace("public boolean relative(int rows) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean previous() throws SQLException {
         log.trace("public boolean previous() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setFetchDirection(int direction) throws SQLException {
         log.trace("public void setFetchDirection(int direction) throws SQLException {");
         log.trace("setFetchDirection");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -507,14 +513,14 @@ public class ResultSet implements java.sql.ResultSet {
     public void setFetchSize(int rows) throws SQLException {
         log.trace("public void setFetchSize(int rows) throws SQLException {");
         log.trace("setFetchSize");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public int getFetchSize() throws SQLException {
         log.trace("public int getFetchSize() throws SQLException {");
         log.trace("getFetchSize");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -550,271 +556,271 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public void updateNull(int columnIndex) throws SQLException {
         log.trace("public void updateNull(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBoolean(int columnIndex, boolean x) throws SQLException {
         log.trace("public void updateBoolean(int columnIndex, boolean x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateByte(int columnIndex, byte x) throws SQLException {
         log.trace("public void updateByte(int columnIndex, byte x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateShort(int columnIndex, short x) throws SQLException {
         log.trace("public void updateShort(int columnIndex, short x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateInt(int columnIndex, int x) throws SQLException {
         log.trace("public void updateInt(int columnIndex, int x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateLong(int columnIndex, long x) throws SQLException {
         log.trace("public void updateLong(int columnIndex, long x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateFloat(int columnIndex, float x) throws SQLException {
         log.trace("public void updateFloat(int columnIndex, float x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateDouble(int columnIndex, double x) throws SQLException {
         log.trace("public void updateDouble(int columnIndex, double x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBigDecimal(int columnIndex, BigDecimal x) throws SQLException {
         log.trace("public void updateBigDecimal(int columnIndex, BigDecimal x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateString(int columnIndex, String x) throws SQLException {
         log.trace("public void updateString(int columnIndex, String x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBytes(int columnIndex, byte[] x) throws SQLException {
         log.trace("public void updateBytes(int columnIndex, byte[] x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateDate(int columnIndex, Date x) throws SQLException {
         log.trace("public void updateDate(int columnIndex, Date x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateTime(int columnIndex, Time x) throws SQLException {
         log.trace("public void updateTime(int columnIndex, Time x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateTimestamp(int columnIndex, Timestamp x) throws SQLException {
         log.trace("public void updateTimestamp(int columnIndex, Timestamp x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(int columnIndex, InputStream x, int length) throws SQLException {
         log.trace("public void updateAsciiStream(int columnIndex, InputStream x, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(int columnIndex, InputStream x, int length) throws SQLException {
         log.trace("public void updateBinaryStream(int columnIndex, InputStream x, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(int columnIndex, Reader x, int length) throws SQLException {
         log.trace("public void updateCharacterStream(int columnIndex, Reader x, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateObject(int columnIndex, Object x, int scaleOrLength) throws SQLException {
         log.trace("public void updateObject(int columnIndex, Object x, int scaleOrLength) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateObject(int columnIndex, Object x) throws SQLException {
         log.trace("public void updateObject(int columnIndex, Object x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNull(String columnLabel) throws SQLException {
         log.trace("public void updateNull(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBoolean(String columnLabel, boolean x) throws SQLException {
         log.trace("public void updateBoolean(String columnLabel, boolean x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateByte(String columnLabel, byte x) throws SQLException {
         log.trace("public void updateByte(String columnLabel, byte x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateShort(String columnLabel, short x) throws SQLException {
         log.trace("public void updateShort(String columnLabel, short x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateInt(String columnLabel, int x) throws SQLException {
         log.trace("public void updateInt(String columnLabel, int x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateLong(String columnLabel, long x) throws SQLException {
         log.trace("public void updateLong(String columnLabel, long x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateFloat(String columnLabel, float x) throws SQLException {
         log.trace("public void updateFloat(String columnLabel, float x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateDouble(String columnLabel, double x) throws SQLException {
         log.trace("public void updateDouble(String columnLabel, double x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBigDecimal(String columnLabel, BigDecimal x) throws SQLException {
         log.trace("public void updateBigDecimal(String columnLabel, BigDecimal x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateString(String columnLabel, String x) throws SQLException {
         log.trace("public void updateString(String columnLabel, String x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBytes(String columnLabel, byte[] x) throws SQLException {
         log.trace("public void updateBytes(String columnLabel, byte[] x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateDate(String columnLabel, Date x) throws SQLException {
         log.trace("public void updateDate(String columnLabel, Date x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateTime(String columnLabel, Time x) throws SQLException {
         log.trace("public void updateTime(String columnLabel, Time x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateTimestamp(String columnLabel, Timestamp x) throws SQLException {
         log.trace("public void updateTimestamp(String columnLabel, Timestamp x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(String columnLabel, InputStream x, int length) throws SQLException {
         log.trace("public void updateAsciiStream(String columnLabel, InputStream x, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(String columnLabel, InputStream x, int length) throws SQLException {
         log.trace("public void updateBinaryStream(String columnLabel, InputStream x, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(String columnLabel, Reader reader, int length) throws SQLException {
         log.trace("public void updateCharacterStream(String columnLabel, Reader reader, int length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateObject(String columnLabel, Object x, int scaleOrLength) throws SQLException {
         log.trace("public void updateObject(String columnLabel, Object x, int scaleOrLength) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateObject(String columnLabel, Object x) throws SQLException {
         log.trace("public void updateObject(String columnLabel, Object x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void insertRow() throws SQLException {
         log.trace("public void insertRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateRow() throws SQLException {
         log.trace("public void updateRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void deleteRow() throws SQLException {
         log.trace("public void deleteRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void refreshRow() throws SQLException {
         log.trace("public void refreshRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void cancelRowUpdates() throws SQLException {
         log.trace("public void cancelRowUpdates() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void moveToInsertRow() throws SQLException {
         log.trace("public void moveToInsertRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void moveToCurrentRow() throws SQLException {
         log.trace("public void moveToCurrentRow() throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -826,85 +832,85 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public Object getObject(int columnIndex, Map<String, Class<?>> map) throws SQLException {
         log.trace("public Object getObject(int columnIndex, Map<String, Class<?>> map) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Ref getRef(int columnIndex) throws SQLException {
         log.trace("public Ref getRef(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Blob getBlob(int columnIndex) throws SQLException {
         log.trace("public Blob getBlob(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Clob getClob(int columnIndex) throws SQLException {
         log.trace("public Clob getClob(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Array getArray(int columnIndex) throws SQLException {
         log.trace("public Array getArray(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {
         log.trace("public Object getObject(String columnLabel, Map<String, Class<?>> map) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Ref getRef(String columnLabel) throws SQLException {
         log.trace("public Ref getRef(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Blob getBlob(String columnLabel) throws SQLException {
         log.trace("public Blob getBlob(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Clob getClob(String columnLabel) throws SQLException {
         log.trace("public Clob getClob(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Array getArray(String columnLabel) throws SQLException {
         log.trace("public Array getArray(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Date getDate(int columnIndex, Calendar cal) throws SQLException {
         log.trace("public Date getDate(int columnIndex, Calendar cal) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Date getDate(String columnLabel, Calendar cal) throws SQLException {
         log.trace("public Date getDate(String columnLabel, Calendar cal) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Time getTime(int columnIndex, Calendar cal) throws SQLException {
         log.trace("public Time getTime(int columnIndex, Calendar cal) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Time getTime(String columnLabel, Calendar cal) throws SQLException {
         log.trace("public Time getTime(String columnLabel, Calendar cal) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -924,91 +930,91 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public URL getURL(int columnIndex) throws SQLException {
         log.trace("public URL getURL(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public URL getURL(String columnLabel) throws SQLException {
         log.trace("public URL getURL(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateRef(int columnIndex, Ref x) throws SQLException {
         log.trace("public void updateRef(int columnIndex, Ref x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateRef(String columnLabel, Ref x) throws SQLException {
         log.trace("public void updateRef(String columnLabel, Ref x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(int columnIndex, Blob x) throws SQLException {
         log.trace("public void updateBlob(int columnIndex, Blob x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(String columnLabel, Blob x) throws SQLException {
         log.trace("public void updateBlob(String columnLabel, Blob x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(int columnIndex, Clob x) throws SQLException {
         log.trace("public void updateClob(int columnIndex, Clob x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(String columnLabel, Clob x) throws SQLException {
         log.trace("public void updateClob(String columnLabel, Clob x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateArray(int columnIndex, java.sql.Array x) throws SQLException {
         log.trace("public void updateArray(int columnIndex, Array x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateArray(String columnLabel, java.sql.Array x) throws SQLException {
         log.trace("public void updateArray(String columnLabel, Array x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public RowId getRowId(int columnIndex) throws SQLException {
         log.trace("public RowId getRowId(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public RowId getRowId(String columnLabel) throws SQLException {
         log.trace("public RowId getRowId(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateRowId(int columnIndex, RowId x) throws SQLException {
         log.trace("public void updateRowId(int columnIndex, RowId x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateRowId(String columnLabel, RowId x) throws SQLException {
         log.trace("public void updateRowId(String columnLabel, RowId x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -1019,283 +1025,283 @@ public class ResultSet implements java.sql.ResultSet {
 
     @Override
     public boolean isClosed() throws SQLException {
-        log.trace("public boolean isClosed() throws SQLException {");
-        return false;
+        return closed;
     }
 
     @Override
     public void updateNString(int columnIndex, String nString) throws SQLException {
         log.trace("public void updateNString(int columnIndex, String nString) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNString(String columnLabel, String nString) throws SQLException {
         log.trace("public void updateNString(String columnLabel, String nString) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(int columnIndex, NClob nClob) throws SQLException {
         log.trace("public void updateNClob(int columnIndex, NClob nClob) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(String columnLabel, NClob nClob) throws SQLException {
         log.trace("public void updateNClob(String columnLabel, NClob nClob) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public NClob getNClob(int columnIndex) throws SQLException {
         log.trace("public NClob getNClob(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public NClob getNClob(String columnLabel) throws SQLException {
         log.trace("public NClob getNClob(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public SQLXML getSQLXML(int columnIndex) throws SQLException {
         log.trace("public SQLXML getSQLXML(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public SQLXML getSQLXML(String columnLabel) throws SQLException {
         log.trace("public SQLXML getSQLXML(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateSQLXML(int columnIndex, SQLXML xmlObject) throws SQLException {
         log.trace("public void updateSQLXML(int columnIndex, SQLXML xmlObject) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateSQLXML(String columnLabel, SQLXML xmlObject) throws SQLException {
         log.trace("public void updateSQLXML(String columnLabel, SQLXML xmlObject) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getNString(int columnIndex) throws SQLException {
         log.trace("public String getNString(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getNString(String columnLabel) throws SQLException {
         log.trace("public String getNString(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Reader getNCharacterStream(int columnIndex) throws SQLException {
         log.trace("public Reader getNCharacterStream(int columnIndex) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Reader getNCharacterStream(String columnLabel) throws SQLException {
         log.trace("public Reader getNCharacterStream(String columnLabel) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
         log.trace("public void updateNCharacterStream(int columnIndex, Reader x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {
         log.trace("public void updateNCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(int columnIndex, InputStream x, long length) throws SQLException {
         log.trace("public void updateAsciiStream(int columnIndex, InputStream x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(int columnIndex, InputStream x, long length) throws SQLException {
         log.trace("public void updateBinaryStream(int columnIndex, InputStream x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(int columnIndex, Reader x, long length) throws SQLException {
         log.trace("public void updateCharacterStream(int columnIndex, Reader x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(String columnLabel, InputStream x, long length) throws SQLException {
         log.trace("public void updateAsciiStream(String columnLabel, InputStream x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(String columnLabel, InputStream x, long length) throws SQLException {
         log.trace("public void updateBinaryStream(String columnLabel, InputStream x, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {
         log.trace("public void updateCharacterStream(String columnLabel, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(int columnIndex, InputStream inputStream, long length) throws SQLException {
         log.trace("public void updateBlob(int columnIndex, InputStream inputStream, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(String columnLabel, InputStream inputStream, long length) throws SQLException {
         log.trace("public void updateBlob(String columnLabel, InputStream inputStream, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(int columnIndex, Reader reader, long length) throws SQLException {
         log.trace("public void updateClob(int columnIndex, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(String columnLabel, Reader reader, long length) throws SQLException {
         log.trace("public void updateClob(String columnLabel, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(int columnIndex, Reader reader, long length) throws SQLException {
         log.trace("public void updateNClob(int columnIndex, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(String columnLabel, Reader reader, long length) throws SQLException {
         log.trace("public void updateNClob(String columnLabel, Reader reader, long length) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {
         log.trace("public void updateNCharacterStream(int columnIndex, Reader x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNCharacterStream(String columnLabel, Reader reader) throws SQLException {
         log.trace("public void updateNCharacterStream(String columnLabel, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(int columnIndex, InputStream x) throws SQLException {
         log.trace("public void updateAsciiStream(int columnIndex, InputStream x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(int columnIndex, InputStream x) throws SQLException {
         log.trace("public void updateBinaryStream(int columnIndex, InputStream x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(int columnIndex, Reader x) throws SQLException {
         log.trace("public void updateCharacterStream(int columnIndex, Reader x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateAsciiStream(String columnLabel, InputStream x) throws SQLException {
         log.trace("public void updateAsciiStream(String columnLabel, InputStream x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBinaryStream(String columnLabel, InputStream x) throws SQLException {
         log.trace("public void updateBinaryStream(String columnLabel, InputStream x) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateCharacterStream(String columnLabel, Reader reader) throws SQLException {
         log.trace("public void updateCharacterStream(String columnLabel, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(int columnIndex, InputStream inputStream) throws SQLException {
         log.trace("public void updateBlob(int columnIndex, InputStream inputStream) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateBlob(String columnLabel, InputStream inputStream) throws SQLException {
         log.trace("public void updateBlob(String columnLabel, InputStream inputStream) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(int columnIndex, Reader reader) throws SQLException {
         log.trace("public void updateClob(int columnIndex, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateClob(String columnLabel, Reader reader) throws SQLException {
         log.trace("public void updateClob(String columnLabel, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(int columnIndex, Reader reader) throws SQLException {
         log.trace("public void updateNClob(int columnIndex, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void updateNClob(String columnLabel, Reader reader) throws SQLException {
         log.trace("public void updateNClob(String columnLabel, Reader reader) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
         log.trace("public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {
         log.trace("public <T> T getObject(String columnLabel, Class<T> type) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        log.trace("public <T> T unwrap(Class<T> iface) throws SQLException {");
-        return null;
+    public <T> T unwrap(final Class<T> iface) throws SQLException {
+        if (iface.isInstance(this)) {
+            return iface.cast(this);
+        }
+        throw new SQLException("Cannot unwrap to " + iface.getName());
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        log.trace("public boolean isWrapperFor(Class<?> iface) throws SQLException {");
-        return false;
+    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+        return iface.isInstance(this);
     }
 }

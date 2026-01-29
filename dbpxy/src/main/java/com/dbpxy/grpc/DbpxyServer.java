@@ -30,6 +30,9 @@ import org.springframework.beans.factory.InitializingBean;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.InputStream;
+import java.util.concurrent.TimeUnit;
+
 @Component
 @RequiredArgsConstructor
 public class DbpxyServer implements InitializingBean, DisposableBean {
@@ -39,21 +42,28 @@ public class DbpxyServer implements InitializingBean, DisposableBean {
 
     @Override
     public void destroy() throws Exception {
-        server.shutdownNow().awaitTermination();
-        server = null;
+        try {
+            server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            server.shutdownNow().awaitTermination(30, TimeUnit.SECONDS);
+        } finally {
+            server = null;
+        }
     }
 
     @Override
     public void afterPropertiesSet() throws Exception {
         if (server == null || server.isShutdown()) {
-            server = ServerBuilder
-                    .forPort(grpcProperties.getPort())
-                    .useTransportSecurity(
-                            new ClassPathResource("certs/cert.pem").getInputStream(),
-                            new ClassPathResource("certs/key.pem").getInputStream())
-                    .addService(databaseService)
-                    .build()
-                    .start();
+            try (final InputStream cert = new ClassPathResource("certs/cert.pem").getInputStream();
+                 final InputStream key = new ClassPathResource("certs/key.pem").getInputStream()) {
+                server = ServerBuilder
+                        .forPort(grpcProperties.getPort())
+                        .useTransportSecurity(cert, key)
+                        .addService(databaseService)
+                        .build()
+                        .start();
+            }
         }
     }
 }

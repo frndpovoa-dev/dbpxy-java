@@ -11,8 +11,9 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
+        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc.version>1.78.0</io.grpc_grpc.version>
+        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <spring-boot.version>4.0.2</spring-boot.version>
@@ -29,14 +30,14 @@
             <dependency>
                 <groupId>com.google.cloud</groupId>
                 <artifactId>libraries-bom</artifactId>
-                <version>26.74.0</version>
+                <version>${com.google.cloud_libraries-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
             <dependency>
                 <groupId>io.grpc</groupId>
                 <artifactId>grpc-bom</artifactId>
-                <version>${io.grpc_grpc.version}</version>
+                <version>${io.grpc_grpc-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -131,7 +132,7 @@
                     <organizationName>Fernando Lemes Povoa</organizationName>
                     <licenseName>apache_v2</licenseName>
                     <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>true</addSvnKeyWords>
+                    <addSvnKeyWords>false</addSvnKeyWords>
                     <verbose>false</verbose>
                     <encoding>${file.encoding}</encoding>
                 </configuration>
@@ -175,7 +176,7 @@
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
                     </protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc.version}:exe:${os.detected.classifier}
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc-bom.version}:exe:${os.detected.classifier}
                     </pluginArtifact>
                 </configuration>
                 <executions>
