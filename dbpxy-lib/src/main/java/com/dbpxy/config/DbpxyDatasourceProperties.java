@@ -20,9 +20,7 @@ package com.dbpxy.config;
  * #L%
  */
 
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 import java.util.HashMap;
@@ -31,6 +29,8 @@ import java.util.Map;
 @Getter
 @Setter
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 @ConfigurationProperties(prefix = "app.dbpxy-datasource")
 public class DbpxyDatasourceProperties {
     private String url;
