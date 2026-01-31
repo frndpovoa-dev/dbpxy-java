@@ -30,11 +30,11 @@ import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
-import java.sql.SQLException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
@@ -43,10 +43,12 @@ import java.util.function.Consumer;
 public class DbpxyClient implements InitializingBean {
     private final GrpcProperties grpcProperties;
     private ChannelCredentials credentials;
+    @Value("${dbpxy.grpc-cert-path:certs/cert.pem}")
+    private String certPath;
 
     @Override
     public void afterPropertiesSet() throws Exception {
-        try (final InputStream cert = new ClassPathResource("certs/cert.pem").getInputStream()) {
+        try (final InputStream cert = new ClassPathResource(certPath).getInputStream()) {
             this.credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(cert)
                     .build();
@@ -55,7 +57,7 @@ public class DbpxyClient implements InitializingBean {
 
     public void invoke(
             final String node,
-            final Consumer<DbpxyGrpc.DbpxyBlockingStub> callback) throws SQLException {
+            final Consumer<DbpxyGrpc.DbpxyBlockingStub> callback) {
         ManagedChannel channel = null;
         try {
             channel = Grpc.newChannelBuilderForAddress(
@@ -71,7 +73,6 @@ public class DbpxyClient implements InitializingBean {
                     channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
                 } catch (final InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    throw new SQLException(e);
                 }
             }
         }

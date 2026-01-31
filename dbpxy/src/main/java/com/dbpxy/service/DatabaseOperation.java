@@ -31,12 +31,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.openjpa.lib.jdbc.SQLFormatter;
+import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
 
 import java.sql.*;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -60,7 +61,7 @@ class DatabaseOperation {
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
     private final LinkedBlockingQueue<DoWithConnection> taskQueue = new LinkedBlockingQueue<>() {
         @Override
-        public boolean add(DoWithConnection doWithConnection) {
+        public boolean add(@NonNull final DoWithConnection doWithConnection) {
             if (!shouldContinue.get()) {
                 return false;
             }
@@ -72,13 +73,16 @@ class DatabaseOperation {
     private final ConnectionString connectionString;
     private final SQLFormatter sqlFormatter;
     @Getter
+    private final long timeoutInMs;
+    @Getter
     @Setter
     private Transaction transaction;
 
     boolean openConnection() {
+        final Instant now = Instant.now();
         final ExecutorService taskExecutor = Executors.newCachedThreadPool(
                 ThreadFactory.builder()
-                        .namePrefix(Thread.currentThread().getName() + "-dbpxy-" + RandomStringUtils.secure().nextAlphanumeric(10))
+                        .prefix(Thread.currentThread().getName() + "-dbpxy-" + now.getEpochSecond() + now.getNano())
                         .build());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
@@ -269,7 +273,7 @@ class DatabaseOperation {
                 final AtomicBoolean shouldContinueResultSet = new AtomicBoolean(true);
                 final LinkedBlockingQueue<DoWithResultSet> taskQueueResultSet = new LinkedBlockingQueue<>() {
                     @Override
-                    public boolean add(DoWithResultSet doWithResultSet) {
+                    public boolean add(@NonNull final DoWithResultSet doWithResultSet) {
                         if (!params.getShouldContinue().get() || !shouldContinueResultSet.get()) {
                             return false;
                         }
@@ -376,15 +380,12 @@ class DatabaseOperation {
     }
 
     static boolean isActive(final Connection conn) {
-        return Optional.ofNullable(conn).stream()
-                .anyMatch(it -> {
-                    try {
-                        return !it.isClosed();
-                    } catch (final SQLException e) {
-                        log.error(e.getMessage(), e);
-                        return false;
-                    }
-                });
+        try {
+            return conn != null && !conn.isClosed();
+        } catch (final SQLException e) {
+            log.error(e.getMessage(), e);
+            return false;
+        }
     }
 
     static boolean isReadOnly(final Connection conn) {
@@ -510,7 +511,6 @@ class DatabaseOperation {
                                     .setLabel(getColumnLabel.get())
                                     .build())
                             .orElseGet(DatabaseOperation::nullValue);
-
                 }
                 case DATE -> {
                     return Optional.ofNullable(rs.getDate(i))

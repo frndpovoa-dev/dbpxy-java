@@ -22,22 +22,18 @@ package com.dbpxy.service;
 
 
 import lombok.Builder;
-import lombok.NonNull;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.concurrent.atomic.AtomicInteger;
+import org.jspecify.annotations.NonNull;
 
 @Slf4j
 @Builder
 class ThreadFactory implements java.util.concurrent.ThreadFactory {
-    private final String namePrefix;
+    private final String prefix;
     @Builder.Default
-    private final AtomicInteger nextId = new AtomicInteger(0);
+    private int counter = 0;
 
     @Override
     public Thread newThread(@NonNull final Runnable r) {
-        final Thread thread = new Thread(r, namePrefix + "-" + nextId.getAndIncrement());
-        log.trace("created thread {}", thread.getName());
-        return thread;
+        return new Thread(r, prefix + (counter++)); // ASAP
     }
 }

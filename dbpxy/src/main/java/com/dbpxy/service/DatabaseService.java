@@ -22,6 +22,9 @@ package com.dbpxy.service;
 
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.proto.*;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Expiry;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
@@ -31,12 +34,45 @@ import org.springframework.stereotype.Service;
 
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @Service
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
-    private final ConcurrentHashMap<String, DatabaseOperation> transactionMap = new ConcurrentHashMap<>();
+    private final Cache<String, DatabaseOperation> transactionMap = Caffeine.newBuilder()
+            .expireAfter(new Expiry<String, DatabaseOperation>() {
+                @Override
+                public long expireAfterCreate(
+                        final String transactionId,
+                        final DatabaseOperation ops,
+                        final long currentTime) {
+                    return ops.getTimeoutInMs() * 1_000_000L + 1_000_000_000L;
+                }
+
+                @Override
+                public long expireAfterUpdate(
+                        final String transactionId,
+                        final DatabaseOperation ops,
+                        final long currentTime,
+                        final long currentDuration) {
+                    return currentDuration;
+                }
+
+                @Override
+                public long expireAfterRead(
+                        final String transactionId,
+                        final DatabaseOperation ops,
+                        final long currentTime,
+                        final long currentDuration) {
+                    return currentDuration;
+                }
+            })
+            .removalListener((transactionId, ops, cause) -> {
+                if (ops != null) {
+                    log.debug("cache eviction {}", DatabaseUtil.getMaskedId(ops.getTransaction().getId()));
+                    ops.closeConnection();
+                }
+            })
+            .build();
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
@@ -86,6 +122,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .connectionString(config.getConnectionString())
                 .sqlFormatter(defaultSqlFormatter)
                 .transaction(transaction)
+                .timeoutInMs(config.getTimeout())
                 .build();
 
         transactionMap.put(transactionId, ops);
@@ -150,7 +187,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withCause(e)
                     .asRuntimeException());
         } finally {
-            deleteDatabaseOperationByTransaction(transaction);
+            closeDatabaseOperationByTransaction(transaction);
         }
     }
 
@@ -199,7 +236,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withCause(e)
                     .asRuntimeException());
         } finally {
-            deleteDatabaseOperationByTransaction(transaction);
+            closeDatabaseOperationByTransaction(transaction);
         }
     }
 
@@ -222,6 +259,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .connectionString(config.getConnectionString())
                     .sqlFormatter(defaultSqlFormatter)
                     .transaction(transaction)
+                    .timeoutInMs(config.getTimeout())
                     .build();
 
             ExecuteResult result;
@@ -275,6 +313,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .connectionString(config.getConnectionString())
                     .sqlFormatter(defaultSqlFormatter)
                     .transaction(transaction)
+                    .timeoutInMs(config.getTimeout())
                     .build();
 
             QueryResult result;
@@ -286,6 +325,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                             .setReadOnly(true)
                             .build());
                     result = ops.query(config);
+                    // Non-transactional query MUST return all rows in first page. Adjust fetch size accordingly.
                     result = ops.next(NextConfig.newBuilder()
                             .setTransaction(transaction)
                             .setQueryResultId(result.getId())
@@ -357,6 +397,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
+            // Transactional query. Pre-fetches first page and allows for more pages to be fetched later.
             result = ops.next(NextConfig.newBuilder()
                     .setTransaction(config.getTransaction())
                     .setQueryResultId(result.getId())
@@ -451,14 +492,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionMap::get);
+                .map(transactionMap::getIfPresent);
     }
 
-    private void deleteDatabaseOperationByTransaction(final Transaction transaction) {
+    private void closeDatabaseOperationByTransaction(final Transaction transaction) {
         Optional.ofNullable(transaction)
                 .filter(it -> Objects.equals(it.getNode(), node))
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionMap::remove)
-                .ifPresent(DatabaseOperation::closeConnection);
+                .ifPresent(transactionMap::invalidate);
     }
 }

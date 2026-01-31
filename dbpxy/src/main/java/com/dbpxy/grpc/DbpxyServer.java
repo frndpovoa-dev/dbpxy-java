@@ -27,6 +27,7 @@ import io.grpc.ServerBuilder;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.InitializingBean;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -39,6 +40,10 @@ public class DbpxyServer implements InitializingBean, DisposableBean {
     private static Server server;
     private final GrpcProperties grpcProperties;
     private final DatabaseService databaseService;
+    @Value("${dbpxy.grpc-cert-path:certs/cert.pem}")
+    private String certPath;
+    @Value("${dbpxy.grpc-key-path:certs/key.pem}")
+    private String keyPath;
 
     @Override
     public void destroy() throws Exception {
@@ -55,8 +60,8 @@ public class DbpxyServer implements InitializingBean, DisposableBean {
     @Override
     public void afterPropertiesSet() throws Exception {
         if (server == null || server.isShutdown()) {
-            try (final InputStream cert = new ClassPathResource("certs/cert.pem").getInputStream();
-                 final InputStream key = new ClassPathResource("certs/key.pem").getInputStream()) {
+            try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
+                 final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
                 server = ServerBuilder
                         .forPort(grpcProperties.getPort())
                         .useTransportSecurity(cert, key)
