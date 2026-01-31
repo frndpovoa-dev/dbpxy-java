@@ -49,7 +49,7 @@ import java.util.regex.Pattern;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
     private static final Pattern transactionIdPattern = Pattern.compile("^(.+?)@(.+)$");
-    private static final Integer DEFAULT_QUERY_TIMEOUT = 1_000;
+    private static final Integer DEFAULT_QUERY_TIMEOUT_IN_MS = 30_000;
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
     private final ChannelCredentials credentials;
@@ -68,7 +68,7 @@ public class Connection implements java.sql.Connection {
     private final Stack<Transaction> transactions = new Stack<>();
 
     public String getTransactionId() {
-        return Optional.ofNullable(getTransaction(true, DEFAULT_QUERY_TIMEOUT))
+        return Optional.ofNullable(getTransaction(true, DEFAULT_QUERY_TIMEOUT_IN_MS))
                 .map(transaction -> transaction.getId() + "@" + transaction.getNode())
                 .orElse(null);
     }
@@ -199,12 +199,12 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public Statement createStatement() throws SQLException {
-        return new Statement(this, DEFAULT_QUERY_TIMEOUT);
+        return new Statement(this, DEFAULT_QUERY_TIMEOUT_IN_MS);
     }
 
     @Override
     public PreparedStatement prepareStatement(final String sql) throws SQLException {
-        return new PreparedStatement(this, DEFAULT_QUERY_TIMEOUT, sql);
+        return new PreparedStatement(this, DEFAULT_QUERY_TIMEOUT_IN_MS, sql);
     }
 
     @Override

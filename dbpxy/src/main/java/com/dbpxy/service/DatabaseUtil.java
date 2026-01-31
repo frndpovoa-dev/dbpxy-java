@@ -24,4 +24,12 @@ class DatabaseUtil {
     public static String getMaskedId(final String id) {
         return id.replaceFirst("^(.{32}).*$", "$1");
     }
+
+    public static int sanitizeFetchSize(final long fetchSize) {
+        return Math.clamp(fetchSize, 25, Integer.MAX_VALUE);
+    }
+
+    public static int sanitizeTimeout(final long timeout) {
+        return Math.clamp(timeout, 0, Integer.MAX_VALUE);
+    }
 }

@@ -36,6 +36,7 @@ import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
 
 import java.sql.*;
+import java.sql.Date;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
@@ -44,9 +45,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.IntSupplier;
-import java.util.function.Predicate;
-import java.util.function.Supplier;
 import java.util.stream.IntStream;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
@@ -56,6 +54,18 @@ import static java.util.function.Predicate.not;
 @Builder
 class DatabaseOperation {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final SQLFormatter sqlFormatter;
+
+    static {
+        sqlFormatter = new SQLFormatter();
+        sqlFormatter.setClauseIndent("");
+        sqlFormatter.setDoubleSpace(false);
+        sqlFormatter.setLineLength(Integer.MAX_VALUE);
+        sqlFormatter.setMultiLine(false);
+        sqlFormatter.setNewline("");
+        sqlFormatter.setWrapIndent("");
+    }
+
     @Getter
     private final AtomicBoolean shouldContinue = new AtomicBoolean(true);
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
@@ -71,7 +81,6 @@ class DatabaseOperation {
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final ConnectionString connectionString;
-    private final SQLFormatter sqlFormatter;
     @Getter
     private final long timeoutInMs;
     @Getter
@@ -142,12 +151,12 @@ class DatabaseOperation {
                 params.getConnection().setReadOnly(config.getReadOnly());
 
                 CompletableFuture.runAsync(() -> {
-                    final long wait = 200;
-                    long timeout = config.getTimeout();
+                    final long waitInMs = 200;
+                    long counterInMs = config.getTimeout();
                     while (params.getShouldContinue().get()) {
-                        sleepUninterruptibly(Duration.ofMillis(wait));
-                        timeout -= wait;
-                        if (timeout <= 0) {
+                        sleepUninterruptibly(Duration.ofMillis(waitInMs));
+                        counterInMs -= waitInMs;
+                        if (counterInMs <= 0) {
                             break;
                         }
                     }
@@ -230,10 +239,11 @@ class DatabaseOperation {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setQueryTimeout(getQueryTimeout(config.getTimeout()));
+                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeout()));
 
-                IntStream.range(0, config.getArgsCount())
-                        .forEach(i -> setSqlArg(stmt, i + 1, config.getArgs(i)));
+                for (int i = 0; i < config.getArgsCount(); i++) {
+                    setSqlArg(stmt, i + 1, config.getArgs(i));
+                }
 
                 logQuery(config.getQuery());
 
@@ -262,7 +272,8 @@ class DatabaseOperation {
             MDC.put("query.id", DatabaseUtil.getMaskedId(queryResultId));
             log.debug("before prepare statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setFetchSize(getFetchSize(config.getFetchSize()));
+                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeout()));
+                stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
 
                 IntStream.range(0, config.getArgsCount())
                         .forEach(i -> setSqlArg(stmt, i + 1, config.getArgs(i)));
@@ -331,12 +342,11 @@ class DatabaseOperation {
                             next = params.getRs().next();
                             if (next) {
                                 rowsFetched++;
-                                results.add(Row.newBuilder()
-                                        .addAllCols(IntStream.range(1, params.getRs().getMetaData().getColumnCount() + 1)
-                                                .mapToObj(i -> getSqlArg(params.getRs(), i))
-                                                .toList()
-                                        )
-                                        .build());
+                                final Row.Builder rowBuilder = Row.newBuilder();
+                                for (int i = 1; i <= params.getRs().getMetaData().getColumnCount(); i++) {
+                                    rowBuilder.addCols(getSqlArg(params.getRs(), i));
+                                }
+                                results.add(rowBuilder.build());
                             }
                         }
                         if (!next) {
@@ -445,170 +455,169 @@ class DatabaseOperation {
                 .build();
     }
 
-    private static Value getSqlArg(final ResultSet rs, final int i) {
-        final Predicate<Object> wasNotNull = ignored -> {
-            try {
-                return !rs.wasNull();
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
-        final IntSupplier getScale = () -> {
-            try {
-                return rs.getMetaData().getScale(i);
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
-        final IntSupplier getPrecision = () -> {
-            try {
-                return rs.getMetaData().getPrecision(i);
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
-        final IntSupplier getColumnDisplaySize = () -> {
-            try {
-                return rs.getMetaData().getColumnDisplaySize(i);
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
-        final Supplier<String> getColumnName = () -> {
-            try {
-                return rs.getMetaData().getColumnName(i);
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
-        final Supplier<String> getColumnLabel = () -> {
-            try {
-                return rs.getMetaData().getColumnLabel(i);
-            } catch (final SQLException e) {
-                throw new RuntimeException(e);
-            }
-        };
+    private static boolean wasNull(final ResultSet rs) {
         try {
-            switch (JDBCType.valueOf(rs.getMetaData().getColumnType(i))) {
-                case BIGINT -> {
-                    return Optional.of(rs.getLong(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.INT64)
-                                    .setData(ValueInt64.newBuilder()
-                                            .setValue(v)
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+            return rs.wasNull();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static int getScale(final ResultSet rs, final int i) {
+        try {
+            return rs.getMetaData().getScale(i);
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static int getPrecision(final ResultSet rs, final int i) {
+        try {
+            return rs.getMetaData().getPrecision(i);
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static int getColumnDisplaySize(final ResultSet rs, final int i) {
+        try {
+            return rs.getMetaData().getColumnDisplaySize(i);
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String getColumnName(final ResultSet rs, final int i) {
+        try {
+            return rs.getMetaData().getColumnName(i);
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static String getColumnLabel(final ResultSet rs, final int i) {
+        try {
+            return rs.getMetaData().getColumnLabel(i);
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static Value getSqlArg(final ResultSet rs, final int i) {
+        try {
+            switch (rs.getMetaData().getColumnType(i)) {
+                case Types.BIGINT -> {
+                    final long v = rs.getLong(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.INT64)
+                            .setData(ValueInt64.newBuilder()
+                                    .setValue(v)
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case BOOLEAN, BIT -> {
-                    return Optional.of(rs.getBoolean(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.BOOL)
-                                    .setData(ValueBool.newBuilder()
-                                            .setValue(v)
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.BOOLEAN, Types.BIT -> {
+                    final boolean v = rs.getBoolean(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.BOOL)
+                            .setData(ValueBool.newBuilder()
+                                    .setValue(v)
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case DATE -> {
-                    return Optional.ofNullable(rs.getDate(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.TIME)
-                                    .setData(ValueTime.newBuilder()
-                                            .setValue(OffsetDateTime
-                                                    .ofInstant(v.toInstant(), ZoneId.systemDefault())
-                                                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.DATE -> {
+                    final Date v = rs.getDate(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.TIME)
+                            .setData(ValueTime.newBuilder()
+                                    .setValue(OffsetDateTime
+                                            .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case NUMERIC, DOUBLE -> {
-                    return Optional.of(rs.getDouble(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.FLOAT64)
-                                    .setData(ValueFloat64.newBuilder()
-                                            .setValue(v)
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .setScale(getScale.getAsInt())
-                                    .setPrecision(getPrecision.getAsInt())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.NUMERIC, Types.DOUBLE -> {
+                    final double v = rs.getDouble(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.FLOAT64)
+                            .setData(ValueFloat64.newBuilder()
+                                    .setValue(v)
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .setScale(getScale(rs, i))
+                            .setPrecision(getPrecision(rs, i))
+                            .build();
                 }
-                case SMALLINT, INTEGER -> {
-                    return Optional.of(rs.getInt(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.INT32)
-                                    .setData(ValueInt32.newBuilder()
-                                            .setValue(v)
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.SMALLINT, Types.INTEGER -> {
+                    final int v = rs.getInt(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.INT32)
+                            .setData(ValueInt32.newBuilder()
+                                    .setValue(v)
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case TIMESTAMP -> {
-                    return Optional.ofNullable(rs.getTimestamp(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.TIME)
-                                    .setData(ValueTime.newBuilder()
-                                            .setValue(OffsetDateTime
-                                                    .ofInstant(v.toInstant(), ZoneId.systemDefault())
-                                                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.TIMESTAMP -> {
+                    final Timestamp v = rs.getTimestamp(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.TIME)
+                            .setData(ValueTime.newBuilder()
+                                    .setValue(OffsetDateTime
+                                            .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case VARCHAR -> {
-                    return Optional.ofNullable(rs.getString(i))
-                            .filter(wasNotNull)
-                            .map(v -> Value.newBuilder()
-                                    .setCode(ValueCode.STRING)
-                                    .setData(ValueString.newBuilder()
-                                            .setValue(v)
-                                            .build()
-                                            .toByteString()
-                                    )
-                                    .setSize(getColumnDisplaySize.getAsInt())
-                                    .setName(getColumnName.get())
-                                    .setLabel(getColumnLabel.get())
-                                    .build())
-                            .orElseGet(DatabaseOperation::nullValue);
+                case Types.VARCHAR -> {
+                    final String v = rs.getString(i);
+                    if (wasNull(rs)) return nullValue();
+                    return Value.newBuilder()
+                            .setCode(ValueCode.STRING)
+                            .setData(ValueString.newBuilder()
+                                    .setValue(v)
+                                    .build()
+                                    .toByteString()
+                            )
+                            .setSize(getColumnDisplaySize(rs, i))
+                            .setName(getColumnName(rs, i))
+                            .setLabel(getColumnLabel(rs, i))
+                            .build();
                 }
-                case NULL -> {
+                case Types.NULL -> {
                     return nullValue();
                 }
                 default -> {
@@ -652,15 +661,9 @@ class DatabaseOperation {
         }
     }
 
-    private static int getFetchSize(final long fetchSize) {
-        return Math.clamp(fetchSize, 25, Integer.MAX_VALUE);
-    }
-
-    private static int getQueryTimeout(final long timeout) {
-        return (int) Math.min(timeout, Integer.MAX_VALUE);
-    }
-
-    private void logQuery(final String query) {
-        log.debug("{}", Objects.toString(sqlFormatter.prettyPrint(query)).trim());
+    private static void logQuery(final String query) {
+        if (log.isDebugEnabled()) {
+            log.debug("{}", Objects.toString(sqlFormatter.prettyPrint(query)).trim());
+        }
     }
 }

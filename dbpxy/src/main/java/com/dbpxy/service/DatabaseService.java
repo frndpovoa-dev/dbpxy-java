@@ -28,7 +28,6 @@ import com.github.benmanes.caffeine.cache.Expiry;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.openjpa.lib.jdbc.SQLFormatter;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
@@ -76,7 +75,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
-    private final SQLFormatter defaultSqlFormatter;
     private final String node;
 
     public DatabaseService(
@@ -91,15 +89,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
         this.node = node;
-
-        final SQLFormatter sqlFormatter = new SQLFormatter();
-        sqlFormatter.setClauseIndent("");
-        sqlFormatter.setDoubleSpace(false);
-        sqlFormatter.setLineLength(Integer.MAX_VALUE);
-        sqlFormatter.setMultiLine(false);
-        sqlFormatter.setNewline("");
-        sqlFormatter.setWrapIndent("");
-        this.defaultSqlFormatter = sqlFormatter;
     }
 
     @Override
@@ -114,15 +103,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .build();
 
         MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-        log.debug("beginTransaction(timeout: {}) -> {}", config.getTimeout(), transaction.getStatus());
+        log.debug("beginTransaction(timeout: {}) -> {}", DatabaseUtil.sanitizeTimeout(config.getTimeout()), transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
                 .cryptoService(cryptoService)
                 .uniqueIdGenerator(uniqueIdGenerator)
                 .connectionString(config.getConnectionString())
-                .sqlFormatter(defaultSqlFormatter)
                 .transaction(transaction)
-                .timeoutInMs(config.getTimeout())
+                .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeout()))
                 .build();
 
         transactionMap.put(transactionId, ops);

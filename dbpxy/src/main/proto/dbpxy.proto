@@ -68,6 +68,7 @@ message QueryConfig {
   string query = 1;
   repeated Value args = 2;
   int64 fetchSize = 3;
+  int64 timeout = 4;
 }
 
 message QueryTxConfig {

@@ -49,10 +49,10 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     public PreparedStatement(
             final Connection connection,
-            final Integer defaultQueryTimeout,
+            final Integer defaultQueryTimeoutInMs,
             final String sql
     ) {
-        super(connection, defaultQueryTimeout);
+        super(connection, defaultQueryTimeoutInMs);
         this.sql = sql;
     }
 
@@ -142,6 +142,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                 .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
+                        .setTimeout(getQueryTimeout())
                         .addAllArgs(paramAsList())
                         .build())
                 .build());

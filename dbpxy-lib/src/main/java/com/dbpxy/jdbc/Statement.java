@@ -29,7 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
-import java.util.Optional;
+import java.util.Objects;
 
 @Slf4j
 @Getter
@@ -37,8 +37,8 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class Statement implements java.sql.Statement {
     private final Connection connection;
-    private final Integer defaultQueryTimeout;
-    private Integer queryTimeout;
+    private final Integer defaultQueryTimeoutInMs;
+    private Integer queryTimeoutInMs;
     private ResultSet resultSet;
     private boolean closed = false;
 
@@ -48,6 +48,7 @@ public class Statement implements java.sql.Statement {
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
+                        .setTimeout(getQueryTimeout())
                         .build())
                 .build());
         this.resultSet = new ResultSet(
@@ -64,6 +65,7 @@ public class Statement implements java.sql.Statement {
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
+                        .setTimeout(getQueryTimeout())
                         .build())
                 .build());
         return result.getRowsAffected();
@@ -105,12 +107,12 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int getQueryTimeout() throws SQLException {
-        return Optional.ofNullable(queryTimeout).orElse(defaultQueryTimeout);
+        return Objects.requireNonNullElse(queryTimeoutInMs, defaultQueryTimeoutInMs);
     }
 
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
-        this.queryTimeout = seconds * 1_000;
+        this.queryTimeoutInMs = seconds * 1_000;
     }
 
     @Override

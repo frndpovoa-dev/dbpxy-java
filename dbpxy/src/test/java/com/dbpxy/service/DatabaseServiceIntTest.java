@@ -237,6 +237,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()
+                        .setTimeout(100)
                         .setQuery(sql)
                         .build())
                 .build());
@@ -295,6 +296,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
+                        .setTimeout(100)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -336,6 +338,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
+                        .setTimeout(100)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
