@@ -11,9 +11,7 @@ service Dbpxy {
   rpc BeginTransaction (BeginTransactionConfig) returns (Transaction) {}
   rpc CommitTransaction (Transaction) returns (Transaction) {}
   rpc RollbackTransaction (Transaction) returns (Transaction) {}
-  rpc Execute (ExecuteConfig) returns (ExecuteResult) {}
   rpc ExecuteTx (ExecuteTxConfig) returns (ExecuteResult) {}
-  rpc Query (QueryConfig) returns (QueryResult) {}
   rpc QueryTx (QueryTxConfig) returns (QueryResult) {}
   rpc Next (NextConfig) returns (QueryResult) {}
   rpc CloseResultSet (NextConfig) returns (Empty) {}
@@ -35,8 +33,9 @@ message ConnectionStringProp {
 
 message BeginTransactionConfig {
   int64 timeout = 1;
-  bool readOnly = 2;
-  ConnectionString connectionString = 3;
+  bool autoCommit = 2;
+  bool readOnly = 3;
+  ConnectionString connectionString = 4;
 }
 
 message Transaction {
@@ -58,7 +57,6 @@ message ExecuteConfig {
   string query = 1;
   repeated Value args = 2;
   int64 timeout = 3;
-  ConnectionString connectionString = 4;
 }
 
 message ExecuteTxConfig {
@@ -69,9 +67,7 @@ message ExecuteTxConfig {
 message QueryConfig {
   string query = 1;
   repeated Value args = 2;
-  int64 timeout = 3;
-  int64 fetchSize = 4;
-  ConnectionString connectionString = 5;
+  int64 fetchSize = 3;
 }
 
 message QueryTxConfig {

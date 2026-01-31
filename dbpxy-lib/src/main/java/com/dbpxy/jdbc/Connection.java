@@ -86,6 +86,7 @@ public class Connection implements java.sql.Connection {
                         .beginTransaction(BeginTransactionConfig.newBuilder()
                                 .setConnectionString(connectionString)
                                 .setTimeout(timeout)
+                                .setAutoCommit(autoCommit)
                                 .setReadOnly(readOnly)
                                 .build());
                 pushTransaction(transaction);

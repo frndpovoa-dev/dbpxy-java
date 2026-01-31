@@ -44,17 +44,10 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public ResultSet executeQuery(final String sql) throws SQLException {
-        final QueryResult result = connection.getAutoCommit() ?
-                connection.getBlockingStub().query(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(connection.getConnectionString())
-                        .build())
-                : connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
+        final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
                         .build())
                 .build());
         this.resultSet = new ResultSet(
@@ -67,17 +60,10 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int executeUpdate(final String sql) throws SQLException {
-        final ExecuteResult result = connection.getAutoCommit() ?
-                connection.getBlockingStub().execute(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(connection.getConnectionString())
-                        .build())
-                : connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
+        final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
                         .build())
                 .build());
         return result.getRowsAffected();

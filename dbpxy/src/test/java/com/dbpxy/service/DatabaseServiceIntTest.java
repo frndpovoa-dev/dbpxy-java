@@ -228,11 +228,19 @@ class DatabaseServiceIntTest extends BaseIntTest {
                                 .build())
                         .toList())
                 .build();
-        ExecuteResult ddlResult = databaseProxyServiceClient.execute(ExecuteConfig.newBuilder()
+        Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
                 .setTimeout(100)
-                .setQuery(sql)
+                .setAutoCommit(true)
+                .setReadOnly(false)
                 .build());
+        ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
+                .setTransaction(transaction)
+                .setExecuteConfig(ExecuteConfig.newBuilder()
+                        .setQuery(sql)
+                        .build())
+                .build());
+        transaction = databaseProxyServiceClient.commitTransaction(transaction);
         assertThat(ddlResult)
                 .isNotNull();
     }
@@ -287,7 +295,6 @@ class DatabaseServiceIntTest extends BaseIntTest {
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
-                        .setTimeout(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -320,12 +327,20 @@ class DatabaseServiceIntTest extends BaseIntTest {
                                 .build())
                         .toList())
                 .build();
-        QueryResult queryResult = databaseProxyServiceClient.query(QueryConfig.newBuilder()
+        Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(2_000)
-                .setQuery(sql)
-                .addAllArgs(args)
+                .setTimeout(100)
+                .setAutoCommit(true)
+                .setReadOnly(false)
                 .build());
+        QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
+                .setTransaction(transaction)
+                .setQueryConfig(QueryConfig.newBuilder()
+                        .setQuery(sql)
+                        .addAllArgs(args)
+                        .build())
+                .build());
+        transaction = databaseProxyServiceClient.commitTransaction(transaction);
         assertThat(queryResult)
                 .isNotNull();
         if (rowsReturned > 0) {

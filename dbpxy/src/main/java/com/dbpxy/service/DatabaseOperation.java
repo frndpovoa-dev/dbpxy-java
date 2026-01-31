@@ -138,7 +138,7 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             try {
-                params.getConnection().setAutoCommit(false);
+                params.getConnection().setAutoCommit(config.getAutoCommit());
                 params.getConnection().setReadOnly(config.getReadOnly());
 
                 CompletableFuture.runAsync(() -> {
@@ -263,7 +263,6 @@ class DatabaseOperation {
             log.debug("before prepare statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setFetchSize(getFetchSize(config.getFetchSize()));
-                stmt.setQueryTimeout(getQueryTimeout(config.getTimeout()));
 
                 IntStream.range(0, config.getArgsCount())
                         .forEach(i -> setSqlArg(stmt, i + 1, config.getArgs(i)));
@@ -397,8 +396,18 @@ class DatabaseOperation {
         }
     }
 
+    static boolean isAutoCommit(final Connection conn) {
+        try {
+            return conn != null && conn.getAutoCommit();
+        } catch (final SQLException e) {
+            log.error(e.getMessage(), e);
+            return true;
+        }
+    }
+
     static Optional<Boolean> commit(final Connection conn) {
         return Optional.ofNullable(conn)
+                .filter(not(DatabaseOperation::isAutoCommit))
                 .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {
                     try {
@@ -413,6 +422,7 @@ class DatabaseOperation {
 
     static Optional<Boolean> rollback(final Connection conn) {
         return Optional.ofNullable(conn)
+                .filter(not(DatabaseOperation::isAutoCommit))
                 .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {
                     try {

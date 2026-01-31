@@ -9,9 +9,9 @@ package com.dbpxy.jdbc;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -138,18 +138,10 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public java.sql.ResultSet executeQuery() throws SQLException {
-        final QueryResult result = getConnection().getAutoCommit() ?
-                getConnection().getBlockingStub().query(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(getConnection().getConnectionString())
-                        .addAllArgs(paramAsList())
-                        .build())
-                : getConnection().getBlockingStub().queryTx(QueryTxConfig.newBuilder()
+        final QueryResult result = getConnection().getBlockingStub().queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
                         .addAllArgs(paramAsList())
                         .build())
                 .build());
@@ -164,14 +156,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     @Override
     public int executeUpdate() throws SQLException {
-        final ExecuteResult result = getConnection().getAutoCommit() ?
-                getConnection().getBlockingStub().execute(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(getConnection().getConnectionString())
-                        .addAllArgs(paramAsList())
-                        .build())
-                : getConnection().getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
+        final ExecuteResult result = getConnection().getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
