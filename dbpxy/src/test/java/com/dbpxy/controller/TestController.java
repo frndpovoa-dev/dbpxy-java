@@ -47,7 +47,9 @@ public class TestController {
             @RequestParam("group") String group
     ) throws Exception {
         connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        return repository.findByGroupName(group);
+        final List<TestBo> result = repository.findByGroupName(group);
+        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
+        return result;
     }
 
     @PostMapping(path = "/insert")
@@ -58,6 +60,7 @@ public class TestController {
         connectionHolder.getConnection().joinSharedTransaction(transactionId);
         repository.save(testBo);
         service.save(testBo);
+        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
         return testBo;
     }
 }

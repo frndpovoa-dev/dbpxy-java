@@ -42,18 +42,19 @@ public class PostgresExtension implements BeforeAllCallback {
             started.set(true);
         }
 
-        final String database = "postgres";
         final int port = 5432;
+        final String database = "postgres";
         final String username = "postgres";
         final String password = "postgres";
         postgresql = new GenericContainer(DockerImageName
-                .parse("bitnamilegacy/postgresql")
+                .parse("postgres")
                 .withTag(context.getConfigurationParameter("postgresql.version").orElse("latest"))
         ) {
         }
-                .withSharedMemorySize(1024 * 1024 * 512L)
-                .withEnv("POSTGRESQL_DATABASE", database)
-                .withEnv("POSTGRESQL_PASSWORD", password)
+                .withSharedMemorySize(1000 * 1000 * 512L)
+                .withEnv("POSTGRES_DB", database)
+                .withEnv("POSTGRES_USER", username)
+                .withEnv("POSTGRES_PASSWORD", password)
         ;
 
         postgresql.setPortBindings(List.of(String.format("%s:%s", port, port)));

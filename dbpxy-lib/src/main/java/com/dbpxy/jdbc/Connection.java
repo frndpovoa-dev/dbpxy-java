@@ -35,6 +35,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executor;
@@ -51,10 +52,14 @@ public class Connection implements java.sql.Connection {
     private static final Integer DEFAULT_QUERY_TIMEOUT = 1_000;
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
-    private final ManagedChannel channel;
-    private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    private final ChannelCredentials credentials;
+    private final DbpxyProperties dbpxyProperties;
     private final ConnectionHolder connectionHolder;
     private final ConnectionString connectionString;
+    private ManagedChannel channel;
+    private DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    private ManagedChannel onHoldChannel;
+    private DbpxyGrpc.DbpxyBlockingStub onHoldBlockingStub;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
@@ -68,7 +73,7 @@ public class Connection implements java.sql.Connection {
                 .orElse(null);
     }
 
-    public Transaction getTransaction(final boolean create, final Integer timeout) {
+    public synchronized Transaction getTransaction(final boolean create, final Integer timeout) {
         if (create) {
             final List<Transaction.Status> activeTransactionStatuses = List.of(
                     Transaction.Status.ACTIVE,
@@ -92,12 +97,17 @@ public class Connection implements java.sql.Connection {
                 .orElse(null);
     }
 
-    public void pushTransaction(final Transaction transaction) {
+    public synchronized void pushTransaction(final Transaction transaction) {
         transactions.push(transaction);
     }
 
-    public boolean popTransaction(final Transaction transaction) {
-        return transactions.remove(transaction);
+    public synchronized void popTransaction(final Transaction transaction) {
+        final Stack<Transaction> temp = new Stack<>();
+        temp.addAll(transactions);
+        transactions.clear();
+        transactions.addAll(temp.stream()
+                .filter(it -> !(Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode())))
+                .toList());
     }
 
     public void replaceTransaction(final Transaction out, final Transaction in) {
@@ -116,7 +126,38 @@ public class Connection implements java.sql.Connection {
                 .setNode(m.group(2))
                 .setStatus(Transaction.Status.JOINED)
                 .build();
+        this.onHoldChannel = channel;
+        this.onHoldBlockingStub = blockingStub;
+        this.channel = Grpc.newChannelBuilderForAddress(
+                        transaction.getNode(),
+                        dbpxyProperties.getPort(),
+                        credentials)
+                .build();
+        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+        log.debug("reconnected({} -> {})", id, transaction.getNode());
         pushTransaction(transaction);
+    }
+
+    public void leaveSharedTransaction(final String transactionId) throws SQLException {
+        log.debug("leaveSharedTransaction({})", transactionId);
+        final Matcher m = transactionIdPattern.matcher(transactionId);
+        if (!m.matches()) {
+            throw new SQLException("Invalid transaction id format");
+        }
+        final Transaction transaction = Transaction.newBuilder()
+                .setId(m.group(1))
+                .setNode(m.group(2))
+                .build();
+        try {
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+        } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new SQLException(e);
+        } finally {
+            this.channel = onHoldChannel;
+            this.blockingStub = onHoldBlockingStub;
+        }
+        popTransaction(transaction);
     }
 
     public Connection(
@@ -126,15 +167,18 @@ public class Connection implements java.sql.Connection {
             final String dbpxyCertPath
     ) throws SQLException {
         try {
-            final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
-                    .trustManager(new ClassPathResource(dbpxyCertPath).getInputStream())
-                    .build();
+            try (final InputStream cert = new ClassPathResource(dbpxyCertPath).getInputStream()) {
+                this.credentials = TlsChannelCredentials.newBuilder()
+                        .trustManager(cert)
+                        .build();
+            }
             this.channel = Grpc.newChannelBuilderForAddress(
                             dbpxyProperties.getHostname(),
                             dbpxyProperties.getPort(),
                             credentials)
                     .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+            this.dbpxyProperties = dbpxyProperties;
             this.connectionHolder = connectionHolder;
             this.connectionString = ConnectionString.newBuilder()
                     .setUrl(dbpxyDatasourceProperties.getUrl())
@@ -164,11 +208,12 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public CallableStatement prepareCall(String sql) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public String nativeSQL(String sql) throws SQLException {
+    public String nativeSQL(final String sql) throws SQLException {
         return sql;
     }
 
@@ -188,28 +233,46 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void commit() throws SQLException {
-        if (readOnly) {
+        final Transaction transaction = getTransaction(false, 0);
+        if (readOnly || transaction == null) {
             log.debug("commit skipped (conn: {})", id);
         } else {
-            final Transaction transaction = getTransaction(false, 0);
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = getBlockingStub().commitTransaction(transaction);
+                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                try {
+                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+                    this.channel = onHoldChannel;
+                    this.blockingStub = onHoldBlockingStub;
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new SQLException(e);
+                }
             }
         }
     }
 
     @Override
     public void rollback() throws SQLException {
-        if (readOnly) {
+        final Transaction transaction = getTransaction(false, 0);
+        if (readOnly || transaction == null) {
             log.debug("rollback skipped (conn: {})", id);
         } else {
-            final Transaction transaction = getTransaction(false, 0);
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = getBlockingStub().rollbackTransaction(transaction);
+                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                try {
+                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+                    this.channel = onHoldChannel;
+                    this.blockingStub = onHoldBlockingStub;
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new SQLException(e);
+                }
             }
         }
     }
@@ -218,12 +281,13 @@ public class Connection implements java.sql.Connection {
     public void close() throws SQLException {
         log.debug("close({})", id);
         try {
-            connectionHolder.popConnection(this);
-            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new SQLException(e);
         } finally {
             this.closed = true;
+            connectionHolder.popConnection(this);
         }
     }
 
@@ -248,7 +312,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public void setCatalog(String catalog) throws SQLException {
+    public void setCatalog(final String catalog) throws SQLException {
         this.catalog = catalog;
     }
 
@@ -259,7 +323,8 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void setTransactionIsolation(int level) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setTransactionIsolation(int level) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -278,7 +343,8 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Statement createStatement(int resultSetType, int resultSetConcurrency) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -291,22 +357,26 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Map<String, Class<?>> getTypeMap() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Map<String, Class<?>> getTypeMap() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setTypeMap(Map<String, Class<?>> map) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setTypeMap(Map<String, Class<?>> map) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setHoldability(int holdability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setHoldability(int holdability) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -316,128 +386,154 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public Savepoint setSavepoint() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Savepoint setSavepoint() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Savepoint setSavepoint(String name) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Savepoint setSavepoint(String name) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void rollback(Savepoint savepoint) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void rollback(Savepoint savepoint) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void releaseSavepoint(Savepoint savepoint) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void releaseSavepoint(Savepoint savepoint) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Statement createStatement(int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public CallableStatement prepareCall(String sql, int resultSetType, int resultSetConcurrency, int resultSetHoldability) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int autoGeneratedKeys) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, int[] columnIndexes) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public PreparedStatement prepareStatement(String sql, String[] columnNames) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Clob createClob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Clob createClob() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Blob createBlob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Blob createBlob() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public NClob createNClob() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public NClob createNClob() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public SQLXML createSQLXML() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public SQLXML createSQLXML() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public boolean isValid(int timeout) throws SQLException {
-        // FIXME
-        return true;
+    public boolean isValid(final int timeout) throws SQLException {
+        return !isClosed();
     }
 
     @Override
     public void setClientInfo(String name, String value) throws SQLClientInfoException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClientInfo(String name, String value) throws SQLClientInfoException {");
+        throw new SQLClientInfoException();
     }
 
     @Override
     public void setClientInfo(Properties properties) throws SQLClientInfoException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setClientInfo(Properties properties) throws SQLClientInfoException {");
+        throw new SQLClientInfoException();
     }
 
     @Override
     public String getClientInfo(String name) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public String getClientInfo(String name) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Properties getClientInfo() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Properties getClientInfo() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        if (Objects.equals("varchar", typeName)) {
+            return new Array(typeName, Types.VARCHAR, elements);
+        }
+        log.trace("public Array createArrayOf(String typeName, Object[] elements) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public Struct createStruct(String typeName, Object[] attributes) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public Struct createStruct(String typeName, Object[] attributes) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setSchema(String schema) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setSchema(String schema) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getSchema() throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public String getSchema() throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void abort(Executor executor) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void abort(Executor executor) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {
-        throw new UnsupportedOperationException("Not supported yet.");
+        log.trace("public void setNetworkTimeout(Executor executor, int milliseconds) throws SQLException {");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -446,12 +542,15 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        return null;
+    public <T> T unwrap(final Class<T> iface) throws SQLException {
+        if (iface.isInstance(this)) {
+            return iface.cast(this);
+        }
+        throw new SQLException("Cannot unwrap to " + iface.getName());
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        return false;
+    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+        return iface.isInstance(this);
     }
 }

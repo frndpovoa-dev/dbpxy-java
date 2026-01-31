@@ -29,16 +29,18 @@ import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
 
 import static java.time.temporal.ChronoField.*;
 
 @Service
 public class UniqueIdGenerator {
-    private final DateTimeFormatter dateTimeFormatter = new DateTimeFormatterBuilder()
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = new DateTimeFormatterBuilder()
             .parseCaseInsensitive()
             .appendValue(YEAR, 4, 4, SignStyle.EXCEEDS_PAD)
             .appendValue(MONTH_OF_YEAR, 2)
@@ -48,19 +50,20 @@ public class UniqueIdGenerator {
             .appendValue(SECOND_OF_MINUTE, 2)
             .appendFraction(NANO_OF_SECOND, 9, 9, false)
             .toFormatter();
-    private final LoadingCache<String, String> hashingCache = CacheBuilder.newBuilder()
+    private static final LoadingCache<String, String> HASHING_CACHE = CacheBuilder.newBuilder()
+            .expireAfterAccess(1, TimeUnit.DAYS)
             .build(new CacheLoader<>() {
                 @Override
-                public String load(String groupName) {
+                public String load(final String groupName) {
                     return Hashing.sha256()
                             .hashString(groupName, StandardCharsets.UTF_8).toString()
-                            .replaceAll("^(.{7}).*", "$1");
+                            .replaceFirst("^(.{7}).*", "$1");
                 }
             });
 
-    public String generate(@NonNull Class<?> clazz) {
-        return UUID.randomUUID().toString().replaceAll("-", "")
-                + dateTimeFormatter.format(OffsetDateTime.now())
-                + hashingCache.getUnchecked(clazz.getName());
+    public String generate(@NonNull final Class<?> clazz) {
+        return UUID.randomUUID().toString().replace("-", "")
+                + DATE_TIME_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))
+                + HASHING_CACHE.getUnchecked(clazz.getName());
     }
 }

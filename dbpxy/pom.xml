@@ -11,18 +11,17 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.25.3</com.google.cloud.sql_postgres-socket-factory.version>
-        <com.google.guava_guava.version>33.5.0-jre</com.google.guava_guava.version>
-        <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
-        <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
-        <org.apache.commons_commons-lang3.version>3.19.0</org.apache.commons_commons-lang3.version>
+        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
+        <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
+        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
+        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
+        <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
-        <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
+        <org.postgresql_postgresql.version>42.7.9</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <org.testcontainers_testcontainers-java.version>1.21.3</org.testcontainers_testcontainers-java.version>
-        <spring-boot.version>3.5.6</spring-boot.version>
+        <org.testcontainers_testcontainers-java.version>1.21.4</org.testcontainers_testcontainers-java.version>
+        <spring-boot.version>4.0.2</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -30,6 +29,20 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${com.google.cloud_libraries-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${io.grpc_grpc-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -53,50 +66,46 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
             <version>${com.google.cloud.sql_postgres-socket-factory.version}</version>
         </dependency>
         <dependency>
-            <groupId>com.google.guava</groupId>
-            <artifactId>guava</artifactId>
-            <version>${com.google.guava_guava.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>
-            <version>${io.grpc_grpc.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-services</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-testing</artifactId>
-            <version>${io.grpc_grpc.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -114,17 +123,6 @@
             <artifactId>awaitility</artifactId>
             <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -148,6 +146,11 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
@@ -156,23 +159,22 @@
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-graphql</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <!--Infinite loop [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296] in org.apache.commons:commons-compress@1.24.0-->
             <!--introduced by org.testcontainers:junit-jupiter@1.21.3 > org.testcontainers:testcontainers@1.21.3 > org.apache.commons:commons-compress@1.24.0-->
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-compress</artifactId>
-            <version>1.26.0</version>
+            <version>1.28.0</version>
         </dependency>
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
             <version>${org.testcontainers_testcontainers-java.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency> <!-- grpc necessary for Java 9+ -->
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>annotations-api</artifactId>
-            <version>6.0.53</version>
-            <scope>provided</scope>
         </dependency>
     </dependencies>
     <build>
@@ -187,12 +189,12 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>2.7.0</version>
+                <version>2.7.1</version>
                 <configuration>
                     <organizationName>Fernando Lemes Povoa</organizationName>
                     <licenseName>apache_v2</licenseName>
                     <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>true</addSvnKeyWords>
+                    <addSvnKeyWords>false</addSvnKeyWords>
                     <verbose>false</verbose>
                     <encoding>${file.encoding}</encoding>
                 </configuration>
@@ -220,6 +222,7 @@
                         </goals>
                         <configuration>
                             <sources>
+                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
                                 <source>${basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
@@ -235,7 +238,7 @@
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
                     </protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc.version}:exe:${os.detected.classifier}
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc-bom.version}:exe:${os.detected.classifier}
                     </pluginArtifact>
                 </configuration>
                 <executions>
@@ -291,28 +294,18 @@
                             <artifactId>lombok</artifactId>
                             <version>${org.projectlombok_lombok.version}</version>
                         </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct_mapstruct.version}</version>
-                        </path>
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.9.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -324,7 +317,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.3</version>
+                <version>3.5.4</version>
                 <configuration>
                     <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>

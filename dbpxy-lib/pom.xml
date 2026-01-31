@@ -11,13 +11,12 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.protobuf_protoc.version>4.32.1</com.google.protobuf_protoc.version>
-        <io.grpc_grpc.version>1.75.0</io.grpc_grpc.version>
+        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
+        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
+        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.mapstruct_mapstruct.version>1.6.3</org.mapstruct_mapstruct.version>
-        <org.postgresql_postgresql.version>42.7.8</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <spring-boot.version>3.5.6</spring-boot.version>
+        <spring-boot.version>4.0.2</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -25,6 +24,20 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>com.google.cloud</groupId>
+                <artifactId>libraries-bom</artifactId>
+                <version>${com.google.cloud_libraries-bom.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>io.grpc</groupId>
+                <artifactId>grpc-bom</artifactId>
+                <version>${io.grpc_grpc-bom.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -42,40 +55,37 @@
     </repositories>
     <dependencies>
         <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.protobuf</groupId>
             <artifactId>protobuf-java-util</artifactId>
-            <version>${com.google.protobuf_protoc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-netty-shaded</artifactId>
-            <version>${io.grpc_grpc.version}</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-protobuf</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-services</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-stub</artifactId>
-            <version>${io.grpc_grpc.version}</version>
         </dependency>
         <dependency>
             <groupId>io.grpc</groupId>
             <artifactId>grpc-testing</artifactId>
-            <version>${io.grpc_grpc.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -83,17 +93,6 @@
             <artifactId>awaitility</artifactId>
             <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>org.mapstruct</groupId>
-            <artifactId>mapstruct-processor</artifactId>
-            <version>${org.mapstruct_mapstruct.version}</version>
-            <optional>true</optional>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
@@ -108,18 +107,12 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
+            <artifactId>spring-boot-starter-data-jdbc</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jpa</artifactId>
-        </dependency>
-        <dependency> <!-- grpc necessary for Java 9+ -->
-            <groupId>org.apache.tomcat</groupId>
-            <artifactId>annotations-api</artifactId>
-            <version>6.0.53</version>
-            <scope>provided</scope>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <build>
@@ -134,12 +127,12 @@
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>license-maven-plugin</artifactId>
-                <version>2.7.0</version>
+                <version>2.7.1</version>
                 <configuration>
                     <organizationName>Fernando Lemes Povoa</organizationName>
                     <licenseName>apache_v2</licenseName>
                     <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>true</addSvnKeyWords>
+                    <addSvnKeyWords>false</addSvnKeyWords>
                     <verbose>false</verbose>
                     <encoding>${file.encoding}</encoding>
                 </configuration>
@@ -167,6 +160,7 @@
                         </goals>
                         <configuration>
                             <sources>
+                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
                                 <source>${basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
@@ -182,7 +176,7 @@
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
                     </protocArtifact>
                     <pluginId>grpc-java</pluginId>
-                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc.version}:exe:${os.detected.classifier}
+                    <pluginArtifact>io.grpc:protoc-gen-grpc-java:${io.grpc_grpc-bom.version}:exe:${os.detected.classifier}
                     </pluginArtifact>
                 </configuration>
                 <executions>
@@ -222,28 +216,18 @@
                             <artifactId>lombok</artifactId>
                             <version>${org.projectlombok_lombok.version}</version>
                         </path>
-                        <path>
-                            <groupId>org.projectlombok</groupId>
-                            <artifactId>lombok-mapstruct-binding</artifactId>
-                            <version>0.2.0</version>
-                        </path>
-                        <path>
-                            <groupId>org.mapstruct</groupId>
-                            <artifactId>mapstruct-processor</artifactId>
-                            <version>${org.mapstruct_mapstruct.version}</version>
-                        </path>
                     </annotationProcessorPaths>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <goals>

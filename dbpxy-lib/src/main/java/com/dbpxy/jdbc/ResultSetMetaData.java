@@ -29,6 +29,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.SQLException;
+import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Types;
 import java.util.Optional;
 
@@ -54,37 +55,37 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     @Override
     public boolean isAutoIncrement(final int column) throws SQLException {
         log.trace("public boolean isAutoIncrement(final int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isCaseSensitive(int column) throws SQLException {
         log.trace("public boolean isCaseSensitive(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isSearchable(int column) throws SQLException {
         log.trace("public boolean isSearchable(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isCurrency(int column) throws SQLException {
         log.trace("public boolean isCurrency(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public int isNullable(int column) throws SQLException {
+    public int isNullable(final int column) throws SQLException {
         log.trace("public int isNullable(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        return columnNullableUnknown;
     }
 
     @Override
     public boolean isSigned(int column) throws SQLException {
         log.trace("public boolean isSigned(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -93,7 +94,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getSize)
-                .orElseThrow(() -> new SQLException("Not supported yet."));
+                .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
@@ -102,7 +103,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getLabel)
-                .orElseThrow(() -> new SQLException("Not supported yet."));
+                .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
@@ -111,13 +112,13 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getName)
-                .orElseThrow(() -> new SQLException("Not supported yet."));
+                .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
     public String getSchemaName(int column) throws SQLException {
         log.trace("public String getSchemaName(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -126,7 +127,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getPrecision)
-                .orElseThrow(() -> new SQLException("Not supported yet."));
+                .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
@@ -135,23 +136,23 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getScale)
-                .orElseThrow(() -> new SQLException("Not supported yet."));
+                .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
     public String getTableName(int column) throws SQLException {
         log.trace("public String getTableName(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getCatalogName(int column) throws SQLException {
         log.trace("public String getCatalogName(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public int getColumnType(int column) throws SQLException {
+    public int getColumnType(final int column) throws SQLException {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
@@ -229,36 +230,37 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     @Override
     public boolean isReadOnly(int column) throws SQLException {
         log.trace("public boolean isReadOnly(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isWritable(int column) throws SQLException {
         log.trace("public boolean isWritable(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public boolean isDefinitelyWritable(int column) throws SQLException {
         log.trace("public boolean isDefinitelyWritable(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public String getColumnClassName(int column) throws SQLException {
         log.trace("public String getColumnClassName(int column) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public <T> T unwrap(Class<T> iface) throws SQLException {
-        log.trace("public <T> T unwrap(Class<T> iface) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+    public <T> T unwrap(final Class<T> iface) throws SQLException {
+        if (iface.isInstance(this)) {
+            return iface.cast(this);
+        }
+        throw new SQLException("Cannot unwrap to " + iface.getName());
     }
 
     @Override
-    public boolean isWrapperFor(Class<?> iface) throws SQLException {
-        log.trace("public boolean isWrapperFor(Class<?> iface) throws SQLException {");
-        throw new SQLException("Not supported yet.");
+    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+        return iface.isInstance(this);
     }
 }

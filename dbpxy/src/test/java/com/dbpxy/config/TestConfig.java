@@ -21,7 +21,7 @@ package com.dbpxy.config;
  */
 
 import com.dbpxy.ConnectionHolder;
-import com.dbpxy.grpc.GrpcServer;
+import com.dbpxy.grpc.DbpxyServer;
 import com.dbpxy.jdbc.DataSource;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.cfg.Environment;
@@ -67,7 +67,7 @@ public class TestConfig {
     @Primary
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             final DataSource dataSource,
-            final GrpcServer grpcServer // depends-on
+            final DbpxyServer dbpxyServer // depends-on
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setShowSql(true);
