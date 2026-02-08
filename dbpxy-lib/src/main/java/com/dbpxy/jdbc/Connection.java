@@ -48,8 +48,8 @@ import java.util.regex.Pattern;
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
-    private static final Pattern transactionIdPattern = Pattern.compile("^(.+?)@(.+)$");
-    private static final Integer DEFAULT_QUERY_TIMEOUT_IN_MS = 30_000;
+    private static final Pattern TRANSACTION_ID_PATTERN = Pattern.compile("^(.+?)@(.+)$");
+    private static final Integer DEFAULT_QUERY_TIMEOUT_IN_MS = 60_000;
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
     private final ChannelCredentials credentials;
@@ -118,7 +118,7 @@ public class Connection implements java.sql.Connection {
 
     public void joinSharedTransaction(final String transactionId) throws SQLException {
         log.debug("joinSharedTransaction({})", transactionId);
-        final Matcher m = transactionIdPattern.matcher(transactionId);
+        final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
         if (!m.matches()) {
             throw new SQLException("Invalid transaction id format");
         }
@@ -141,24 +141,23 @@ public class Connection implements java.sql.Connection {
 
     public void leaveSharedTransaction(final String transactionId) throws SQLException {
         log.debug("leaveSharedTransaction({})", transactionId);
-        final Matcher m = transactionIdPattern.matcher(transactionId);
+        final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
         if (!m.matches()) {
             throw new SQLException("Invalid transaction id format");
         }
-        final Transaction transaction = Transaction.newBuilder()
-                .setId(m.group(1))
-                .setNode(m.group(2))
-                .build();
         try {
             channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new SQLException(e);
         } finally {
+            popTransaction(Transaction.newBuilder()
+                    .setId(m.group(1))
+                    .setNode(m.group(2))
+                    .build());
             this.channel = onHoldChannel;
             this.blockingStub = onHoldBlockingStub;
         }
-        popTransaction(transaction);
     }
 
     public Connection(

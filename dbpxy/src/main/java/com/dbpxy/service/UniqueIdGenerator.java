@@ -57,7 +57,7 @@ public class UniqueIdGenerator {
                 public String load(final String groupName) {
                     return Hashing.sha256()
                             .hashString(groupName, StandardCharsets.UTF_8).toString()
-                            .replaceFirst("^(.{7}).*", "$1");
+                            .substring(0, 7);
                 }
             });
 
