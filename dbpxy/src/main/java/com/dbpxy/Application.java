@@ -21,6 +21,7 @@ package com.dbpxy;
  */
 
 
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -28,22 +29,26 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.boot.context.properties.ConfigurationPropertiesScan;
 import org.springframework.boot.info.BuildProperties;
-import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.event.EventListener;
 
 import java.util.Optional;
+import java.util.TimeZone;
 
 @Slf4j
 @RequiredArgsConstructor
-@SpringBootApplication
-@ComponentScan(basePackages = {"com.dbpxy"})
+@SpringBootApplication(scanBasePackages = {"com.dbpxy"})
 @ConfigurationPropertiesScan(basePackages = {"com.dbpxy"})
 public class Application {
     private final Optional<BuildProperties> buildProperties;
 
-    public static void main(String[] args) {
+    static void main(String[] args) {
         new SpringApplicationBuilder(Application.class)
                 .run(args);
+    }
+
+    @PostConstruct
+    public void init() {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
     }
 
     @EventListener
