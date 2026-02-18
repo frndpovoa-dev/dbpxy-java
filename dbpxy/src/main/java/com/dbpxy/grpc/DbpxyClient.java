@@ -24,30 +24,36 @@ package com.dbpxy.grpc;
 
 import com.dbpxy.config.GrpcProperties;
 import com.dbpxy.proto.DbpxyGrpc;
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.TimeUnit;
+import java.time.Duration;
 import java.util.function.Consumer;
 
 @Component
-@RequiredArgsConstructor
-public class DbpxyClient implements InitializingBean {
+public class DbpxyClient {
     private final GrpcProperties grpcProperties;
-    private ChannelCredentials credentials;
-    @Value("${dbpxy.grpc-cert-path:certs/cert.pem}")
-    private String certPath;
+    private final ChannelCredentials credentials;
+    private final Cache<String, ManagedChannel> channelMap = Caffeine.newBuilder()
+            .expireAfterAccess(Duration.ofDays(1))
+            .removalListener((final String node, final ManagedChannel channel, final RemovalCause cause) -> channel.shutdown())
+            .build();
 
-    @Override
-    public void afterPropertiesSet() throws Exception {
+    public DbpxyClient(
+            final GrpcProperties grpcProperties,
+            @Value("${dbpxy.grpc-cert-path:certs/cert.pem}") final String certPath
+    ) throws IOException {
+        this.grpcProperties = grpcProperties;
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream()) {
             this.credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(cert)
@@ -58,23 +64,9 @@ public class DbpxyClient implements InitializingBean {
     public void invoke(
             final String node,
             final Consumer<DbpxyGrpc.DbpxyBlockingStub> callback) {
-        ManagedChannel channel = null;
-        try {
-            channel = Grpc.newChannelBuilderForAddress(
-                            node,
-                            grpcProperties.getPort(),
-                            credentials)
-                    .build();
-            final DbpxyGrpc.DbpxyBlockingStub blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            callback.accept(blockingStub);
-        } finally {
-            if (channel != null) {
-                try {
-                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-                } catch (final InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
-            }
-        }
+        final ManagedChannel channel = channelMap.get(node, ignored -> Grpc
+                .newChannelBuilderForAddress(node, grpcProperties.getPort(), credentials).build());
+        final DbpxyGrpc.DbpxyBlockingStub blockingStub = DbpxyGrpc.newBlockingStub(channel);
+        callback.accept(blockingStub);
     }
 }

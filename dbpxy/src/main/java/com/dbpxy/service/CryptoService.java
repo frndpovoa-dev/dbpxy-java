@@ -38,10 +38,11 @@ import java.util.Base64;
 @Service
 public class CryptoService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
+    private static final String AES_GCM_NO_PADDING = "AES/GCM/NoPadding";
     private static final int AES_KEY_LENGTH = 256;
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
-    private static final SecretKey key = CryptoService.getAesKey();
+    private static final SecretKey SECRET_KEY = CryptoService.getAesKey();
     @Value("${app.encryption.enabled}")
     private boolean useEncryption;
 
@@ -53,9 +54,9 @@ public class CryptoService {
             final byte[] iv = new byte[GCM_IV_LENGTH];
             SECURE_RANDOM.nextBytes(iv);
 
-            final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            final Cipher cipher = Cipher.getInstance(AES_GCM_NO_PADDING);
             final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.ENCRYPT_MODE, key, gcmParameterSpec);
+            cipher.init(Cipher.ENCRYPT_MODE, SECRET_KEY, gcmParameterSpec);
 
             final byte[] encryptedText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
@@ -87,9 +88,9 @@ public class CryptoService {
             final byte[] ciphertext = new byte[byteBuffer.remaining()];
             byteBuffer.get(ciphertext);
 
-            final Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            final Cipher cipher = Cipher.getInstance(AES_GCM_NO_PADDING);
             final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            cipher.init(Cipher.DECRYPT_MODE, key, gcmParameterSpec);
+            cipher.init(Cipher.DECRYPT_MODE, SECRET_KEY, gcmParameterSpec);
 
             final byte[] decryptedText = cipher.doFinal(ciphertext);
             return new String(decryptedText, StandardCharsets.UTF_8);

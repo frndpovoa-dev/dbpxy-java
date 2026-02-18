@@ -24,51 +24,51 @@ import com.dbpxy.config.GrpcProperties;
 import com.dbpxy.service.DatabaseService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
-import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.DisposableBean;
-import org.springframework.beans.factory.InitializingBean;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationListener;
+import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+import java.io.IOException;
 import java.io.InputStream;
-import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Component
-@RequiredArgsConstructor
-public class DbpxyServer implements InitializingBean, DisposableBean {
-    private static Server server;
-    private final GrpcProperties grpcProperties;
-    private final DatabaseService databaseService;
-    @Value("${dbpxy.grpc-cert-path:certs/cert.pem}")
-    private String certPath;
-    @Value("${dbpxy.grpc-key-path:certs/key.pem}")
-    private String keyPath;
+public class DbpxyServer implements ApplicationListener<ContextStoppedEvent> {
+    private final Server server;
 
-    @Override
-    public void destroy() throws Exception {
-        try {
-            server.shutdown().awaitTermination(30, TimeUnit.SECONDS);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            server.shutdownNow().awaitTermination(30, TimeUnit.SECONDS);
-        } finally {
-            server = null;
+    public DbpxyServer(
+            final GrpcProperties grpcProperties,
+            final DatabaseService databaseService,
+            @Value("${dbpxy.grpc-cert-path:certs/cert.pem}") final String certPath,
+            @Value("${dbpxy.grpc-key-path:certs/key.pem}") final String keyPath
+    ) throws IOException {
+        try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
+             final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
+            this.server = ServerBuilder
+                    .forPort(grpcProperties.getPort())
+                    .useTransportSecurity(cert, key)
+                    .addService(databaseService)
+                    .build()
+                    .start();
+            log.info("gRPC server started on port: {}", grpcProperties.getPort());
         }
     }
 
     @Override
-    public void afterPropertiesSet() throws Exception {
-        if (server == null || server.isShutdown()) {
-            try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
-                 final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
-                server = ServerBuilder
-                        .forPort(grpcProperties.getPort())
-                        .useTransportSecurity(cert, key)
-                        .addService(databaseService)
-                        .build()
-                        .start();
-            }
+    public void onApplicationEvent(final ContextStoppedEvent event) {
+        try {
+            server.shutdownNow().awaitTermination();
+            log.info("gRPC server stopped");
+        } catch (final InterruptedException e) {
+            log.error(e.getMessage(), e);
         }
+    }
+
+    @Override
+    public boolean supportsAsyncExecution() {
+        return false;
     }
 }
