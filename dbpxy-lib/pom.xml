@@ -16,7 +16,7 @@
         <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <spring-boot.version>4.0.2</spring-boot.version>
+        <spring-boot.version>4.0.3</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>
