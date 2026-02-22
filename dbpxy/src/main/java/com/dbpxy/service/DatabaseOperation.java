@@ -543,7 +543,7 @@ class DatabaseOperation {
                             .setCode(ValueCode.TIME)
                             .setData(ValueTime.newBuilder()
                                     .setValue(OffsetDateTime
-                                            .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                            .ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneId.systemDefault())
                                             .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                                     .build()
                                     .toByteString()
