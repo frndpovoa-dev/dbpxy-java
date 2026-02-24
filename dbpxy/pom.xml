@@ -11,6 +11,7 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
+        <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
         <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
         <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
@@ -68,6 +69,11 @@
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+            <version>${com.fasterxml.uuid_java-uuid-generator.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>

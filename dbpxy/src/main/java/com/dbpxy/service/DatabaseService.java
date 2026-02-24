@@ -95,7 +95,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void beginTransaction(
             final BeginTransactionConfig config,
             final StreamObserver<Transaction> responseObserver) {
-        final String transactionId = uniqueIdGenerator.generate(Transaction.class);
+        final String transactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
         final Transaction transaction = Transaction.newBuilder()
                 .setId(cryptoService.encrypt(transactionId))
                 .setStatus(Transaction.Status.ACTIVE)
@@ -108,7 +108,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         final DatabaseOperation ops = DatabaseOperation.builder()
                 .cryptoService(cryptoService)
                 .uniqueIdGenerator(uniqueIdGenerator)
-                .connectionString(config.getConnectionString())
                 .transaction(transaction)
                 .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeout()))
                 .build();
@@ -116,7 +115,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         transactionMap.put(transactionId, ops);
 
         try {
-            ops.openConnection();
+            ops.openConnection(config.getConnectionString());
             ops.beginTransaction(config);
 
             responseObserver.onNext(transaction);

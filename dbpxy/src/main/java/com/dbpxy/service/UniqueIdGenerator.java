@@ -20,6 +20,8 @@ package com.dbpxy.service;
  * #L%
  */
 
+import com.fasterxml.uuid.Generators;
+import com.fasterxml.uuid.impl.UUIDUtil;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
@@ -28,13 +30,13 @@ import lombok.NonNull;
 import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
 import java.util.UUID;
-import java.util.concurrent.TimeUnit;
 
 import static java.time.temporal.ChronoField.*;
 
@@ -51,19 +53,29 @@ public class UniqueIdGenerator {
             .appendFraction(NANO_OF_SECOND, 9, 9, false)
             .toFormatter();
     private static final LoadingCache<String, String> HASHING_CACHE = CacheBuilder.newBuilder()
-            .expireAfterAccess(1, TimeUnit.DAYS)
+            .expireAfterAccess(Duration.ofDays(1))
             .build(new CacheLoader<>() {
                 @Override
                 public String load(final String groupName) {
                     return Hashing.sha256()
-                            .hashString(groupName, StandardCharsets.UTF_8).toString()
+                            .hashString(groupName, StandardCharsets.UTF_8)
+                            .toString()
                             .substring(0, 7);
                 }
             });
 
-    public String generate(@NonNull final Class<?> clazz) {
-        return UUID.randomUUID().toString().replace("-", "")
+    public String globalUUID(@NonNull final String groupName) {
+        return compactUUID()
                 + DATE_TIME_FORMATTER.format(OffsetDateTime.now(ZoneOffset.UTC))
-                + HASHING_CACHE.getUnchecked(clazz.getName());
+                + HASHING_CACHE.getUnchecked(groupName);
+    }
+
+    public String compactUUID() {
+        final UUID uuid = Generators.randomBasedGenerator().generate();
+        final StringBuilder sb = new StringBuilder(32);
+        for (final byte b : UUIDUtil.asByteArray(uuid)) {
+            sb.append(String.format("%02x", b));
+        }
+        return sb.toString();
     }
 }

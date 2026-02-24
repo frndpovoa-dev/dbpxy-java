@@ -54,17 +54,16 @@ import static java.util.function.Predicate.not;
 @Builder
 class DatabaseOperation {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final SQLFormatter sqlFormatter;
-
-    static {
-        sqlFormatter = new SQLFormatter();
-        sqlFormatter.setClauseIndent("");
-        sqlFormatter.setDoubleSpace(false);
-        sqlFormatter.setLineLength(Integer.MAX_VALUE);
-        sqlFormatter.setMultiLine(false);
-        sqlFormatter.setNewline("");
-        sqlFormatter.setWrapIndent("");
-    }
+    private static final ThreadLocal<SQLFormatter> SQL_FORMATTER = ThreadLocal.withInitial(() -> {
+        final SQLFormatter formatter = new SQLFormatter();
+        formatter.setClauseIndent("");
+        formatter.setDoubleSpace(false);
+        formatter.setLineLength(Integer.MAX_VALUE);
+        formatter.setMultiLine(false);
+        formatter.setNewline("");
+        formatter.setWrapIndent("");
+        return formatter;
+    });
 
     @Getter
     private final AtomicBoolean shouldContinue = new AtomicBoolean(true);
@@ -80,14 +79,13 @@ class DatabaseOperation {
     };
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
-    private final ConnectionString connectionString;
     @Getter
     private final long timeoutInMs;
     @Getter
     @Setter
     private Transaction transaction;
 
-    boolean openConnection() {
+    boolean openConnection(final ConnectionString connectionString) {
         final Instant now = Instant.now();
         final ExecutorService taskExecutor = Executors.newCachedThreadPool(
                 ThreadFactory.builder()
@@ -266,7 +264,7 @@ class DatabaseOperation {
     }
 
     public QueryResult query(final QueryConfig config) {
-        final String queryResultId = uniqueIdGenerator.generate(QueryResult.class);
+        final String queryResultId = uniqueIdGenerator.globalUUID(QueryResult.class.getName());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             MDC.put("query.id", DatabaseUtil.getMaskedId(queryResultId));
@@ -621,7 +619,7 @@ class DatabaseOperation {
                     return nullValue();
                 }
                 default -> {
-                    return null;
+                    throw new UnsupportedOperationException("Unsupported column type: " + rs.getMetaData().getColumnType(i));
                 }
             }
         } catch (final SQLException e) {
@@ -663,7 +661,7 @@ class DatabaseOperation {
 
     private static void logQuery(final String query) {
         if (log.isDebugEnabled()) {
-            log.debug("{}", Objects.toString(sqlFormatter.prettyPrint(query)).trim());
+            log.debug("{}", Objects.toString(SQL_FORMATTER.get().prettyPrint(query)).trim());
         }
     }
 }
