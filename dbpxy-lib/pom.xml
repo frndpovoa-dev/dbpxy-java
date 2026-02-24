@@ -11,7 +11,7 @@
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
+        <com.google.cloud_libraries-bom.version>26.76.0</com.google.cloud_libraries-bom.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
