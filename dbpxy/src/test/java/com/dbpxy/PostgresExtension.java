@@ -66,6 +66,6 @@ public class PostgresExtension implements BeforeAllCallback {
         System.setProperty("POSTGRESQL_USERNAME", username);
         System.setProperty("POSTGRESQL_PASSWORD", password);
 
-        log.info("Postgresql server started on {}:{}", postgresql.getHost(), postgresql.getMappedPort(port));
+        log.info("postgresql server started on {}:{}", postgresql.getHost(), postgresql.getMappedPort(port));
     }
 }

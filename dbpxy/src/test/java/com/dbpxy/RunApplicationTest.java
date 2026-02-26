@@ -32,14 +32,14 @@ import java.time.Duration;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @ExtendWith({PostgresExtension.class})
 @ActiveProfiles({"integration"})
 @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
 class RunApplicationTest {
     @Test
     void run() {
-        log.info("App is running in testing mode");
+        log.info("app is running in testing mode");
         await()
                 .pollInterval(Duration.ofHours(1))
                 .atMost(Duration.ofDays(1))

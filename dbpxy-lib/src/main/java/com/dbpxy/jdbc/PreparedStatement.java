@@ -87,12 +87,12 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                     } else if (it instanceof Double v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(v).build().toByteString())
+                                .setData(ValueFloat64.newBuilder().setValue(Double.toString(v)).build().toByteString())
                                 .build();
                     } else if (it instanceof BigDecimal v) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(v.doubleValue()).build().toByteString())
+                                .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
                                 .build();
                     } else if (it instanceof Timestamp v) {
                         return Value.newBuilder()
@@ -116,8 +116,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                             .build()
                                             .toByteString())
                                     .build();
-                        } catch (final SQLException
-                                       | JsonProcessingException e) {
+                        } catch (final SQLException | JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
                     }

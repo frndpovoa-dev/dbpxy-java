@@ -34,7 +34,7 @@ import java.util.List;
 @Slf4j
 @RestController
 @RequestMapping(path = "/api/v1/test")
-@Transactional(timeout = 60)
+@Transactional(timeout = 6000)
 @RequiredArgsConstructor
 public class TestController {
     private final TestService service;
@@ -43,11 +43,14 @@ public class TestController {
 
     @GetMapping(path = "/list")
     public List<TestBo> list(
-            @RequestHeader("X-Transaction-Id") final String transactionId,
-            @RequestParam("group") String group
+            @RequestHeader(value = "X-Transaction-Id",required = false) final String transactionId,
+            @RequestParam("group") String groupName
     ) throws Exception {
+        if (transactionId == null) {
+            return repository.findByGroupName(groupName);
+        }
         connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        final List<TestBo> result = repository.findByGroupName(group);
+        final List<TestBo> result = repository.findByGroupName(groupName);
         connectionHolder.getConnection().leaveSharedTransaction(transactionId);
         return result;
     }
@@ -58,9 +61,9 @@ public class TestController {
             @RequestBody final TestBo testBo
     ) throws Exception {
         connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        repository.save(testBo);
-        service.save(testBo);
+        repository.saveAndFlush(testBo);
         connectionHolder.getConnection().leaveSharedTransaction(transactionId);
+        service.save(testBo);
         return testBo;
     }
 }

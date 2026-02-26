@@ -34,7 +34,7 @@ public class TestService {
 
     @Transactional(timeout = 60, propagation = Propagation.REQUIRES_NEW)
     public TestBo save(final TestBo testBo) {
-        return repository.save(TestBo.builder()
+        return repository.save(testBo.toBuilder()
                 .id(testBo.getId() + 1)
                 .name(testBo.getName() + " from server side")
                 .build());

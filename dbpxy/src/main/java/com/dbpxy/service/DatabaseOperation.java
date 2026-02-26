@@ -35,6 +35,7 @@ import org.apache.openjpa.lib.jdbc.SQLFormatter;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
 
+import java.math.BigDecimal;
 import java.sql.*;
 import java.sql.Date;
 import java.time.Duration;
@@ -552,12 +553,12 @@ class DatabaseOperation {
                             .build();
                 }
                 case Types.NUMERIC, Types.DOUBLE -> {
-                    final double v = rs.getDouble(i);
+                    final BigDecimal v = rs.getBigDecimal(i);
                     if (wasNull(rs)) return nullValue();
                     return Value.newBuilder()
                             .setCode(ValueCode.FLOAT64)
                             .setData(ValueFloat64.newBuilder()
-                                    .setValue(v)
+                                    .setValue(v.toString())
                                     .build()
                                     .toByteString()
                             )
@@ -631,7 +632,7 @@ class DatabaseOperation {
         try {
             switch (value.getCode()) {
                 case INT64 -> stmt.setLong(i, ValueInt64.parseFrom(value.getData()).getValue());
-                case FLOAT64 -> stmt.setDouble(i, ValueFloat64.parseFrom(value.getData()).getValue());
+                case FLOAT64 -> stmt.setBigDecimal(i, new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()));
                 case BOOL -> stmt.setBoolean(i, ValueBool.parseFrom(value.getData()).getValue());
                 case STRING -> stmt.setString(i, ValueString.parseFrom(value.getData()).getValue());
                 case TIME -> {

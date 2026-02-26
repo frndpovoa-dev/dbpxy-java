@@ -83,7 +83,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node
     ) {
-        log.info("hello from dbpxy node {}", node);
+        log.info("hello from dbpxy node: {}", node);
 
         this.dbpxyClient = dbpxyClient;
         this.cryptoService = cryptoService;
@@ -149,10 +149,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
             if (ops.getTransaction().getStatus() != Transaction.Status.ACTIVE) {
-                responseObserver.onError(Status.INVALID_ARGUMENT
-                        .withDescription("Transaction is not active")
-                        .asRuntimeException());
-                return;
+                throw new IllegalStateException("Transaction is not active");
             }
 
             final boolean committed = ops.commitTransaction();
@@ -167,6 +164,18 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final IllegalArgumentException e) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
+        } catch (final IllegalStateException e) {
+            responseObserver.onError(Status.FAILED_PRECONDITION
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .augmentDescription(node)
@@ -198,10 +207,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
             if (ops.getTransaction().getStatus() != Transaction.Status.ACTIVE) {
-                responseObserver.onError(Status.INVALID_ARGUMENT
-                        .withDescription("Transaction is not active")
-                        .asRuntimeException());
-                return;
+                throw new IllegalStateException("Transaction is not active");
             }
 
             final boolean rolledBack = ops.rollbackTransaction();
@@ -216,6 +222,18 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final IllegalArgumentException e) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
+        } catch (final IllegalStateException e) {
+            responseObserver.onError(Status.FAILED_PRECONDITION
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .augmentDescription(node)
@@ -276,7 +294,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
-            // Transactional query. Pre-fetches first page and allows for more pages to be fetched later.
+            // Pre-fetches first page and allows for more pages to be fetched later.
             result = ops.next(NextConfig.newBuilder()
                     .setTransaction(config.getTransaction())
                     .setQueryResultId(result.getId())

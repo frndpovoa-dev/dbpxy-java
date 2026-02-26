@@ -41,7 +41,7 @@ import java.util.TimeZone;
 public class Application {
     private final Optional<BuildProperties> buildProperties;
 
-    static void main(String[] args) {
+    static void main(final String[] args) {
         new SpringApplicationBuilder(Application.class)
                 .run(args);
     }
@@ -52,9 +52,12 @@ public class Application {
     }
 
     @EventListener
-    public void onReady(ApplicationReadyEvent event) {
-        buildProperties.ifPresent(it ->
-                log.info("APP_INFO=[name={}, version={}, buildTime={}]", it.getName(), it.getVersion(), it.getTime())
+    public void onReady(final ApplicationReadyEvent event) {
+        buildProperties.ifPresent(app ->
+                log.info("app_info,{},v={},t={}",
+                        app.getName(),
+                        app.getVersion(),
+                        app.getTime())
         );
     }
 }

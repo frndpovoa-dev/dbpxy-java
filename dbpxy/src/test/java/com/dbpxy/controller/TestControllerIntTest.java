@@ -42,8 +42,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
@@ -111,32 +114,44 @@ class TestControllerIntTest extends BaseIntTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked"})
     void testApiUsingSharedTransaction() {
         final ParameterizedTypeReference<List<TestDto>> listTypeReference = new ParameterizedTypeReference<>() {
         };
 
         log.debug("Read before insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody());
+        final List<TestDto> beforeTx1 = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody();
+        assertThat(beforeTx1)
+                .isEmpty();
 
         log.debug("Read before insert using tx 2");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody());
+        final List<TestDto> beforeTx2 = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody();
+        assertThat(beforeTx2)
+                .isEmpty();
 
         log.debug("Insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/insert", HttpMethod.POST, new HttpEntity<>(
-                TestDto.builder().id(2025L).name("Hello World!").groupName("web").build(),
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), TestDto.class).getBody());
+        final TestDto insertTx1 = TestDto.builder().id(2025L).name("Hello World!").groupName("web").doubleValue(2.0).bigdecimalValue(new BigDecimal("20.0000000000000000000000000")).build();
+        final TestDto insertTx1a = TestDto.builder().id(2026L).name("Hello World! from server side").groupName("web").doubleValue(2.0).bigdecimalValue(new BigDecimal("20.0000000000000000000000000")).build();
+        final TestDto resultInsertTx1 = restTemplate.exchange("http://localhost:9091/api/v1/test/insert", HttpMethod.POST, new HttpEntity<>(
+                insertTx1,
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), TestDto.class).getBody();
+        assertThat(resultInsertTx1)
+                .isNotNull()
+                .isEqualTo(insertTx1);
 
         log.debug("Read after insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody());
+        final List<TestDto> afterTx1 = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody();
+        assertThat(afterTx1)
+                .isNotEmpty()
+                .containsExactly(insertTx1, insertTx1a);
 
         log.debug("Read after insert using tx 2");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody());
-
-
+        final List<TestDto> afterTx2 = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody();
+        assertThat(afterTx2)
+                .isNotEmpty()
+                .containsExactly(insertTx1a);
     }
 }

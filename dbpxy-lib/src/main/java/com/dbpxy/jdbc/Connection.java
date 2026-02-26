@@ -39,7 +39,6 @@ import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
 import java.util.concurrent.Executor;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -48,6 +47,7 @@ import java.util.regex.Pattern;
 @Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
+    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final Pattern TRANSACTION_ID_PATTERN = Pattern.compile("^(.+?)@(.+)$");
     private static final Integer DEFAULT_QUERY_TIMEOUT_IN_MS = 60_000;
     @EqualsAndHashCode.Include
@@ -58,14 +58,12 @@ public class Connection implements java.sql.Connection {
     private final ConnectionString connectionString;
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub blockingStub;
-    private ManagedChannel onHoldChannel;
-    private DbpxyGrpc.DbpxyBlockingStub onHoldBlockingStub;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
     private String catalog;
 
-    private final Stack<Transaction> transactions = new Stack<>();
+    private final Deque<Transaction> transactions = new ArrayDeque<>();
 
     public String getTransactionId() {
         return Optional.ofNullable(getTransaction(true, DEFAULT_QUERY_TIMEOUT_IN_MS))
@@ -75,11 +73,8 @@ public class Connection implements java.sql.Connection {
 
     public synchronized Transaction getTransaction(final boolean create, final Integer timeout) {
         if (create) {
-            final List<Transaction.Status> activeTransactionStatuses = List.of(
-                    Transaction.Status.ACTIVE,
-                    Transaction.Status.JOINED);
             new ArrayList<>(transactions).stream()
-                    .filter(existingTransaction -> !activeTransactionStatuses.contains(existingTransaction.getStatus()))
+                    .filter(transaction -> !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()))
                     .forEach(this::popTransaction);
             if (transactions.isEmpty()) {
                 final Transaction transaction = blockingStub
@@ -93,8 +88,8 @@ public class Connection implements java.sql.Connection {
             }
         }
         return Optional.of(transactions)
-                .filter(Predicate.not(Stack::isEmpty))
-                .map(Stack::peek)
+                .filter(Predicate.not(Deque::isEmpty))
+                .map(Deque::peek)
                 .orElse(null);
     }
 
@@ -103,12 +98,9 @@ public class Connection implements java.sql.Connection {
     }
 
     public synchronized void popTransaction(final Transaction transaction) {
-        final Stack<Transaction> temp = new Stack<>();
-        temp.addAll(transactions);
-        transactions.clear();
-        transactions.addAll(temp.stream()
-                .filter(it -> !(Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode())))
-                .toList());
+        transactions.removeIf(it ->
+                Objects.equals(it.getId(), transaction.getId())
+                        && Objects.equals(it.getNode(), transaction.getNode()));
     }
 
     public void replaceTransaction(final Transaction out, final Transaction in) {
@@ -127,14 +119,6 @@ public class Connection implements java.sql.Connection {
                 .setNode(m.group(2))
                 .setStatus(Transaction.Status.JOINED)
                 .build();
-        this.onHoldChannel = channel;
-        this.onHoldBlockingStub = blockingStub;
-        this.channel = Grpc.newChannelBuilderForAddress(
-                        transaction.getNode(),
-                        dbpxyProperties.getPort(),
-                        credentials)
-                .build();
-        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
         log.debug("reconnected({} -> {})", id, transaction.getNode());
         pushTransaction(transaction);
     }
@@ -145,19 +129,10 @@ public class Connection implements java.sql.Connection {
         if (!m.matches()) {
             throw new SQLException("Invalid transaction id format");
         }
-        try {
-            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new SQLException(e);
-        } finally {
-            popTransaction(Transaction.newBuilder()
-                    .setId(m.group(1))
-                    .setNode(m.group(2))
-                    .build());
-            this.channel = onHoldChannel;
-            this.blockingStub = onHoldBlockingStub;
-        }
+        popTransaction(Transaction.newBuilder()
+                .setId(m.group(1))
+                .setNode(m.group(2))
+                .build());
     }
 
     public Connection(
@@ -228,7 +203,7 @@ public class Connection implements java.sql.Connection {
     }
 
     private String getMaskedId(final String id) {
-        return id.replaceFirst("^(.{32}).*$", "$1");
+        return id.substring(0, 32);
     }
 
     @Override
@@ -241,15 +216,6 @@ public class Connection implements java.sql.Connection {
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                 final Transaction newTransaction = blockingStub.commitTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
-            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
-                try {
-                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-                    this.channel = onHoldChannel;
-                    this.blockingStub = onHoldBlockingStub;
-                } catch (final InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new SQLException(e);
-                }
             }
         }
     }
@@ -264,30 +230,21 @@ public class Connection implements java.sql.Connection {
             if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                 final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
                 replaceTransaction(transaction, newTransaction);
-            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
-                try {
-                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-                    this.channel = onHoldChannel;
-                    this.blockingStub = onHoldBlockingStub;
-                } catch (final InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new SQLException(e);
-                }
             }
         }
     }
 
     @Override
     public void close() throws SQLException {
-        log.debug("close({})", id);
-        try {
-            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new SQLException(e);
-        } finally {
-            this.closed = true;
-            connectionHolder.popConnection(this);
+        final Transaction transaction = getTransaction(false, 0);
+        if (transaction.getStatus() != Transaction.Status.JOINED) {
+            log.debug("close({})", id);
+            try {
+                channel.shutdownNow();
+            } finally {
+                this.closed = true;
+                connectionHolder.popConnection(this);
+            }
         }
     }
 

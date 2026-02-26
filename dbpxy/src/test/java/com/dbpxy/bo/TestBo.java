@@ -20,14 +20,17 @@ package com.dbpxy.bo;
  * #L%
  */
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
-@Builder
+@Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -42,4 +45,9 @@ public class TestBo {
     private String name;
     @EqualsAndHashCode.Include
     private String groupName;
+    @EqualsAndHashCode.Include
+    private Double doubleValue;
+    @EqualsAndHashCode.Include
+    @Column(name = "bigdecimalValue", columnDefinition = "numeric(53,25)")
+    private BigDecimal bigdecimalValue;
 }

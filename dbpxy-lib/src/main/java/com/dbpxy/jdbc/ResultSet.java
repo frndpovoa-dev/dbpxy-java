@@ -75,7 +75,7 @@ public class ResultSet implements java.sql.ResultSet {
                     return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
                 }
                 case FLOAT64 -> {
-                    return Double.toString(ValueFloat64.parseFrom(value.getData()).getValue());
+                    return ValueFloat64.parseFrom(value.getData()).getValue();
                 }
                 case BOOL -> {
                     return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());

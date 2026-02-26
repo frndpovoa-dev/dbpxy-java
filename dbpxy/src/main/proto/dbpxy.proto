@@ -125,7 +125,7 @@ message ValueInt64 {
 }
 
 message ValueFloat64 {
-  double value = 1;
+  string value = 1;
 }
 
 message ValueBool {

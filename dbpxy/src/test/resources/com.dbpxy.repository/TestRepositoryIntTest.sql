@@ -17,4 +17,5 @@
 -- limitations under the License.
 -- #L%
 ---
-insert into test (id, name, groupname) values (1, 'Hello World! 1', 'repo');
+insert into test (id, name, groupname, doubleValue, bigdecimalValue)
+values (1, 'Hello World! 1', 'repo', -1.0, 10.9999999999999999999999999);

@@ -36,6 +36,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,11 +58,18 @@ class TestRepositoryIntTest extends BaseIntTest {
             .id(1L)
             .name("Hello World! 1")
             .groupName("repo")
+            .doubleValue(-1.0)
+            .bigdecimalValue(new BigDecimal("10.9999999999999999999999999"))
             .build();
     public static final TestBo TEST_2 = TestBo.builder()
             .id(2L)
             .name("Hello World! 2")
             .groupName("repo")
+            .doubleValue(2.0)
+            .bigdecimalValue(new BigDecimal("-20.9999999999999999999999999"))
+            .build();
+    public static final TestBo TEST_2_DIFF_1 = TEST_2.toBuilder()
+            .bigdecimalValue(new BigDecimal("-20.999999999999999999999999")) // Precision difference
             .build();
 
     @Test
@@ -71,35 +79,50 @@ class TestRepositoryIntTest extends BaseIntTest {
         log.debug("Tx transactionId({})", transactionId);
 
         log.debug("Read before insert using JPA");
-        log.debug("{}", repository.findByGroupName("repo"));
+        final List<TestBo> before = repository.findByGroupName("repo");
+        assertThat(before)
+                .containsExactly(TEST_1);
 
         log.debug("Insert");
-        log.debug("{}", repository.saveAndFlush(TEST_2));
+        final TestBo t2 = repository.saveAndFlush(TEST_2);
+        assertThat(t2)
+                .isEqualTo(TEST_2);
 
         log.debug("Read after insert using JPA");
-        log.debug("{}", repository.findByGroupName("repo"));
-
-        log.debug("Read after insert using API");
-        final List<TestBo> apiResponse = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", transactionId))), new ParameterizedTypeReference<List<TestBo>>() {
-        }).getBody();
-        log.debug("{}", apiResponse);
-        assertThat(apiResponse)
+        final List<TestBo> after = repository.findByGroupName("repo");
+        assertThat(after)
                 .isNotEmpty()
                 .containsExactly(TEST_1, TEST_2);
 
-        Optional<TestBo> test1Bo = repository.findById(TEST_1.getId());
-        assertThat(test1Bo.isPresent())
-                .isTrue();
-        assertThat(test1Bo.get())
+        log.debug("Read after insert using API no TX");
+        final List<TestBo> apiResponseNoTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of())), new ParameterizedTypeReference<List<TestBo>>() {
+        }).getBody();
+        assertThat(apiResponseNoTx)
+                .isEmpty();
+
+        log.debug("Read after insert using API");
+        final List<TestBo> apiResponseTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
+                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", transactionId))), new ParameterizedTypeReference<List<TestBo>>() {
+        }).getBody();
+        assertThat(apiResponseTx)
+                .isNotEmpty()
+                .containsExactly(TEST_1, TEST_2)
+                .doesNotContain(TEST_2_DIFF_1);
+
+        Optional<TestBo> t1Opt = repository.findById(TEST_1.getId());
+        assertThat(t1Opt)
+                .isPresent();
+        assertThat(t1Opt.get())
                 .isNotNull()
                 .isEqualTo(TEST_1);
 
-        Optional<TestBo> test2Bo = repository.findById(TEST_2.getId());
-        assertThat(test2Bo.isPresent())
-                .isTrue();
-        assertThat(test2Bo.get())
+        Optional<TestBo> t2Opt = repository.findById(TEST_2.getId());
+        assertThat(t2Opt)
+                .isPresent();
+        assertThat(t2Opt.get())
                 .isNotNull()
-                .isEqualTo(TEST_2);
+                .isEqualTo(TEST_2)
+                .isNotEqualTo(TEST_2_DIFF_1);
     }
 }
