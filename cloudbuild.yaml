@@ -27,7 +27,6 @@ steps:
     entrypoint: mvn
     args: [ 'install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
   - id: 'build-backend-using-kaniko'
-    waitFor: [ 'build-backend-using-maven' ]
     name: gcr.io/kaniko-project/executor
     args:
       - --snapshot-mode=full
