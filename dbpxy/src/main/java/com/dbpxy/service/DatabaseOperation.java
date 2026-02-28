@@ -90,7 +90,7 @@ class DatabaseOperation {
         final Instant now = Instant.now();
         final ExecutorService taskExecutor = Executors.newCachedThreadPool(
                 ThreadFactory.builder()
-                        .prefix(Thread.currentThread().getName() + "-dbpxy-" + now.getEpochSecond() + now.getNano())
+                        .prefix(Thread.currentThread().getName() + "-dbpxy-" + now.getEpochSecond() + now.getNano() + "-")
                         .build());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
@@ -114,7 +114,7 @@ class DatabaseOperation {
                     if (callback != null) {
                         log.debug("before doWithConnection()");
                         callback.doWithConnection(params);
-                        log.debug("after doWithConnection(), shouldContinue -> {}", params.getShouldConnectionContinue().get());
+                        log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.getShouldConnectionContinue().get());
                     }
                 }
             } catch (final Exception e) {
@@ -308,7 +308,7 @@ class DatabaseOperation {
                             if (callback != null) {
                                 log.debug("before doWithResultSet()");
                                 callback.doWithResultSet(resultSetParams);
-                                log.debug("after doWithResultSet(), shouldContinue -> {}, shouldContinueResultSet -> {}", params.getShouldConnectionContinue().get(), shouldResultSetContinue.get());
+                                log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.getShouldConnectionContinue().get(), shouldResultSetContinue.get());
                             }
                         } else {
                             shouldResultSetContinue.set(false);

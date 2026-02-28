@@ -63,7 +63,7 @@ public class DbpxyServer {
             server.shutdownNow().awaitTermination();
             log.info("gRPC server stopped");
         } catch (final InterruptedException e) {
-            log.info("gRPC failed to stop", e);
+            log.error("gRPC failed to stop", e);
         }
     }
 }

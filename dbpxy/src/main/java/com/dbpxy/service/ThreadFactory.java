@@ -25,15 +25,17 @@ import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 
+import java.util.concurrent.atomic.AtomicLong;
+
 @Slf4j
 @Builder
 class ThreadFactory implements java.util.concurrent.ThreadFactory {
     private final String prefix;
     @Builder.Default
-    private int counter = 0;
+    private AtomicLong counter = new AtomicLong(0);
 
     @Override
     public Thread newThread(@NonNull final Runnable r) {
-        return new Thread(r, prefix + (counter++)); // ASAP
+        return new Thread(r, prefix + counter.getAndIncrement());
     }
 }
