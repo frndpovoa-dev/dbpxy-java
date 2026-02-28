@@ -65,7 +65,8 @@ public class DbpxyClient {
             final String node,
             final Consumer<DbpxyGrpc.DbpxyBlockingStub> callback) {
         final ManagedChannel channel = channelMap.get(node, ignored -> Grpc
-                .newChannelBuilderForAddress(node, grpcProperties.getPort(), credentials).build());
+                .newChannelBuilderForAddress(node, grpcProperties.getPort(), credentials)
+                .build());
         final DbpxyGrpc.DbpxyBlockingStub blockingStub = DbpxyGrpc.newBlockingStub(channel);
         callback.accept(blockingStub);
     }

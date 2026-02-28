@@ -136,35 +136,13 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
-        final QueryResult result = getConnection().getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
-                .setQueryConfig(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .addAllArgs(paramAsList())
-                        .build())
-                .build());
-        final ResultSet resultSet = new ResultSet(
-                getConnection(),
-                this,
-                result
-        );
-        super.setResultSet(resultSet);
-        return resultSet;
+    public ResultSet executeQuery() throws SQLException {
+        return executeQuery(sql, paramAsList());
     }
 
     @Override
     public int executeUpdate() throws SQLException {
-        final ExecuteResult result = getConnection().getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
-                .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .addAllArgs(paramAsList())
-                        .build())
-                .build());
-        return result.getRowsAffected();
+        return executeUpdate(sql, paramAsList());
     }
 
     @Override

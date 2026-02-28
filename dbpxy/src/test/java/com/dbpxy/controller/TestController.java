@@ -24,46 +24,99 @@ import com.dbpxy.ConnectionHolder;
 import com.dbpxy.bo.TestBo;
 import com.dbpxy.repository.TestRepository;
 import com.dbpxy.service.TestService;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.concurrent.Callable;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @RestController
 @RequestMapping(path = "/api/v1/test")
-@Transactional(timeout = 6000)
 @RequiredArgsConstructor
 public class TestController {
     private final TestService service;
     private final TestRepository repository;
     private final ConnectionHolder connectionHolder;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    @Transactional(readOnly = true, timeout = 60)
     @GetMapping(path = "/list")
     public List<TestBo> list(
-            @RequestHeader(value = "X-Transaction-Id",required = false) final String transactionId,
+            @RequestHeader(value = "X-Transaction-Id", required = false) final String transactionId,
             @RequestParam("group") String groupName
     ) throws Exception {
-        if (transactionId == null) {
-            return repository.findByGroupName(groupName);
-        }
-        connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        final List<TestBo> result = repository.findByGroupName(groupName);
-        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
-        return result;
+        return doWithSharedTransaction(transactionId,
+                () -> repository.findByGroupName(groupName));
     }
 
+    @Transactional(timeout = 60)
     @PostMapping(path = "/insert")
-    public TestBo step2(
-            @RequestHeader("X-Transaction-Id") final String transactionId,
+    public TestBo insert(
+            @RequestHeader(value = "X-Transaction-Id", required = false) final String transactionId,
             @RequestBody final TestBo testBo
     ) throws Exception {
-        connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        repository.saveAndFlush(testBo);
-        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
+        assertThat(repository.findById(testBo.getId()))
+                .isEmpty();
+
+        doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    assertThat(repository.findById(testBo.getId()))
+                            .isEmpty();
+                    repository.save(testBo);
+                    assertThat(repository.findById(testBo.getId()))
+                            .isPresent();
+                });
+
+        assertThat(repository.findById(testBo.getId()))
+                .isEmpty();
+
         service.save(testBo);
         return testBo;
+    }
+
+    protected <T> T doWithSharedTransaction(
+            final String transactionId,
+            final Callable<T> callback) throws Exception {
+
+        entityManager.flush();
+        entityManager.clear();
+
+        return connectionHolder.doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    final T result = callback.call();
+
+                    entityManager.flush();
+                    entityManager.clear();
+
+                    return result;
+                });
+    }
+
+    protected void doWithSharedTransaction(
+            final String transactionId,
+            final Runnable callback) throws Exception {
+
+        entityManager.flush();
+        entityManager.clear();
+
+        connectionHolder.doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    callback.run();
+
+                    entityManager.flush();
+                    entityManager.clear();
+                });
     }
 }

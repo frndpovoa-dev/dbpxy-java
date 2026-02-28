@@ -21,23 +21,39 @@ package com.dbpxy;
  */
 
 import com.dbpxy.jdbc.Connection;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Stack;
+import java.util.ArrayDeque;
+import java.util.Deque;
+import java.util.concurrent.Callable;
 
 @Slf4j
+@RequiredArgsConstructor
 public class ConnectionHolder {
-    private static final ThreadLocal<Stack<Connection>> connections = ThreadLocal.withInitial(Stack::new);
+    private static final ThreadLocal<Deque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
+
+    public void doWithSharedTransaction(
+            final String transactionId,
+            final Runnable callback) throws Exception {
+        getConnection().doWithSharedTransaction(transactionId, callback);
+    }
+
+    public <T> T doWithSharedTransaction(
+            final String transactionId,
+            final Callable<T> callback) throws Exception {
+        return getConnection().doWithSharedTransaction(transactionId, callback);
+    }
 
     public Connection getConnection() {
-        return connections.get().isEmpty() ? null : connections.get().peek();
+        return CONNECTIONS.get().peek();
     }
 
     public void pushConnection(final Connection connection) {
-        connections.get().push(connection);
+        CONNECTIONS.get().push(connection);
     }
 
     public void popConnection(final Connection connection) {
-        connections.get().remove(connection);
+        CONNECTIONS.get().remove(connection);
     }
 }

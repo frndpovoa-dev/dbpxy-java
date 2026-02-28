@@ -36,6 +36,6 @@ interface DoWithConnection {
     class Params {
         private final Connection connection;
         private final ExecutorService taskExecutor;
-        private final AtomicBoolean shouldContinue;
+        private final AtomicBoolean shouldConnectionContinue;
     }
 }

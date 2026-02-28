@@ -89,13 +89,13 @@ class TestControllerIntTest extends BaseIntTest {
         this.tx1Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
                         .setConnectionString(connectionString)
-                        .setTimeout(60_000 * 10)
+                        .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
                         .build());
         this.tx2Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
                         .setConnectionString(connectionString)
-                        .setTimeout(60_000 * 10)
+                        .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
                         .build());
 
@@ -114,6 +114,7 @@ class TestControllerIntTest extends BaseIntTest {
     }
 
     @Test
+    @SuppressWarnings({"removal", "deprecation"})
     void testApiUsingSharedTransaction() {
         final ParameterizedTypeReference<List<TestDto>> listTypeReference = new ParameterizedTypeReference<>() {
         };

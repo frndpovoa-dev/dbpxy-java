@@ -22,7 +22,7 @@ package com.dbpxy.service;
 
 class DatabaseUtil {
     public static String getMaskedId(final String id) {
-        return id.substring(0, 32);
+        return id.substring(0, Math.min(32, id.length()));
     }
 
     public static int sanitizeFetchSize(final long fetchSize) {

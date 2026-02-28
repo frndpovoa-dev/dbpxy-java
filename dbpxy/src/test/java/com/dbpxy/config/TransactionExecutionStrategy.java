@@ -50,34 +50,21 @@ public class TransactionExecutionStrategy extends AsyncSerialExecutionStrategy {
             final ExecutionContext executionContext,
             final ExecutionStrategyParameters parameters
     ) {
-        Connection connection = null;
         final String transactionId = executionContext.getGraphQLContext().get(Headers.TRANSACTION);
 
         if (StringUtils.isNotEmpty(transactionId)) {
-            boolean autoCommit;
-            boolean readOnly;
             try {
-                connection = (Connection) DataSourceUtils.getConnection(dataSource);
-
-                autoCommit = connection.getAutoCommit();
-                connection.setAutoCommit(false);
-
-                readOnly = connection.isReadOnly();
-                connection.setReadOnly(false);
-
+                final Connection connection = (Connection) DataSourceUtils.getConnection(dataSource);
                 connection.joinSharedTransaction(transactionId);
 
-                final Connection connection1 = connection;
                 return super.execute(executionContext, parameters)
                         .whenComplete((executionResult, throwable) -> {
                             try {
-                                connection1.leaveSharedTransaction(transactionId);
-                                connection1.setAutoCommit(autoCommit);
-                                connection1.setReadOnly(readOnly);
+                                connection.leaveSharedTransaction(transactionId);
                             } catch (final SQLException e) {
                                 throw new RuntimeException(e);
                             } finally {
-                                DataSourceUtils.releaseConnection(connection1, dataSource);
+                                DataSourceUtils.releaseConnection(connection, dataSource);
                             }
                         });
             } catch (final SQLException e) {

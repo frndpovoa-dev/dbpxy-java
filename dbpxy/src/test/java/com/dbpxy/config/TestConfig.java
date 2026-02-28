@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.Database;
 import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.web.client.RestTemplate;
 
@@ -70,12 +71,12 @@ public class TestConfig {
             final DbpxyServer dbpxyServer // depends-on
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
+        vendorAdapter.setDatabase(Database.POSTGRESQL);
         vendorAdapter.setShowSql(true);
         vendorAdapter.setGenerateDdl(true);
 
         final Map<String, Object> jpaProperties = new HashMap<>();
         jpaProperties.put(Environment.HBM2DDL_AUTO, "create-drop");
-        jpaProperties.put(Environment.DIALECT, "org.hibernate.dialect.PostgreSQLDialect");
         jpaProperties.put(Environment.SHOW_SQL, true);
         jpaProperties.put(Environment.FORMAT_SQL, true);
 

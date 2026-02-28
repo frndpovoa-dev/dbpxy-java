@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
+import java.util.List;
 import java.util.Objects;
 
 @Slf4j
@@ -44,11 +45,19 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public ResultSet executeQuery(final String sql) throws SQLException {
+        return executeQuery(sql, List.of());
+    }
+
+    protected ResultSet executeQuery(
+            final String sql,
+            final List<Value> params
+    ) throws SQLException {
         final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
+                        .setTimeoutInMs(getQueryTimeout())
+                        .addAllArgs(params)
                         .build())
                 .build());
         this.resultSet = new ResultSet(
@@ -61,11 +70,19 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int executeUpdate(final String sql) throws SQLException {
+        return executeUpdate(sql, List.of());
+    }
+
+    protected int executeUpdate(
+            final String sql,
+            final List<Value> params
+    ) throws SQLException {
         final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true, getQueryTimeout()))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
+                        .setTimeoutInMs(getQueryTimeout())
+                        .addAllArgs(params)
                         .build())
                 .build());
         return result.getRowsAffected();

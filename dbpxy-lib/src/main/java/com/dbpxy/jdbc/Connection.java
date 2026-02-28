@@ -38,8 +38,8 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.function.Predicate;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -56,8 +56,8 @@ public class Connection implements java.sql.Connection {
     private final DbpxyProperties dbpxyProperties;
     private final ConnectionHolder connectionHolder;
     private final ConnectionString connectionString;
-    private ManagedChannel channel;
-    private DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    private final ManagedChannel channel;
+    private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
@@ -80,17 +80,14 @@ public class Connection implements java.sql.Connection {
                 final Transaction transaction = blockingStub
                         .beginTransaction(BeginTransactionConfig.newBuilder()
                                 .setConnectionString(connectionString)
-                                .setTimeout(timeout)
+                                .setTimeoutInMs(timeout)
                                 .setAutoCommit(autoCommit)
                                 .setReadOnly(readOnly)
                                 .build());
                 pushTransaction(transaction);
             }
         }
-        return Optional.of(transactions)
-                .filter(Predicate.not(Deque::isEmpty))
-                .map(Deque::peek)
-                .orElse(null);
+        return transactions.peek();
     }
 
     public synchronized void pushTransaction(final Transaction transaction) {
@@ -108,8 +105,37 @@ public class Connection implements java.sql.Connection {
         pushTransaction(in);
     }
 
+    public void doWithSharedTransaction(
+            final String transactionId,
+            final Runnable callback) throws Exception {
+        if (transactionId == null) {
+            callback.run();
+            return;
+        }
+        try {
+            joinSharedTransaction(transactionId);
+            callback.run();
+        } finally {
+            leaveSharedTransaction(transactionId);
+        }
+    }
+
+    public <T> T doWithSharedTransaction(
+            final String transactionId,
+            final Callable<T> callback) throws Exception {
+        if (transactionId == null) {
+            return callback.call();
+        }
+        try {
+            joinSharedTransaction(transactionId);
+            return callback.call();
+        } finally {
+            leaveSharedTransaction(transactionId);
+        }
+    }
+
     public void joinSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("joinSharedTransaction({})", transactionId);
+        log.debug("joinSharedTransaction({})", getMaskedId(transactionId));
         final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
         if (!m.matches()) {
             throw new SQLException("Invalid transaction id format");
@@ -119,12 +145,12 @@ public class Connection implements java.sql.Connection {
                 .setNode(m.group(2))
                 .setStatus(Transaction.Status.JOINED)
                 .build();
-        log.debug("reconnected({} -> {})", id, transaction.getNode());
         pushTransaction(transaction);
+        log.debug("joined(conn: {}, tx: {})", id, getMaskedId(transactionId));
     }
 
     public void leaveSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("leaveSharedTransaction({})", transactionId);
+        log.debug("leaveSharedTransaction({})", getMaskedId(transactionId));
         final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
         if (!m.matches()) {
             throw new SQLException("Invalid transaction id format");
@@ -133,6 +159,7 @@ public class Connection implements java.sql.Connection {
                 .setId(m.group(1))
                 .setNode(m.group(2))
                 .build());
+        log.debug("left(conn: {}, tx: {})", id, getMaskedId(transactionId));
     }
 
     public Connection(
@@ -165,7 +192,7 @@ public class Connection implements java.sql.Connection {
                             .toList())
                     .build();
             connectionHolder.pushConnection(this);
-            log.debug("open({})", id);
+            log.debug("open(conn: {})", id);
         } catch (final IOException e) {
             throw new SQLException(e);
         }
@@ -202,8 +229,8 @@ public class Connection implements java.sql.Connection {
         return autoCommit;
     }
 
-    private String getMaskedId(final String id) {
-        return id.substring(0, 32);
+    private static String getMaskedId(final String id) {
+        return id.substring(0, Math.min(32, id.length()));
     }
 
     @Override
@@ -237,9 +264,14 @@ public class Connection implements java.sql.Connection {
     @Override
     public void close() throws SQLException {
         final Transaction transaction = getTransaction(false, 0);
-        if (transaction.getStatus() != Transaction.Status.JOINED) {
-            log.debug("close({})", id);
+        if (transaction != null && transaction.getStatus() == Transaction.Status.JOINED) {
+            log.debug("close skipped (conn: {})", id);
+        } else {
             try {
+                if (autoCommit) {
+                    commit();
+                }
+                log.debug("close(conn: {})", id);
                 channel.shutdownNow();
             } finally {
                 this.closed = true;

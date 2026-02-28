@@ -67,12 +67,12 @@ class DatabaseOperation {
     });
 
     @Getter
-    private final AtomicBoolean shouldContinue = new AtomicBoolean(true);
+    private final AtomicBoolean shouldConnectionContinue = new AtomicBoolean(true);
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
     private final LinkedBlockingQueue<DoWithConnection> taskQueue = new LinkedBlockingQueue<>() {
         @Override
         public boolean add(@NonNull final DoWithConnection doWithConnection) {
-            if (!shouldContinue.get()) {
+            if (!shouldConnectionContinue.get()) {
                 return false;
             }
             return super.add(doWithConnection);
@@ -106,15 +106,15 @@ class DatabaseOperation {
                 final DoWithConnection.Params params = DoWithConnection.Params.builder()
                         .connection(connection)
                         .taskExecutor(taskExecutor)
-                        .shouldContinue(shouldContinue)
+                        .shouldConnectionContinue(shouldConnectionContinue)
                         .build();
 
-                while (params.getShouldContinue().get()) {
+                while (params.getShouldConnectionContinue().get()) {
                     final DoWithConnection callback = taskQueue.poll(200, TimeUnit.MILLISECONDS);
                     if (callback != null) {
                         log.debug("before doWithConnection()");
                         callback.doWithConnection(params);
-                        log.debug("after doWithConnection(), shouldContinue -> {}", params.getShouldContinue().get());
+                        log.debug("after doWithConnection(), shouldContinue -> {}", params.getShouldConnectionContinue().get());
                     }
                 }
             } catch (final Exception e) {
@@ -131,13 +131,13 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             log.debug("closeConnection()");
-            params.getShouldContinue().set(false);
+            params.getShouldConnectionContinue().set(false);
             future.complete(true);
         });
         if (accepted) {
             return future.join();
         } else {
-            shouldContinue.set(false); // Shutdown now
+            shouldConnectionContinue.set(false); // Shutdown now
             return false;
         }
     }
@@ -151,23 +151,25 @@ class DatabaseOperation {
 
                 CompletableFuture.runAsync(() -> {
                     final long waitInMs = 200;
-                    long counterInMs = config.getTimeout();
-                    while (params.getShouldContinue().get()) {
+                    long counterInMs = config.getTimeoutInMs();
+                    while (params.getShouldConnectionContinue().get()) {
                         sleepUninterruptibly(Duration.ofMillis(waitInMs));
                         counterInMs -= waitInMs;
                         if (counterInMs <= 0) {
                             break;
                         }
                     }
-                    if (params.getShouldContinue().get()) {
+                    if (params.getShouldConnectionContinue().get()) {
                         taskQueue.add(params1 -> {
-                            log.debug("timed out, trying to rollback...");
-                            final boolean rolledBack = Optional.ofNullable(params1.getConnection())
-                                    .filter(DatabaseOperation::isActive)
-                                    .flatMap(DatabaseOperation::rollback)
-                                    .orElse(false);
-                            log.debug("rolledBack -> {}", rolledBack);
-                            params1.getShouldContinue().set(false);
+                            try {
+                                log.debug("timed out, trying to rollback...");
+                                final boolean rolledBack = Optional.ofNullable(params1.getConnection())
+                                        .flatMap(DatabaseOperation::rollback)
+                                        .orElse(false);
+                                log.debug("rolledBack -> {}", rolledBack);
+                            } finally {
+                                params1.getShouldConnectionContinue().set(false);
+                            }
                         });
                     }
                 }, params.getTaskExecutor());
@@ -191,15 +193,15 @@ class DatabaseOperation {
         final boolean accepted = taskQueue.add(params -> {
             try {
                 final boolean committed = Optional.ofNullable(params.getConnection())
-                        .filter(DatabaseOperation::isActive)
                         .flatMap(DatabaseOperation::commit)
                         .orElse(false);
                 log.debug("committed -> {}", committed);
-                params.getShouldContinue().set(false);
                 future.complete(committed);
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
+            } finally {
+                params.getShouldConnectionContinue().set(false);
             }
         });
         log.debug("commit task accepted -> {}", accepted);
@@ -215,15 +217,15 @@ class DatabaseOperation {
         final boolean accepted = taskQueue.add(params -> {
             try {
                 final boolean rolledBack = Optional.ofNullable(params.getConnection())
-                        .filter(DatabaseOperation::isActive)
                         .flatMap(DatabaseOperation::rollback)
                         .orElse(false);
                 log.debug("rolledBack -> {}", rolledBack);
-                params.getShouldContinue().set(false);
                 future.complete(rolledBack);
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
+            } finally {
+                params.getShouldConnectionContinue().set(false);
             }
         });
         log.debug("rollback task accepted -> {}", accepted);
@@ -238,7 +240,7 @@ class DatabaseOperation {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeout()));
+                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
 
                 for (int i = 0; i < config.getArgsCount(); i++) {
                     setSqlArg(stmt, i + 1, config.getArgs(i));
@@ -269,9 +271,9 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             MDC.put("query.id", DatabaseUtil.getMaskedId(queryResultId));
-            log.debug("before prepare statement");
+            log.debug("before prepared statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeout()));
+                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
                 stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
 
                 IntStream.range(0, config.getArgsCount())
@@ -279,43 +281,46 @@ class DatabaseOperation {
 
                 logQuery(config.getQuery());
 
-                final AtomicBoolean shouldContinueResultSet = new AtomicBoolean(true);
+                final AtomicBoolean shouldResultSetContinue = new AtomicBoolean(true);
                 final LinkedBlockingQueue<DoWithResultSet> taskQueueResultSet = new LinkedBlockingQueue<>() {
                     @Override
                     public boolean add(@NonNull final DoWithResultSet doWithResultSet) {
-                        if (!params.getShouldContinue().get() || !shouldContinueResultSet.get()) {
+                        if (!params.getShouldConnectionContinue().get() || !shouldResultSetContinue.get()) {
                             return false;
                         }
                         return super.add(doWithResultSet);
                     }
                 };
 
-                log.debug("before open result set");
-                try (final ResultSet rs = stmt.executeQuery()) {
+                log.debug("before open resultset");
+                try (final ResultSet resultSet = stmt.executeQuery()) {
                     queryTaskMap.put(queryResultId, taskQueueResultSet);
                     future.complete(true);
 
                     final DoWithResultSet.Params resultSetParams = DoWithResultSet.Params.builder()
-                            .rs(rs)
+                            .resultSet(resultSet)
                             .taskExecutor(params.getTaskExecutor())
-                            .shouldContinue(shouldContinueResultSet)
+                            .shouldResultSetContinue(shouldResultSetContinue)
                             .build();
-
-                    while (params.getShouldContinue().get() && shouldContinueResultSet.get()) {
-                        final DoWithResultSet callback = taskQueueResultSet.poll(200, TimeUnit.MILLISECONDS);
-                        if (callback != null) {
-                            log.debug("before doWithResultSet()");
-                            callback.doWithResultSet(resultSetParams);
-                            log.debug("after doWithResultSet(), shouldContinue -> {}, shouldContinueResultSet -> {}", params.getShouldContinue().get(), shouldContinueResultSet.get());
+                    while (shouldResultSetContinue.get()) {
+                        if (params.getShouldConnectionContinue().get()) {
+                            final DoWithResultSet callback = taskQueueResultSet.poll(200, TimeUnit.MILLISECONDS);
+                            if (callback != null) {
+                                log.debug("before doWithResultSet()");
+                                callback.doWithResultSet(resultSetParams);
+                                log.debug("after doWithResultSet(), shouldContinue -> {}, shouldContinueResultSet -> {}", params.getShouldConnectionContinue().get(), shouldResultSetContinue.get());
+                            }
+                        } else {
+                            shouldResultSetContinue.set(false);
                         }
                     }
                 }
-                log.debug("after close result set");
+                log.debug("after close resultset");
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             } finally {
-                log.debug("after prepare statement");
+                log.debug("after prepared statement");
                 MDC.remove("query.id");
                 queryTaskMap.remove(queryResultId);
             }
@@ -334,22 +339,22 @@ class DatabaseOperation {
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
                 .map(queryTaskQueue -> queryTaskQueue.add(params -> {
                     try {
-                        boolean next = true;
                         int rowsFetched = 0;
+                        boolean next = true;
                         final List<Row> results = new ArrayList<>();
-                        while (params.getShouldContinue().get() && next && rowsFetched < params.getRs().getFetchSize()) {
-                            next = params.getRs().next();
+                        while (params.getShouldResultSetContinue().get() && next && rowsFetched < params.getResultSet().getFetchSize()) {
+                            next = params.getResultSet().next();
                             if (next) {
                                 rowsFetched++;
                                 final Row.Builder rowBuilder = Row.newBuilder();
-                                for (int i = 1; i <= params.getRs().getMetaData().getColumnCount(); i++) {
-                                    rowBuilder.addCols(getSqlArg(params.getRs(), i));
+                                for (int i = 1; i <= params.getResultSet().getMetaData().getColumnCount(); i++) {
+                                    rowBuilder.addCols(getSqlArg(params.getResultSet(), i));
                                 }
                                 results.add(rowBuilder.build());
                             }
                         }
                         if (!next) {
-                            params.getShouldContinue().set(false);
+                            params.getShouldResultSetContinue().set(false);
                         }
                         future.complete(results);
                     } catch (final Exception e) {
@@ -375,7 +380,7 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
                 .map(queryTaskQueue -> queryTaskQueue.add(params -> {
-                    params.getShouldContinue().set(false);
+                    params.getShouldResultSetContinue().set(false);
                     future.complete(true);
                 }))
                 .orElse(false);
@@ -416,6 +421,7 @@ class DatabaseOperation {
 
     static Optional<Boolean> commit(final Connection conn) {
         return Optional.ofNullable(conn)
+                .filter(DatabaseOperation::isActive)
                 .filter(not(DatabaseOperation::isAutoCommit))
                 .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {
@@ -431,6 +437,7 @@ class DatabaseOperation {
 
     static Optional<Boolean> rollback(final Connection conn) {
         return Optional.ofNullable(conn)
+                .filter(DatabaseOperation::isActive)
                 .filter(not(DatabaseOperation::isAutoCommit))
                 .filter(not(DatabaseOperation::isReadOnly))
                 .map(it -> {

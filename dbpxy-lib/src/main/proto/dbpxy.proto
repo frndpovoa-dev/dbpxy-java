@@ -32,7 +32,7 @@ message ConnectionStringProp {
 }
 
 message BeginTransactionConfig {
-  int64 timeout = 1;
+  int64 timeoutInMs = 1;
   bool autoCommit = 2;
   bool readOnly = 3;
   ConnectionString connectionString = 4;
@@ -56,7 +56,7 @@ message Transaction {
 message ExecuteConfig {
   string query = 1;
   repeated Value args = 2;
-  int64 timeout = 3;
+  int64 timeoutInMs = 3;
 }
 
 message ExecuteTxConfig {
@@ -68,7 +68,7 @@ message QueryConfig {
   string query = 1;
   repeated Value args = 2;
   int64 fetchSize = 3;
-  int64 timeout = 4;
+  int64 timeoutInMs = 4;
 }
 
 message QueryTxConfig {

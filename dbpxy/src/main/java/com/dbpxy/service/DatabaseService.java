@@ -103,13 +103,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .build();
 
         MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-        log.debug("beginTransaction(timeout: {}) -> {}", DatabaseUtil.sanitizeTimeout(config.getTimeout()), transaction.getStatus());
+        log.debug("beginTransaction(timeout: {}, autoCommit: {}, readOnly: {}) -> {}",
+                DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()), config.getAutoCommit(), config.getReadOnly(), transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
                 .cryptoService(cryptoService)
                 .uniqueIdGenerator(uniqueIdGenerator)
                 .transaction(transaction)
-                .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeout()))
+                .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()))
                 .build();
 
         transactionMap.put(transactionId, ops);

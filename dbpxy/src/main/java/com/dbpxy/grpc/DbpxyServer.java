@@ -26,8 +26,8 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextStoppedEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
@@ -36,7 +36,7 @@ import java.io.InputStream;
 
 @Slf4j
 @Component
-public class DbpxyServer implements ApplicationListener<ContextStoppedEvent> {
+public class DbpxyServer {
     private final Server server;
 
     public DbpxyServer(
@@ -57,18 +57,13 @@ public class DbpxyServer implements ApplicationListener<ContextStoppedEvent> {
         }
     }
 
-    @Override
+    @EventListener(ContextStoppedEvent.class)
     public void onApplicationEvent(final ContextStoppedEvent event) {
         try {
             server.shutdownNow().awaitTermination();
             log.info("gRPC server stopped");
         } catch (final InterruptedException e) {
-            log.error(e.getMessage(), e);
+            log.info("gRPC failed to stop", e);
         }
-    }
-
-    @Override
-    public boolean supportsAsyncExecution() {
-        return false;
     }
 }

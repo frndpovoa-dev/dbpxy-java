@@ -35,8 +35,8 @@ interface DoWithResultSet {
     @Getter
     @Builder
     class Params {
-        private final ResultSet rs;
+        private final ResultSet resultSet;
         private final ExecutorService taskExecutor;
-        private final AtomicBoolean shouldContinue;
+        private final AtomicBoolean shouldResultSetContinue;
     }
 }

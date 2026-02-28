@@ -170,7 +170,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
 
     @Test
     void givenCreateTable_thenInsert_thenTransactionTimeout() {
-        Transaction tx1 = beginTransaction(100);
+        Transaction tx1 = beginTransaction(1_000);
         executeTx(tx1, 1, INSERT_INTO_TEST_ID_NAME, Stream.of(
                         new AbstractMap.SimpleEntry<>(ValueInt64.newBuilder().setValue(1).build(), ValueCode.INT64),
                         new AbstractMap.SimpleEntry<>(ValueString.newBuilder().setValue("dummy").build(), ValueCode.STRING)
@@ -194,7 +194,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
     }
 
     private Transaction beginTransaction(
-            int timeout
+            int timeoutInMs
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
@@ -207,7 +207,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(timeout)
+                .setTimeoutInMs(timeoutInMs)
                 .build());
         assertThat(transaction)
                 .isNotNull()
@@ -230,14 +230,14 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(100)
+                .setTimeoutInMs(1_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());
         ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setTimeout(100)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .build())
                 .build());
@@ -255,7 +255,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         ExecuteResult insertResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setTimeout(100)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -296,7 +296,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
-                        .setTimeout(100)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -331,14 +331,14 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(100)
+                .setTimeoutInMs(1_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
-                        .setTimeout(100)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
