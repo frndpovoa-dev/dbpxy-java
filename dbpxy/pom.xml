@@ -19,7 +19,7 @@
         <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.postgresql_postgresql.version>42.7.9</org.postgresql_postgresql.version>
+        <org.postgresql_postgresql.version>42.7.10</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <org.testcontainers_testcontainers-java.version>1.21.4</org.testcontainers_testcontainers-java.version>
         <spring-boot.version>4.0.3</spring-boot.version>
