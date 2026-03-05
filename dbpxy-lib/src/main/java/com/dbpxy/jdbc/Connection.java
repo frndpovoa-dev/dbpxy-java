@@ -238,12 +238,10 @@ public class Connection implements java.sql.Connection {
         final Transaction transaction = getTransaction(false, 0);
         if (readOnly || transaction == null) {
             log.debug("commit skipped (conn: {})", id);
-        } else {
+        } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
-            }
+            final Transaction newTransaction = blockingStub.commitTransaction(transaction);
+            replaceTransaction(transaction, newTransaction);
         }
     }
 
@@ -252,12 +250,10 @@ public class Connection implements java.sql.Connection {
         final Transaction transaction = getTransaction(false, 0);
         if (readOnly || transaction == null) {
             log.debug("rollback skipped (conn: {})", id);
-        } else {
+        } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
-            }
+            final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
+            replaceTransaction(transaction, newTransaction);
         }
     }
 
