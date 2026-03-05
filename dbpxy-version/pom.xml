@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>com.dbpxy</groupId>
+    <artifactId>dbpxy-version</artifactId>
+    <version>${revision}</version>
+    <packaging>pom</packaging>
+    <properties>
+        <revision>0.1.0-SNAPSHOT</revision>
+        <com.fasterxml.jackson.core_all.version>2.21.1</com.fasterxml.jackson.core_all.version>
+        <com.fasterxml.jackson.core_jackson-annotations.version>2.21</com.fasterxml.jackson.core_jackson-annotations.version>
+        <tools.jackson.core_all.version>3.1.0</tools.jackson.core_all.version>
+    </properties>
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${com.fasterxml.jackson.core_jackson-annotations.version}</version>
+            </dependency>
+            <dependency>
+                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${com.fasterxml.jackson.core_all.version}</version>
+            </dependency>
+            <dependency>
+                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${com.fasterxml.jackson.core_all.version}</version>
+            </dependency>
+            <dependency>
+                <!--[https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-15365915]-->
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-core</artifactId>
+                <version>${tools.jackson.core_all.version}</version>
+            </dependency>
+            <dependency>
+                <!--[https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-15365915]-->
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${tools.jackson.core_all.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+</project>

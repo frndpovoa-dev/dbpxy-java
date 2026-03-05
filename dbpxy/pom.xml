@@ -27,6 +27,13 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>com.dbpxy</groupId>
+                <artifactId>dbpxy-version</artifactId>
+                <version>${revision}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>

@@ -10,6 +10,7 @@
         <revision>0.1.0-SNAPSHOT</revision>
     </properties>
     <modules>
+        <module>dbpxy-version</module>
         <module>dbpxy-lib</module>
         <module>dbpxy</module>
     </modules>
