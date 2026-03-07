@@ -2,7 +2,7 @@ _pod_name: localhost
 
 app:
   grpc:
-    cert-path: certs/cert.pem
+    grpc-cert-path: certs/cert.pem
     port: 9090
   dbpxy:
     hostname: localhost

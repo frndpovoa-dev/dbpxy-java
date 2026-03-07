@@ -32,7 +32,7 @@ import java.util.concurrent.atomic.AtomicLong;
 class ThreadFactory implements java.util.concurrent.ThreadFactory {
     private final String prefix;
     @Builder.Default
-    private AtomicLong counter = new AtomicLong(0);
+    private AtomicLong counter = new AtomicLong(0L);
 
     @Override
     public Thread newThread(@NonNull final Runnable r) {

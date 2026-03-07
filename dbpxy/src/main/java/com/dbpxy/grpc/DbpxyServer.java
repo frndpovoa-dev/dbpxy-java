@@ -42,8 +42,8 @@ public class DbpxyServer {
     public DbpxyServer(
             final GrpcProperties grpcProperties,
             final DatabaseService databaseService,
-            @Value("${dbpxy.grpc-cert-path:certs/cert.pem}") final String certPath,
-            @Value("${dbpxy.grpc-key-path:certs/key.pem}") final String keyPath
+            @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String certPath,
+            @Value("${app.grpc.grpc-key-path:certs/key.pem}") final String keyPath
     ) throws IOException {
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
              final InputStream key = new ClassPathResource(keyPath).getInputStream()) {

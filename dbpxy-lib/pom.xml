@@ -13,7 +13,7 @@
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
+        <io.grpc_grpc-bom.version>1.79.0</io.grpc_grpc-bom.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <spring-boot.version>4.0.3</spring-boot.version>

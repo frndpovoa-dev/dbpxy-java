@@ -55,7 +55,7 @@ public class TestConfig {
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
             final DbpxyDatasourceProperties dbpxyDatasourceProperties,
-            @Value("${app.grpc.cert-path:certs/cert.pem}") final String dbpxyCertPath
+            @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String dbpxyCertPath
     ) {
         return new DataSource(
                 connectionHolder,

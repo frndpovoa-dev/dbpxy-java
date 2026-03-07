@@ -51,7 +51,7 @@ public class DbpxyClient {
 
     public DbpxyClient(
             final GrpcProperties grpcProperties,
-            @Value("${dbpxy.grpc-cert-path:certs/cert.pem}") final String certPath
+            @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String certPath
     ) throws IOException {
         this.grpcProperties = grpcProperties;
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream()) {

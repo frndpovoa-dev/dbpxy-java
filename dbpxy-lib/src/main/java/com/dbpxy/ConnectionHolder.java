@@ -24,14 +24,14 @@ import com.dbpxy.jdbc.Connection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+import java.sql.SQLException;
 import java.util.ArrayDeque;
-import java.util.Deque;
 import java.util.concurrent.Callable;
 
 @Slf4j
 @RequiredArgsConstructor
 public class ConnectionHolder {
-    private static final ThreadLocal<Deque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
+    private static final ThreadLocal<ArrayDeque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
 
     public void doWithSharedTransaction(
             final String transactionId,
@@ -55,5 +55,17 @@ public class ConnectionHolder {
 
     public void popConnection(final Connection connection) {
         CONNECTIONS.get().remove(connection);
+    }
+
+    public void clear() {
+        CONNECTIONS.get().forEach(conn -> {
+            try {
+                log.error("dbpxy connection {} did not finish properly, closing it...", conn.getId());
+                conn.close();
+            } catch (final SQLException e) {
+                log.error(e.getMessage(), e);
+            }
+        });
+        CONNECTIONS.remove();
     }
 }
