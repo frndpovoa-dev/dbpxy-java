@@ -75,8 +75,6 @@ public class TestConfig {
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setDatabase(Database.POSTGRESQL);
-        vendorAdapter.setShowSql(true);
-        vendorAdapter.setGenerateDdl(true);
 
         final Map<String, Object> jpaProperties = new HashMap<>();
         jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, "create-drop");
