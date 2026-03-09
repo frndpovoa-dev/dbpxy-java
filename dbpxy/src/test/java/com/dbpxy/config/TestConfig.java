@@ -25,7 +25,8 @@ import com.dbpxy.grpc.DbpxyServer;
 import com.dbpxy.jdbc.DataSource;
 import com.dbpxy.springframework.TransactionExecutionListener;
 import jakarta.persistence.EntityManagerFactory;
-import org.hibernate.cfg.Environment;
+import org.hibernate.cfg.JdbcSettings;
+import org.hibernate.cfg.SchemaToolingSettings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
@@ -78,9 +79,9 @@ public class TestConfig {
         vendorAdapter.setGenerateDdl(true);
 
         final Map<String, Object> jpaProperties = new HashMap<>();
-        jpaProperties.put(Environment.HBM2DDL_AUTO, "create-drop");
-        jpaProperties.put(Environment.SHOW_SQL, true);
-        jpaProperties.put(Environment.FORMAT_SQL, true);
+        jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, "create-drop");
+        jpaProperties.put(JdbcSettings.SHOW_SQL, true);
+        jpaProperties.put(JdbcSettings.FORMAT_SQL, true);
 
         final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
