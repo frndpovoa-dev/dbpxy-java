@@ -20,6 +20,7 @@ package com.dbpxy.service;
  * #L%
  */
 
+import com.dbpxy.config.GrpcProperties;
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.proto.*;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -72,12 +73,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 }
             })
             .build();
+    private final GrpcProperties grpcProperties;
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
 
     public DatabaseService(
+            final GrpcProperties grpcProperties,
             final DbpxyClient dbpxyClient,
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
@@ -85,6 +88,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     ) {
         log.info("hello from dbpxy node: {}", node);
 
+        this.grpcProperties = grpcProperties;
         this.dbpxyClient = dbpxyClient;
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
@@ -103,8 +107,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .build();
 
         MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-        log.debug("beginTransaction(timeout: {}, autoCommit: {}, readOnly: {}) -> {}",
-                DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()), config.getAutoCommit(), config.getReadOnly(), transaction.getStatus());
+        log.debug("beginTransaction() -> {}", transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
                 .cryptoService(cryptoService)
@@ -138,7 +141,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
             if (shouldNotExecuteOnThisNode(transaction)) {
-                dbpxyClient.invoke(transaction.getNode(), blockingStub -> {
+                dbpxyClient.invoke(transaction.getNode(), grpcProperties.getPort(), blockingStub -> {
                     final Transaction result = blockingStub.commitTransaction(transaction);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();
@@ -196,7 +199,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
             if (shouldNotExecuteOnThisNode(transaction)) {
-                dbpxyClient.invoke(transaction.getNode(), blockingStub -> {
+                dbpxyClient.invoke(transaction.getNode(), grpcProperties.getPort(), blockingStub -> {
                     final Transaction result = blockingStub.rollbackTransaction(transaction);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();
@@ -254,7 +257,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
-                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
                     final ExecuteResult result = blockingStub.executeTx(config);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();
@@ -284,7 +287,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
-                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
                     final QueryResult result = blockingStub.queryTx(config);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();
@@ -295,7 +298,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
-            // Pre-fetches first page and allows for more pages to be fetched later.
+            // Pre-fetches the first page and allows for more pages to be fetched later.
             result = ops.next(NextConfig.newBuilder()
                     .setTransaction(config.getTransaction())
                     .setQueryResultId(result.getId())
@@ -319,7 +322,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
-                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
                     final QueryResult result = blockingStub.next(config);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();
@@ -357,7 +360,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
-                dbpxyClient.invoke(config.getTransaction().getNode(), blockingStub -> {
+                dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
                     final Empty result = blockingStub.closeResultSet(config);
                     responseObserver.onNext(result);
                     responseObserver.onCompleted();

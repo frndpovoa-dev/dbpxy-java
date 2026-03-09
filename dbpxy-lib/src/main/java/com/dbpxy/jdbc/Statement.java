@@ -38,8 +38,8 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class Statement implements java.sql.Statement {
     private final Connection connection;
-    private final Integer defaultQueryTimeoutInMs;
-    private Integer queryTimeoutInMs;
+    private final long defaultQueryTimeoutInMs;
+    private Long queryTimeoutInMs;
     private ResultSet resultSet;
     private boolean closed = false;
 
@@ -53,10 +53,10 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true, getQueryTimeout()))
+                .setTransaction(connection.getTransaction(true))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeoutInMs(getQueryTimeout())
+                        .setTimeoutInMs(connection.getTransactionTimeoutInMs())
                         .addAllArgs(params)
                         .build())
                 .build());
@@ -78,10 +78,10 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true, getQueryTimeout()))
+                .setTransaction(connection.getTransaction(true))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeoutInMs(getQueryTimeout())
+                        .setTimeoutInMs(connection.getTransactionTimeoutInMs())
                         .addAllArgs(params)
                         .build())
                 .build());
@@ -124,12 +124,12 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int getQueryTimeout() throws SQLException {
-        return Objects.requireNonNullElse(queryTimeoutInMs, defaultQueryTimeoutInMs);
+        return (int) (Objects.requireNonNullElse(queryTimeoutInMs, defaultQueryTimeoutInMs) / 1_000);
     }
 
     @Override
     public void setQueryTimeout(final int seconds) throws SQLException {
-        this.queryTimeoutInMs = seconds * 1_000;
+        this.queryTimeoutInMs = seconds * 1_000L;
     }
 
     @Override

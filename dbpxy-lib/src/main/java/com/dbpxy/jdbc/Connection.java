@@ -31,6 +31,7 @@ import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
 
@@ -49,7 +50,7 @@ import java.util.regex.Pattern;
 public class Connection implements java.sql.Connection {
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final Pattern TRANSACTION_ID_PATTERN = Pattern.compile("^(.+?)@(.+)$");
-    private static final Integer DEFAULT_QUERY_TIMEOUT_IN_MS = 60_000;
+    private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = 60_000;
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
     private final ChannelCredentials credentials;
@@ -58,6 +59,8 @@ public class Connection implements java.sql.Connection {
     private final ConnectionString connectionString;
     private final ManagedChannel channel;
     private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
+    @Setter
+    private long transactionTimeoutInMs = DEFAULT_QUERY_TIMEOUT_IN_MS;
     private boolean autoCommit = true;
     private boolean closed = false;
     private boolean readOnly = false;
@@ -66,12 +69,12 @@ public class Connection implements java.sql.Connection {
     private final Deque<Transaction> transactions = new ArrayDeque<>();
 
     public String getTransactionId() {
-        return Optional.ofNullable(getTransaction(true, DEFAULT_QUERY_TIMEOUT_IN_MS))
+        return Optional.ofNullable(getTransaction(true))
                 .map(transaction -> transaction.getId() + "@" + transaction.getNode())
                 .orElse(null);
     }
 
-    public synchronized Transaction getTransaction(final boolean create, final Integer timeout) {
+    public synchronized Transaction getTransaction(final boolean create) {
         if (create) {
             new ArrayList<>(transactions).stream()
                     .filter(transaction -> !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()))
@@ -80,7 +83,7 @@ public class Connection implements java.sql.Connection {
                 final Transaction transaction = blockingStub
                         .beginTransaction(BeginTransactionConfig.newBuilder()
                                 .setConnectionString(connectionString)
-                                .setTimeoutInMs(timeout)
+                                .setTimeoutInMs(transactionTimeoutInMs)
                                 .setAutoCommit(autoCommit)
                                 .setReadOnly(readOnly)
                                 .build());
@@ -235,7 +238,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void commit() throws SQLException {
-        final Transaction transaction = getTransaction(false, 0);
+        final Transaction transaction = getTransaction(false);
         if (readOnly || transaction == null) {
             log.debug("commit skipped (conn: {})", id);
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
@@ -247,7 +250,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void rollback() throws SQLException {
-        final Transaction transaction = getTransaction(false, 0);
+        final Transaction transaction = getTransaction(false);
         if (readOnly || transaction == null) {
             log.debug("rollback skipped (conn: {})", id);
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
@@ -259,7 +262,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void close() throws SQLException {
-        final Transaction transaction = getTransaction(false, 0);
+        final Transaction transaction = getTransaction(false);
         if (transaction != null && transaction.getStatus() == Transaction.Status.JOINED) {
             log.debug("close skipped (conn: {})", id);
         } else {

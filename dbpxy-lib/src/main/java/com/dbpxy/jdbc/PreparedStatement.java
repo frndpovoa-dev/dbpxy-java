@@ -49,7 +49,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
 
     public PreparedStatement(
             final Connection connection,
-            final Integer defaultQueryTimeoutInMs,
+            final long defaultQueryTimeoutInMs,
             final String sql
     ) {
         super(connection, defaultQueryTimeoutInMs);

@@ -45,7 +45,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
-@Transactional(timeout = 60)
+@Transactional(timeout = 10)
 class TestRepositoryIntTest extends BaseIntTest {
     @Autowired
     private TestRepository repository;

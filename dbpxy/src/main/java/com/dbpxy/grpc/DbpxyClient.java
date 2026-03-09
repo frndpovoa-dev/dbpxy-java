@@ -22,7 +22,6 @@ package com.dbpxy.grpc;
  * #L%
  */
 
-import com.dbpxy.config.GrpcProperties;
 import com.dbpxy.proto.DbpxyGrpc;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -42,7 +41,6 @@ import java.util.function.Consumer;
 
 @Component
 public class DbpxyClient {
-    private final GrpcProperties grpcProperties;
     private final ChannelCredentials credentials;
     private final Cache<String, ManagedChannel> channelMap = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
@@ -50,10 +48,8 @@ public class DbpxyClient {
             .build();
 
     public DbpxyClient(
-            final GrpcProperties grpcProperties,
             @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String certPath
     ) throws IOException {
-        this.grpcProperties = grpcProperties;
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream()) {
             this.credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(cert)
@@ -63,9 +59,10 @@ public class DbpxyClient {
 
     public void invoke(
             final String node,
+            final int port,
             final Consumer<DbpxyGrpc.DbpxyBlockingStub> callback) {
         final ManagedChannel channel = channelMap.get(node, ignored -> Grpc
-                .newChannelBuilderForAddress(node, grpcProperties.getPort(), credentials)
+                .newChannelBuilderForAddress(node, port, credentials)
                 .build());
         final DbpxyGrpc.DbpxyBlockingStub blockingStub = DbpxyGrpc.newBlockingStub(channel);
         callback.accept(blockingStub);

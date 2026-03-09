@@ -32,7 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class TestService {
     private final TestRepository repository;
 
-    @Transactional(timeout = 60, propagation = Propagation.REQUIRES_NEW)
+    @Transactional(timeout = 10, propagation = Propagation.REQUIRES_NEW)
     public TestBo save(final TestBo testBo) {
         return repository.save(testBo.toBuilder()
                 .id(testBo.getId() + 1)

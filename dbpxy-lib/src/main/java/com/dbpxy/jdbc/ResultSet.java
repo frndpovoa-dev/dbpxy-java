@@ -109,7 +109,7 @@ public class ResultSet implements java.sql.ResultSet {
 
         this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
                 .setQueryResultId(queryResult.getId())
-                .setTransaction(Optional.ofNullable(connection.getTransaction(false, 0))
+                .setTransaction(Optional.ofNullable(connection.getTransaction(false))
                         .orElseGet(Transaction::getDefaultInstance))
                 .build());
 
@@ -129,7 +129,7 @@ public class ResultSet implements java.sql.ResultSet {
         try {
             connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
                     .setQueryResultId(queryResult.getId())
-                    .setTransaction(Optional.ofNullable(connection.getTransaction(false, 0))
+                    .setTransaction(Optional.ofNullable(connection.getTransaction(false))
                             .orElseGet(Transaction::getDefaultInstance))
                     .build());
         } finally {

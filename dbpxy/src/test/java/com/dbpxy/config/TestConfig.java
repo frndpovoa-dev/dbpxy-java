@@ -23,6 +23,7 @@ package com.dbpxy.config;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.grpc.DbpxyServer;
 import com.dbpxy.jdbc.DataSource;
+import com.dbpxy.springframework.TransactionExecutionListener;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.cfg.Environment;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +36,7 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class TestConfig {
@@ -93,11 +95,17 @@ public class TestConfig {
     @Primary
     public JpaTransactionManager transactionManager(
             final EntityManagerFactory entityManagerFactory,
+            final ConnectionHolder connectionHolder,
             final DataSource dataSource
     ) {
         JpaTransactionManager transactionManager = new JpaTransactionManager();
         transactionManager.setDataSource(dataSource);
         transactionManager.setEntityManagerFactory(entityManagerFactory);
+        transactionManager.setTransactionExecutionListeners(List.of(
+                TransactionExecutionListener.builder()
+                        .entityManagerFactory(entityManagerFactory)
+                        .connectionHolder(connectionHolder)
+                        .build()));
         transactionManager.afterPropertiesSet();
         return transactionManager;
     }

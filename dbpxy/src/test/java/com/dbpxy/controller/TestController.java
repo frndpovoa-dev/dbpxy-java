@@ -48,7 +48,7 @@ public class TestController {
     @PersistenceContext
     private EntityManager entityManager;
 
-    @Transactional(readOnly = true, timeout = 60)
+    @Transactional(readOnly = true, timeout = 10)
     @GetMapping(path = "/list")
     public List<TestBo> list(
             @RequestHeader(value = "X-Transaction-Id", required = false) final String transactionId,
@@ -58,7 +58,7 @@ public class TestController {
                 () -> repository.findByGroupName(groupName));
     }
 
-    @Transactional(timeout = 60)
+    @Transactional(timeout = 10)
     @PostMapping(path = "/insert")
     public TestBo insert(
             @RequestHeader(value = "X-Transaction-Id", required = false) final String transactionId,

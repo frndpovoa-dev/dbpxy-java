@@ -146,6 +146,11 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             try {
+                log.debug("beginTransaction() -> autoCommit: {}, readOnly: {}, transactionTimeout: {}",
+                        config.getAutoCommit(),
+                        config.getReadOnly(),
+                        config.getTimeoutInMs());
+
                 params.getConnection().setAutoCommit(config.getAutoCommit());
                 params.getConnection().setReadOnly(config.getReadOnly());
 
@@ -240,6 +245,9 @@ class DatabaseOperation {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
         final boolean accepted = taskQueue.add(params -> {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
+                log.debug("execute() -> executeTimeout: {}",
+                        config.getTimeoutInMs());
+
                 stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
 
                 for (int i = 0; i < config.getArgsCount(); i++) {
@@ -273,6 +281,10 @@ class DatabaseOperation {
             MDC.put("query.id", DatabaseUtil.getMaskedId(queryResultId));
             log.debug("before prepared statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
+                log.debug("query() -> fetchSize: {}, queryTimeout: {}",
+                        config.getFetchSize(),
+                        config.getTimeoutInMs());
+
                 stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
                 stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
 
