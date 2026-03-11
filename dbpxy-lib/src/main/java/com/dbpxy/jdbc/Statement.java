@@ -21,25 +21,24 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.proto.*;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
+import java.time.Duration;
 import java.util.List;
-import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Slf4j
-@Getter
-@Setter
 @RequiredArgsConstructor
 public class Statement implements java.sql.Statement {
+    private static final Pattern SELECT_QUERY_PATTERN = Pattern.compile("(?i)^\\s*(select)\\s+.+");
+
     private final Connection connection;
     private final long defaultQueryTimeoutInMs;
-    private Long queryTimeoutInMs;
+    private Integer queryTimeout;
     private ResultSet resultSet;
     private boolean closed = false;
 
@@ -56,7 +55,7 @@ public class Statement implements java.sql.Statement {
                 .setTransaction(connection.getTransaction(true))
                 .setQueryConfig(QueryConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeoutInMs(connection.getTransactionTimeoutInMs())
+                        .setTimeoutInMs(getQueryTimeoutInMs())
                         .addAllArgs(params)
                         .build())
                 .build());
@@ -81,7 +80,7 @@ public class Statement implements java.sql.Statement {
                 .setTransaction(connection.getTransaction(true))
                 .setExecuteConfig(ExecuteConfig.newBuilder()
                         .setQuery(sql)
-                        .setTimeoutInMs(connection.getTransactionTimeoutInMs())
+                        .setTimeoutInMs(getQueryTimeoutInMs())
                         .addAllArgs(params)
                         .build())
                 .build());
@@ -124,12 +123,22 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public int getQueryTimeout() throws SQLException {
-        return (int) (Objects.requireNonNullElse(queryTimeoutInMs, defaultQueryTimeoutInMs) / 1_000);
+        if (queryTimeout != null) {
+            return queryTimeout;
+        }
+        return (int) Duration.ofMillis(defaultQueryTimeoutInMs).toSeconds();
     }
 
     @Override
-    public void setQueryTimeout(final int seconds) throws SQLException {
-        this.queryTimeoutInMs = seconds * 1_000L;
+    public void setQueryTimeout(final int seconds) {
+        this.queryTimeout = seconds;
+    }
+
+    protected long getQueryTimeoutInMs() {
+        if (queryTimeout != null) {
+            return Duration.ofSeconds(queryTimeout).toMillis();
+        }
+        return defaultQueryTimeoutInMs;
     }
 
     @Override
@@ -155,7 +164,7 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public boolean execute(final String sql) throws SQLException {
-        if (sql.matches("(?i)^\\s*(select)\\s+.+")) {
+        if (SELECT_QUERY_PATTERN.matcher(sql).matches()) {
             executeQuery(sql);
             return true;
         } else {

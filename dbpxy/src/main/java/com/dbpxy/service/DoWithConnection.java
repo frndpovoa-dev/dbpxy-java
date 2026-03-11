@@ -9,9 +9,9 @@ package com.dbpxy.service;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -25,7 +25,9 @@ import lombok.Getter;
 
 import java.sql.Connection;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @FunctionalInterface
 interface DoWithConnection {
@@ -36,6 +38,30 @@ interface DoWithConnection {
     class Params {
         private final Connection connection;
         private final ExecutorService taskExecutor;
-        private final AtomicBoolean shouldConnectionContinue;
+        private final ScheduledExecutorService rollbackExecutor;
+
+        @Builder.Default
+        private boolean shouldConnectionContinue = true;
+        private ScheduledFuture<?> rollbackTask;
+
+        void setRollbackTask(
+                final long timeoutInMs,
+                final Runnable runnable) {
+            this.rollbackTask = rollbackExecutor.schedule(runnable, timeoutInMs, TimeUnit.MILLISECONDS);
+        }
+
+        void cancelRollbackTask() {
+            if (rollbackTask != null) {
+                rollbackTask.cancel(false);
+            }
+        }
+
+        boolean shouldConnectionContinue() {
+            return shouldConnectionContinue;
+        }
+
+        void stopConnection() {
+            this.shouldConnectionContinue = false;
+        }
     }
 }

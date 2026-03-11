@@ -57,7 +57,7 @@ public class UniqueIdGenerator {
             .build(new CacheLoader<>() {
                 @Override
                 public String load(final String groupName) {
-                    return Hashing.sha256()
+                    return Hashing.md5()
                             .hashString(groupName, StandardCharsets.UTF_8)
                             .toString()
                             .substring(0, 7);

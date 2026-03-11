@@ -33,6 +33,7 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -60,10 +61,10 @@ public class DbpxyServer {
     @EventListener(ContextStoppedEvent.class)
     public void onApplicationEvent(final ContextStoppedEvent event) {
         try {
-            server.shutdownNow().awaitTermination();
-            log.info("gRPC server stopped");
+            server.shutdown().awaitTermination(5, TimeUnit.SECONDS);
         } catch (final InterruptedException e) {
-            log.error("gRPC failed to stop", e);
+            server.shutdownNow();
         }
+        log.info("gRPC server stopped");
     }
 }

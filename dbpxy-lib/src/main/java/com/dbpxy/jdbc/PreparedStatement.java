@@ -23,8 +23,6 @@ package com.dbpxy.jdbc;
 import com.dbpxy.proto.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
@@ -40,12 +38,10 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-@Getter
-@Setter
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Map<Integer, Object> params = new HashMap<>();
-    private String sql;
+    private final String sql;
 
     public PreparedStatement(
             final Connection connection,
@@ -116,7 +112,8 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                             .build()
                                             .toByteString())
                                     .build();
-                        } catch (final SQLException | JsonProcessingException e) {
+                        } catch (final SQLException
+                                       | JsonProcessingException e) {
                             throw new RuntimeException(e);
                         }
                     }

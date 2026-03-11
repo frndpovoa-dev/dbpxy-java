@@ -38,6 +38,7 @@ import org.springframework.core.io.ClassPathResource;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
+import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
@@ -45,25 +46,25 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Slf4j
-@Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final Pattern TRANSACTION_ID_PATTERN = Pattern.compile("^(.+?)@(.+)$");
-    private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = 60_000;
+    private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
+    @Getter
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
-    private final ChannelCredentials credentials;
-    private final DbpxyProperties dbpxyProperties;
     private final ConnectionHolder connectionHolder;
+    @Getter
     private final ConnectionString connectionString;
     private final ManagedChannel channel;
+    @Getter
     private final DbpxyGrpc.DbpxyBlockingStub blockingStub;
     @Setter
     private long transactionTimeoutInMs = DEFAULT_QUERY_TIMEOUT_IN_MS;
     private boolean autoCommit = true;
-    private boolean closed = false;
     private boolean readOnly = false;
+    private boolean closed = false;
     private String catalog;
 
     private final Deque<Transaction> transactions = new ArrayDeque<>();
@@ -173,17 +174,16 @@ public class Connection implements java.sql.Connection {
     ) throws SQLException {
         try {
             try (final InputStream cert = new ClassPathResource(dbpxyCertPath).getInputStream()) {
-                this.credentials = TlsChannelCredentials.newBuilder()
+                final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                         .trustManager(cert)
                         .build();
+                this.channel = Grpc.newChannelBuilderForAddress(
+                                dbpxyProperties.getHostname(),
+                                dbpxyProperties.getPort(),
+                                credentials)
+                        .build();
             }
-            this.channel = Grpc.newChannelBuilderForAddress(
-                            dbpxyProperties.getHostname(),
-                            dbpxyProperties.getPort(),
-                            credentials)
-                    .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            this.dbpxyProperties = dbpxyProperties;
             this.connectionHolder = connectionHolder;
             this.connectionString = ConnectionString.newBuilder()
                     .setUrl(dbpxyDatasourceProperties.getUrl())

@@ -32,20 +32,23 @@ import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 
+import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
 @Service
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
-    private final Cache<String, DatabaseOperation> transactionMap = Caffeine.newBuilder()
+    private static final String MDC_TRANSACTION_ID = "transaction.id";
+
+    private final Cache<String, DatabaseOperation> transactionCache = Caffeine.newBuilder()
             .expireAfter(new Expiry<String, DatabaseOperation>() {
                 @Override
                 public long expireAfterCreate(
                         final String transactionId,
                         final DatabaseOperation ops,
                         final long currentTime) {
-                    return ops.getTimeoutInMs() * 1_000_000L + 1_000_000_000L;
+                    return Duration.ofMillis(ops.getTimeoutInMs()).toNanos() + Duration.ofSeconds(1).toNanos();
                 }
 
                 @Override
@@ -68,7 +71,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             })
             .removalListener((transactionId, ops, cause) -> {
                 if (ops != null) {
-                    log.debug("cache eviction {}", DatabaseUtil.getMaskedId(ops.getTransaction().getId()));
+                    MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(ops.getTransaction().getId()) + "@" + ops.getTransaction().getNode());
+                    log.debug("cache eviction");
                     ops.closeConnection();
                 }
             })
@@ -86,8 +90,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node
     ) {
-        log.info("hello from dbpxy node: {}", node);
-
+        log.info("hello from dbpxy node {}", node);
         this.grpcProperties = grpcProperties;
         this.dbpxyClient = dbpxyClient;
         this.cryptoService = cryptoService;
@@ -100,13 +103,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final BeginTransactionConfig config,
             final StreamObserver<Transaction> responseObserver) {
         final String transactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
+
         final Transaction transaction = Transaction.newBuilder()
                 .setId(cryptoService.encrypt(transactionId))
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
 
-        MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+        MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
         log.debug("beginTransaction() -> {}", transaction.getStatus());
 
         final DatabaseOperation ops = DatabaseOperation.builder()
@@ -116,7 +120,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()))
                 .build();
 
-        transactionMap.put(transactionId, ops);
+        transactionCache.put(transactionId, ops);
 
         try {
             ops.openConnection(config.getConnectionString());
@@ -138,7 +142,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -196,7 +200,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -254,7 +258,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final ExecuteTxConfig config,
             final StreamObserver<ExecuteResult> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -284,7 +288,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final QueryTxConfig config,
             final StreamObserver<QueryResult> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -319,7 +323,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final NextConfig config,
             final StreamObserver<QueryResult> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -357,7 +361,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final NextConfig config,
             final StreamObserver<Empty> responseObserver) {
         try {
-            MDC.put("transaction.id", DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), grpcProperties.getPort(), blockingStub -> {
@@ -393,13 +397,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionMap::getIfPresent);
+                .map(transactionCache::getIfPresent);
     }
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {
         Optional.ofNullable(transaction)
                 .filter(it -> Objects.equals(it.getNode(), node))
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .ifPresent(transactionMap::invalidate);
+                .ifPresent(transactionCache::invalidate);
     }
 }

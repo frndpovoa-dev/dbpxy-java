@@ -39,10 +39,10 @@ import java.util.Base64;
 public class CryptoService {
     private static final SecureRandom SECURE_RANDOM = new SecureRandom();
     private static final String AES_GCM_NO_PADDING = "AES/GCM/NoPadding";
-    private static final int AES_KEY_LENGTH = 256;
+    private static final int AES_KEY_LENGTH = 128;
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
-    private static final SecretKey SECRET_KEY = CryptoService.getAesKey();
+    private static final SecretKey SECRET_KEY = CryptoService.newAESKey();
     @Value("${app.encryption.enabled}")
     private boolean useEncryption;
 
@@ -104,7 +104,7 @@ public class CryptoService {
         }
     }
 
-    private static SecretKey getAesKey() {
+    private static SecretKey newAESKey() {
         try {
             final KeyGenerator keyGenerator = KeyGenerator.getInstance("AES");
             keyGenerator.init(AES_KEY_LENGTH);
