@@ -33,7 +33,6 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -77,9 +76,8 @@ public class Connection implements java.sql.Connection {
 
     public synchronized Transaction getTransaction(final boolean create) {
         if (create) {
-            new ArrayList<>(transactions).stream()
-                    .filter(transaction -> !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()))
-                    .forEach(this::popTransaction);
+            transactions.removeIf(transaction ->
+                    !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
             if (transactions.isEmpty()) {
                 final Transaction transaction = blockingStub
                         .beginTransaction(BeginTransactionConfig.newBuilder()
@@ -94,31 +92,30 @@ public class Connection implements java.sql.Connection {
         return transactions.peek();
     }
 
-    public synchronized void pushTransaction(final Transaction transaction) {
+    private void pushTransaction(final Transaction transaction) {
         transactions.push(transaction);
     }
 
-    public synchronized void popTransaction(final Transaction transaction) {
+    private void popTransaction(final Transaction transaction) {
         transactions.removeIf(it ->
-                Objects.equals(it.getId(), transaction.getId())
-                        && Objects.equals(it.getNode(), transaction.getNode()));
+                Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode()));
     }
 
-    public void replaceTransaction(final Transaction out, final Transaction in) {
+    private void replaceTransaction(final Transaction out, final Transaction in) {
         popTransaction(out);
         pushTransaction(in);
     }
 
     public void doWithSharedTransaction(
             final String transactionId,
-            final Runnable callback) throws Exception {
+            final Runnable runnable) throws Exception {
         if (transactionId == null) {
-            callback.run();
+            runnable.run();
             return;
         }
         try {
             joinSharedTransaction(transactionId);
-            callback.run();
+            runnable.run();
         } finally {
             leaveSharedTransaction(transactionId);
         }
@@ -126,13 +123,13 @@ public class Connection implements java.sql.Connection {
 
     public <T> T doWithSharedTransaction(
             final String transactionId,
-            final Callable<T> callback) throws Exception {
+            final Callable<T> callable) throws Exception {
         if (transactionId == null) {
-            return callback.call();
+            return callable.call();
         }
         try {
             joinSharedTransaction(transactionId);
-            return callback.call();
+            return callable.call();
         } finally {
             leaveSharedTransaction(transactionId);
         }
@@ -173,7 +170,7 @@ public class Connection implements java.sql.Connection {
             final String dbpxyCertPath
     ) throws SQLException {
         try {
-            try (final InputStream cert = new ClassPathResource(dbpxyCertPath).getInputStream()) {
+            try (final InputStream cert = getClass().getClassLoader().getResourceAsStream(dbpxyCertPath)) {
                 final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                         .trustManager(cert)
                         .build();
@@ -486,8 +483,10 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        if (Objects.equals("varchar", typeName)) {
+    public Array createArrayOf(
+            final String typeName,
+            final Object[] elements) throws SQLException {
+        if ("varchar".equalsIgnoreCase(typeName)) {
             return new Array(typeName, Types.VARCHAR, elements);
         }
         log.trace("public Array createArrayOf(String typeName, Object[] elements) throws SQLException {");

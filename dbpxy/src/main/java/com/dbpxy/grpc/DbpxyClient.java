@@ -25,12 +25,12 @@ package com.dbpxy.grpc;
 import com.dbpxy.proto.DbpxyGrpc;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.github.benmanes.caffeine.cache.Expiry;
 import com.github.benmanes.caffeine.cache.RemovalCause;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.context.event.EventListener;
@@ -42,37 +42,13 @@ import java.io.InputStream;
 import java.time.Duration;
 import java.util.function.Consumer;
 
+@Slf4j
 @Component
 public class DbpxyClient {
     private final ChannelCredentials credentials;
     private final Cache<String, ManagedChannel> channelCache = Caffeine.newBuilder()
-            .expireAfter(new Expiry<String, ManagedChannel>() {
-                private static final long ONE_DAY_IN_NANOS = Duration.ofDays(1).toNanos();
-
-                public long expireAfterCreate(
-                        final String node,
-                        final ManagedChannel channel,
-                        final long currentTime) {
-                    return (channel.isShutdown() || channel.isTerminated()) ? 0 : ONE_DAY_IN_NANOS;
-                }
-
-                public long expireAfterUpdate(
-                        final String node,
-                        final ManagedChannel channel,
-                        final long currentTime,
-                        final long currentDuration) {
-                    return (channel.isShutdown() || channel.isTerminated()) ? 0 : ONE_DAY_IN_NANOS;
-                }
-
-                public long expireAfterRead(
-                        final String node,
-                        final ManagedChannel channel,
-                        final long currentTime,
-                        final long currentDuration) {
-                    return (channel.isShutdown() || channel.isTerminated()) ? 0 : ONE_DAY_IN_NANOS;
-                }
-            })
-            .removalListener((final String node, final ManagedChannel channel, final RemovalCause cause) -> channel.shutdown())
+            .expireAfterAccess(Duration.ofDays(1))
+            .removalListener((final String key, final ManagedChannel channel, final RemovalCause cause) -> channel.shutdown())
             .build();
 
     public DbpxyClient(
@@ -101,10 +77,17 @@ public class DbpxyClient {
         if (retry <= 0) {
             throw new RuntimeException("Exhausted retries trying to create gRPC channel to " + node + ":" + port + ".");
         }
-        final ManagedChannel channel = channelCache.get(node, ignored -> Grpc
-                .newChannelBuilderForAddress(node, port, credentials)
-                .build());
-        return (channel.isShutdown() || channel.isTerminated()) ? getChannel(node, port, retry - 1) : channel;
+        final String cacheKey = node + ":" + port;
+        final ManagedChannel channel = channelCache.get(cacheKey, ignored -> {
+            log.debug("creating gRPC channel to {}:{} attempts remaining {}", node, port, retry);
+            return Grpc.newChannelBuilderForAddress(node, port, credentials).build();
+        });
+        if (channel.isShutdown() || channel.isTerminated()) {
+            channelCache.asMap().remove(cacheKey, channel);
+            log.debug("recreating gRPC channel to {}:{}", node, port);
+            return getChannel(node, port, retry - 1);
+        }
+        return channel;
     }
 
     @EventListener(ContextStoppedEvent.class)

@@ -35,14 +35,14 @@ public class ConnectionHolder {
 
     public void doWithSharedTransaction(
             final String transactionId,
-            final Runnable callback) throws Exception {
-        getConnection().doWithSharedTransaction(transactionId, callback);
+            final Runnable runnable) throws Exception {
+        getConnection().doWithSharedTransaction(transactionId, runnable);
     }
 
     public <T> T doWithSharedTransaction(
             final String transactionId,
-            final Callable<T> callback) throws Exception {
-        return getConnection().doWithSharedTransaction(transactionId, callback);
+            final Callable<T> callable) throws Exception {
+        return getConnection().doWithSharedTransaction(transactionId, callable);
     }
 
     public Connection getConnection() {

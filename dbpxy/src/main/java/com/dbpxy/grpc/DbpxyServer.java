@@ -52,17 +52,22 @@ public class DbpxyServer {
                     .forPort(grpcProperties.getPort())
                     .useTransportSecurity(cert, key)
                     .addService(databaseService)
-                    .build()
-                    .start();
-            log.info("gRPC server started on port: {}", grpcProperties.getPort());
+                    .build();
         }
+        server.start();
+        log.info("gRPC server started on port {}", grpcProperties.getPort());
     }
 
     @EventListener(ContextStoppedEvent.class)
     public void onApplicationEvent(final ContextStoppedEvent event) {
+        log.info("Shutting down gRPC server...");
         try {
-            server.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+            if (!server.shutdown().awaitTermination(5, TimeUnit.SECONDS)) {
+                log.warn("Forcing gRPC shutdown...");
+                server.shutdownNow();
+            }
         } catch (final InterruptedException e) {
+            log.error("Shutdown interrupted. Forcing gRPC shutdown...");
             server.shutdownNow();
         }
         log.info("gRPC server stopped");

@@ -52,7 +52,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
         this.sql = sql;
     }
 
-    protected Value nullSafeArgToValue(final Object value) {
+    private static Value nullSafeArgToValue(final Object value) {
         return Optional.ofNullable(value)
                 .map(it -> {
                     if (it instanceof Short v) {
@@ -119,16 +119,21 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                     }
                     return null;
                 })
-                .orElse(Value.newBuilder()
-                        .setCode(ValueCode.NULL)
-                        .setData(ValueNull.newBuilder().build().toByteString())
-                        .build());
+                .orElseGet(PreparedStatement::nullValue);
+    }
+
+    private static Value nullValue() {
+        return Value.newBuilder()
+                .setCode(ValueCode.NULL)
+                .setData(ValueNull.newBuilder().build().toByteString())
+                .build();
     }
 
     protected List<Value> paramAsList() {
         return params.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .map(e -> nullSafeArgToValue(e.getValue()))
+                .map(Map.Entry::getValue)
+                .map(PreparedStatement::nullSafeArgToValue)
                 .toList();
     }
 

@@ -50,7 +50,7 @@ public class Statement implements java.sql.Statement {
     protected ResultSet executeQuery(
             final String sql,
             final List<Value> params
-    ) throws SQLException {
+    ) {
         final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true))
                 .setQueryConfig(QueryConfig.newBuilder()
@@ -75,7 +75,7 @@ public class Statement implements java.sql.Statement {
     protected int executeUpdate(
             final String sql,
             final List<Value> params
-    ) throws SQLException {
+    ) {
         final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(connection.getTransaction(true))
                 .setExecuteConfig(ExecuteConfig.newBuilder()

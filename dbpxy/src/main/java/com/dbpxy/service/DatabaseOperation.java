@@ -162,6 +162,7 @@ class DatabaseOperation {
 
                 params.getConnection().setAutoCommit(config.getAutoCommit());
                 params.getConnection().setReadOnly(config.getReadOnly());
+
                 params.setRollbackTask(config.getTimeoutInMs(), () -> {
                     if (params.shouldConnectionContinue()) {
                         taskQueue.add(rollbackParams -> {
@@ -198,8 +199,6 @@ class DatabaseOperation {
 
         final boolean accepted = taskQueue.add(params -> {
             try {
-                params.cancelRollbackTask();
-
                 final boolean committed = Optional.ofNullable(params.getConnection())
                         .flatMap(DatabaseOperation::commit)
                         .orElse(false);
@@ -211,6 +210,7 @@ class DatabaseOperation {
                 future.completeExceptionally(e);
             } finally {
                 params.stopConnection();
+                params.cancelRollbackTask();
             }
         });
 
@@ -227,8 +227,6 @@ class DatabaseOperation {
 
         final boolean accepted = taskQueue.add(params -> {
             try {
-                params.cancelRollbackTask();
-
                 final boolean rolledBack = Optional.ofNullable(params.getConnection())
                         .flatMap(DatabaseOperation::rollback)
                         .orElse(false);
@@ -240,6 +238,7 @@ class DatabaseOperation {
                 future.completeExceptionally(e);
             } finally {
                 params.stopConnection();
+                params.cancelRollbackTask();
             }
         });
 
@@ -492,148 +491,30 @@ class DatabaseOperation {
                 .build();
     }
 
-    private static boolean wasNull(final ResultSet rs) {
-        try {
-            return rs.wasNull();
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static int getScale(final ResultSetMetaData metadata, final int i) {
-        try {
-            return metadata.getScale(i);
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static int getPrecision(final ResultSetMetaData metadata, final int i) {
-        try {
-            return metadata.getPrecision(i);
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static int getColumnDisplaySize(final ResultSetMetaData metadata, final int i) {
-        try {
-            return metadata.getColumnDisplaySize(i);
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static String getColumnName(final ResultSetMetaData metadata, final int i) {
-        try {
-            return metadata.getColumnName(i);
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static String getColumnLabel(final ResultSetMetaData metadata, final int i) {
-        try {
-            return metadata.getColumnLabel(i);
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static Value getSqlArg(final ResultSet rs, final int i) {
         try {
             final ResultSetMetaData metadata = rs.getMetaData();
             switch (metadata.getColumnType(i)) {
                 case Types.BIGINT -> {
-                    final long v = rs.getLong(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.INT64)
-                            .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return int64Value(metadata, rs, i);
                 }
                 case Types.BOOLEAN, Types.BIT -> {
-                    final boolean v = rs.getBoolean(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.BOOL)
-                            .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return booleanValue(metadata, rs, i);
                 }
                 case Types.DATE -> {
-                    final Date v = rs.getDate(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.TIME)
-                            .setData(ValueTime.newBuilder()
-                                    .setValue(OffsetDateTime
-                                            .ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneId.systemDefault())
-                                            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                    .build()
-                                    .toByteString()
-                            )
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return timeValue(metadata, rs, i);
                 }
                 case Types.NUMERIC, Types.DOUBLE -> {
-                    final BigDecimal v = rs.getBigDecimal(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.FLOAT64)
-                            .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .setScale(getScale(metadata, i))
-                            .setPrecision(getPrecision(metadata, i))
-                            .build();
+                    return float64Value(metadata, rs, i);
                 }
                 case Types.SMALLINT, Types.INTEGER -> {
-                    final int v = rs.getInt(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.INT32)
-                            .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return int32Value(metadata, rs, i);
                 }
                 case Types.TIMESTAMP -> {
-                    final Timestamp v = rs.getTimestamp(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.TIME)
-                            .setData(ValueTime.newBuilder()
-                                    .setValue(OffsetDateTime
-                                            .ofInstant(v.toInstant(), ZoneId.systemDefault())
-                                            .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                    .build()
-                                    .toByteString()
-                            )
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return timestampValue(metadata, rs, i);
                 }
                 case Types.VARCHAR -> {
-                    final String v = rs.getString(i);
-                    if (wasNull(rs)) return nullValue();
-                    return Value.newBuilder()
-                            .setCode(ValueCode.STRING)
-                            .setData(ValueString.newBuilder().setValue(v).build().toByteString())
-                            .setSize(getColumnDisplaySize(metadata, i))
-                            .setName(getColumnName(metadata, i))
-                            .setLabel(getColumnLabel(metadata, i))
-                            .build();
+                    return varcharValue(metadata, rs, i);
                 }
                 case Types.NULL -> {
                     return nullValue();
@@ -645,6 +526,113 @@ class DatabaseOperation {
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static Value.Builder createValueBuilder(
+            final ResultSetMetaData metadata,
+            final int i) throws SQLException {
+        return Value.newBuilder()
+                .setSize(metadata.getColumnDisplaySize(i))
+                .setName(metadata.getColumnName(i))
+                .setLabel(metadata.getColumnLabel(i));
+    }
+
+    private static @NonNull Value int64Value(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final long v = rs.getLong(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.INT64)
+                .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
+                .build();
+    }
+
+    private static @NonNull Value booleanValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final boolean v = rs.getBoolean(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.BOOL)
+                .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
+                .build();
+    }
+
+    private static @NonNull Value timeValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final Date v = rs.getDate(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.TIME)
+                .setData(ValueTime.newBuilder()
+                        .setValue(OffsetDateTime
+                                .ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                        .build()
+                        .toByteString()
+                )
+                .build();
+    }
+
+    private static @NonNull Value float64Value(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final BigDecimal v = rs.getBigDecimal(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.FLOAT64)
+                .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
+                .setScale(metadata.getScale(i))
+                .setPrecision(metadata.getPrecision(i))
+                .build();
+    }
+
+    private static @NonNull Value int32Value(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final int v = rs.getInt(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.INT32)
+                .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
+                .build();
+    }
+
+    private static @NonNull Value timestampValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final Timestamp v = rs.getTimestamp(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.TIME)
+                .setData(ValueTime.newBuilder()
+                        .setValue(OffsetDateTime
+                                .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                        .build()
+                        .toByteString()
+                )
+                .build();
+    }
+
+    private static @NonNull Value varcharValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final String v = rs.getString(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.STRING)
+                .setData(ValueString.newBuilder().setValue(v).build().toByteString())
+                .build();
     }
 
     private static void setSqlArg(final PreparedStatement stmt, final int i, final Value value) {

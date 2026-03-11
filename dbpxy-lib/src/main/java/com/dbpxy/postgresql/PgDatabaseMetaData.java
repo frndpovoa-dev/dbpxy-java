@@ -53,7 +53,7 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     @Override
     public String getUserName() throws SQLException {
         return connection.getConnectionString().getPropsList().stream()
-                .filter(prop -> prop.getName().equalsIgnoreCase("user"))
+                .filter(prop -> "user".equalsIgnoreCase(prop.getName()))
                 .findFirst()
                 .map(ConnectionStringProp::getValue)
                 .orElse("");
