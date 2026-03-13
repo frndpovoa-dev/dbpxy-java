@@ -40,6 +40,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 @Slf4j
@@ -80,7 +81,11 @@ public class DbpxyClient {
         final String cacheKey = node + ":" + port;
         final ManagedChannel channel = channelCache.get(cacheKey, ignored -> {
             log.debug("creating gRPC channel to {}:{} attempts remaining {}", node, port, retry);
-            return Grpc.newChannelBuilderForAddress(node, port, credentials).build();
+            return Grpc
+                    .newChannelBuilderForAddress(node, port, credentials)
+                    .keepAliveTime(1, TimeUnit.MINUTES)
+                    .keepAliveTimeout(1, TimeUnit.SECONDS)
+                    .build();
         });
         if (channel.isShutdown() || channel.isTerminated()) {
             channelCache.asMap().remove(cacheKey, channel);

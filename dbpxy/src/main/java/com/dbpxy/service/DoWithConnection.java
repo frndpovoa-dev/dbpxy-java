@@ -24,7 +24,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.sql.Connection;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -37,7 +36,6 @@ interface DoWithConnection {
     @Builder
     class Params {
         private final Connection connection;
-        private final ExecutorService taskExecutor;
         private final ScheduledExecutorService rollbackExecutor;
 
         @Builder.Default

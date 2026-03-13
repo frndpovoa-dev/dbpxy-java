@@ -52,6 +52,8 @@ public class DbpxyServer {
                     .forPort(grpcProperties.getPort())
                     .useTransportSecurity(cert, key)
                     .addService(databaseService)
+                    .keepAliveTime(1, TimeUnit.MINUTES)
+                    .keepAliveTimeout(1, TimeUnit.SECONDS)
                     .build();
         }
         server.start();
@@ -67,7 +69,8 @@ public class DbpxyServer {
                 server.shutdownNow();
             }
         } catch (final InterruptedException e) {
-            log.error("Shutdown interrupted. Forcing gRPC shutdown...");
+            log.error("Shutdown interrupted. Forcing gRPC shutdown...", e);
+            Thread.currentThread().interrupt();
             server.shutdownNow();
         }
         log.info("gRPC server stopped");

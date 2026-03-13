@@ -24,7 +24,6 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.sql.ResultSet;
-import java.util.concurrent.ExecutorService;
 
 @FunctionalInterface
 interface DoWithResultSet {
@@ -34,7 +33,6 @@ interface DoWithResultSet {
     @Builder
     class Params {
         private final ResultSet resultSet;
-        private final ExecutorService taskExecutor;
 
         @Builder.Default
         private boolean shouldResultSetContinue = true;

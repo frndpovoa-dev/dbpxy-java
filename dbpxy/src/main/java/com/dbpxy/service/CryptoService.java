@@ -42,7 +42,18 @@ public class CryptoService {
     private static final int AES_KEY_LENGTH = 128;
     private static final int GCM_IV_LENGTH = 12;
     private static final int GCM_TAG_LENGTH = 128;
+
     private static final SecretKey SECRET_KEY = CryptoService.newAESKey();
+
+    private static final ThreadLocal<Cipher> CIPHER_HOLDER = ThreadLocal.withInitial(() ->{
+        try {
+            return Cipher.getInstance(AES_GCM_NO_PADDING);
+        } catch (final NoSuchAlgorithmException
+                | NoSuchPaddingException e) {
+            throw new RuntimeException(e);
+        }
+    });
+
     @Value("${app.encryption.enabled}")
     private boolean useEncryption;
 
@@ -54,20 +65,18 @@ public class CryptoService {
             final byte[] iv = new byte[GCM_IV_LENGTH];
             SECURE_RANDOM.nextBytes(iv);
 
-            final Cipher cipher = Cipher.getInstance(AES_GCM_NO_PADDING);
+            final Cipher cipher = CIPHER_HOLDER.get();
             final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.ENCRYPT_MODE, SECRET_KEY, gcmParameterSpec);
 
             final byte[] encryptedText = cipher.doFinal(plainText.getBytes(StandardCharsets.UTF_8));
 
-            final ByteBuffer byteBuffer = ByteBuffer.allocate(iv.length + encryptedText.length);
-            byteBuffer.put(iv);
-            byteBuffer.put(encryptedText);
+            final byte[] output = new byte[iv.length + encryptedText.length];
+            System.arraycopy(iv, 0, output, 0, iv.length);
+            System.arraycopy(encryptedText, 0, output, iv.length, encryptedText.length);
 
-            return Base64.getEncoder().encodeToString(byteBuffer.array());
-        } catch (final NoSuchPaddingException
-                       | IllegalBlockSizeException
-                       | NoSuchAlgorithmException
+            return Base64.getEncoder().encodeToString(output);
+        } catch (final IllegalBlockSizeException
                        | InvalidAlgorithmParameterException
                        | BadPaddingException
                        | InvalidKeyException e) {
@@ -88,15 +97,13 @@ public class CryptoService {
             final byte[] ciphertext = new byte[byteBuffer.remaining()];
             byteBuffer.get(ciphertext);
 
-            final Cipher cipher = Cipher.getInstance(AES_GCM_NO_PADDING);
+            final Cipher cipher = CIPHER_HOLDER.get();
             final GCMParameterSpec gcmParameterSpec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
             cipher.init(Cipher.DECRYPT_MODE, SECRET_KEY, gcmParameterSpec);
 
             final byte[] decryptedText = cipher.doFinal(ciphertext);
             return new String(decryptedText, StandardCharsets.UTF_8);
-        } catch (final NoSuchPaddingException
-                       | IllegalBlockSizeException
-                       | NoSuchAlgorithmException
+        } catch (final IllegalBlockSizeException
                        | InvalidAlgorithmParameterException
                        | BadPaddingException
                        | InvalidKeyException e) {

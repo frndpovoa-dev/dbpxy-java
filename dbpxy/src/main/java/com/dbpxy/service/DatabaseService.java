@@ -35,6 +35,8 @@ import org.springframework.stereotype.Service;
 import java.time.Duration;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 @Slf4j
 @Service
@@ -71,9 +73,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             })
             .removalListener((transactionId, ops, cause) -> {
                 if (ops != null) {
-                    MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(ops.getTransaction().getId()) + "@" + ops.getTransaction().getNode());
-                    log.debug("cache eviction");
-                    ops.closeConnection();
+                    try {
+                        MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(ops.getTransaction().getId()) + "@" + ops.getTransaction().getNode());
+                        log.debug("cache eviction");
+                        ops.closeConnection();
+                    } finally {
+                        MDC.remove(MDC_TRANSACTION_ID);
+                    }
                 }
             })
             .build();
@@ -82,6 +88,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
+
+    private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-task-").build());
 
     public DatabaseService(
             final GrpcProperties grpcProperties,
@@ -109,20 +117,20 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
-
-        MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-        log.debug("beginTransaction() -> {}", transaction.getStatus());
-
-        final DatabaseOperation ops = DatabaseOperation.builder()
-                .cryptoService(cryptoService)
-                .uniqueIdGenerator(uniqueIdGenerator)
-                .transaction(transaction)
-                .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()))
-                .build();
-
-        transactionCache.put(transactionId, ops);
-
         try {
+            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+            log.debug("beginTransaction() -> {}", transaction.getStatus());
+
+            final DatabaseOperation ops = DatabaseOperation.builder()
+                    .taskExecutor(taskExecutor)
+                    .cryptoService(cryptoService)
+                    .uniqueIdGenerator(uniqueIdGenerator)
+                    .transaction(transaction)
+                    .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()))
+                    .build();
+
+            transactionCache.put(transactionId, ops);
+
             ops.openConnection(config.getConnectionString());
             ops.beginTransaction(config);
 
@@ -134,6 +142,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
+        } finally {
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -192,6 +202,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .asRuntimeException());
         } finally {
             closeDatabaseOperationByTransaction(transaction);
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -250,6 +261,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .asRuntimeException());
         } finally {
             closeDatabaseOperationByTransaction(transaction);
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -280,6 +292,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
+        } finally {
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -315,6 +329,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
+        } finally {
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -345,6 +361,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
+        } finally {
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -383,6 +401,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
+        } finally {
+            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 

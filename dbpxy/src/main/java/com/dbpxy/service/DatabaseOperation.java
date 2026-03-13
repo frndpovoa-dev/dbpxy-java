@@ -68,6 +68,7 @@ class DatabaseOperation {
     });
 
     private final CryptoService cryptoService;
+    private final ExecutorService taskExecutor;
     private final UniqueIdGenerator uniqueIdGenerator;
     @Getter
     private final long timeoutInMs;
@@ -79,10 +80,6 @@ class DatabaseOperation {
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
 
     boolean openConnection(final ConnectionString connectionString) {
-        final Instant now = Instant.now();
-        final String threadNamePrefix = Thread.currentThread().getName() + "-dbpxy-" + now.getEpochSecond() + now.getNano();
-        final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix(threadNamePrefix + "-task-").build());
-
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
@@ -93,11 +90,10 @@ class DatabaseOperation {
                     .forEach(prop -> props.put(prop.getName(), prop.getValue()));
 
             try (final Connection connection = DriverManager.getConnection(connectionString.getUrl(), props);
-                 final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(threadNamePrefix + "-rollback-").build())) {
+                 final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
 
                 final DoWithConnection.Params params = DoWithConnection.Params.builder()
                         .connection(connection)
-                        .taskExecutor(taskExecutor)
                         .rollbackExecutor(rollbackExecutor)
                         .build();
 
@@ -128,7 +124,7 @@ class DatabaseOperation {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             } finally {
-                taskExecutor.shutdownNow();
+                MDC.remove(MDC_TRANSACTION_ID);
             }
         }, taskExecutor);
         return future.join();
@@ -310,7 +306,6 @@ class DatabaseOperation {
 
                     final DoWithResultSet.Params resultSetParams = DoWithResultSet.Params.builder()
                             .resultSet(resultSet)
-                            .taskExecutor(params.getTaskExecutor())
                             .build();
 
                     final LinkedBlockingQueue<DoWithResultSet> taskQueueResultSet = new LinkedBlockingQueue<>() {
@@ -366,17 +361,21 @@ class DatabaseOperation {
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
                 .map(queryTaskQueue -> queryTaskQueue.add(resultSetParams -> {
                     try {
-                        int rowsFetched = 0;
-                        boolean next = true;
                         final List<Row> results = new ArrayList<>();
 
-                        while (resultSetParams.shouldResultSetContinue() && next && rowsFetched < resultSetParams.getResultSet().getFetchSize()) {
-                            next = resultSetParams.getResultSet().next();
+                        final ResultSet rs = resultSetParams.getResultSet();
+
+                        boolean next = true;
+                        int rowsFetched = 0;
+                        while (resultSetParams.shouldResultSetContinue() && next && rowsFetched < rs.getFetchSize()) {
+                            next = rs.next();
                             if (next) {
                                 rowsFetched++;
                                 final Row.Builder rowBuilder = Row.newBuilder();
-                                for (int i = 1; i <= resultSetParams.getResultSet().getMetaData().getColumnCount(); i++) {
-                                    rowBuilder.addCols(getSqlArg(resultSetParams.getResultSet(), i));
+                                final ResultSetMetaData metadata = rs.getMetaData();
+                                final int columnCount = metadata.getColumnCount();
+                                for (int i = 1; i <= columnCount; i++) {
+                                    rowBuilder.addCols(getSqlArg(metadata, rs, i));
                                 }
                                 results.add(rowBuilder.build());
                             }
@@ -491,9 +490,11 @@ class DatabaseOperation {
                 .build();
     }
 
-    private static Value getSqlArg(final ResultSet rs, final int i) {
+    private static Value getSqlArg(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) {
         try {
-            final ResultSetMetaData metadata = rs.getMetaData();
             switch (metadata.getColumnType(i)) {
                 case Types.BIGINT -> {
                     return int64Value(metadata, rs, i);
