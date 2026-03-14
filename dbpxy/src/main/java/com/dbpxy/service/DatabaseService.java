@@ -126,7 +126,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
-                    .timeoutInMs(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()))
+                    .timeoutInMs(DatabaseUtil.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                     .build();
 
             transactionCache.put(transactionId, ops);

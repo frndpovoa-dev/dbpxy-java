@@ -111,14 +111,20 @@ class DatabaseOperation {
                 log.debug("openConnection() -> {}", opened);
                 future.complete(opened);
 
+                final AdaptiveConsumer<DoWithConnection> consumer = new AdaptiveConsumer<>();
                 while (params.shouldConnectionContinue()) {
-                    final DoWithConnection callback = taskQueue.poll(200, TimeUnit.MILLISECONDS);
-                    if (callback != null) {
-                        log.debug("before doWithConnection()");
-                        callback.doWithConnection(params);
-                        log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
-                    }
+                    consumer.consume(taskQueue, callback -> {
+                        if (callback != null) {
+                            log.debug("before doWithConnection()");
+                            callback.doWithConnection(params);
+                            log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
+                        }
+                    });
                 }
+
+                // Wake up queue from poll() to be closed
+                queryTaskMap.values()
+                        .forEach(queue -> queue.add(null));
 
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
@@ -151,7 +157,7 @@ class DatabaseOperation {
 
         final boolean accepted = taskQueue.add(params -> {
             try {
-                log.debug("beginTransaction() -> autoCommit: {}, readOnly: {}, transactionTimeout: {}",
+                log.debug("beginTransaction() -> autoCommit: {}, readOnly: {}, transactionTimeout: {}ms",
                         config.getAutoCommit(),
                         config.getReadOnly(),
                         config.getTimeoutInMs());
@@ -246,15 +252,15 @@ class DatabaseOperation {
         }
     }
 
-    public ExecuteResult execute(final ExecuteConfig config) {
+    ExecuteResult execute(final ExecuteConfig config) {
         final CompletableFuture<Integer> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                log.debug("execute() -> executeTimeout: {}",
-                        config.getTimeoutInMs());
-
                 stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
+
+                log.debug("execute() -> executeTimeout: {}s",
+                        stmt.getQueryTimeout());
 
                 for (int i = 0; i < config.getArgsCount(); i++) {
                     setSqlArg(stmt, i + 1, config.getArgs(i));
@@ -281,7 +287,7 @@ class DatabaseOperation {
         }
     }
 
-    public QueryResult query(final QueryConfig config) {
+    QueryResult query(final QueryConfig config) {
         final String queryResultId = uniqueIdGenerator.globalUUID(QueryResult.class.getName());
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
 
@@ -289,12 +295,12 @@ class DatabaseOperation {
             MDC.put(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
             log.debug("before prepared statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                log.debug("query() -> fetchSize: {}, queryTimeout: {}",
-                        config.getFetchSize(),
-                        config.getTimeoutInMs());
-
-                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
                 stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
+                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
+
+                log.debug("query() -> fetchSize: {}, queryTimeout: {}s",
+                        stmt.getFetchSize(),
+                        stmt.getQueryTimeout());
 
                 IntStream.range(0, config.getArgsCount())
                         .forEach(i -> setSqlArg(stmt, i + 1, config.getArgs(i)));
@@ -311,7 +317,7 @@ class DatabaseOperation {
                     final LinkedBlockingQueue<DoWithResultSet> taskQueueResultSet = new LinkedBlockingQueue<>() {
                         @Override
                         public boolean add(@NonNull final DoWithResultSet doWithResultSet) {
-                            if (!params.shouldConnectionContinue() || !resultSetParams.shouldResultSetContinue()) {
+                            if (!resultSetParams.shouldResultSetContinue()) {
                                 return false;
                             }
                             return super.add(doWithResultSet);
@@ -321,14 +327,16 @@ class DatabaseOperation {
                     queryTaskMap.put(queryResultId, taskQueueResultSet);
                     future.complete(true);
 
+                    final AdaptiveConsumer<DoWithResultSet> consumer = new AdaptiveConsumer<>();
                     while (resultSetParams.shouldResultSetContinue()) {
                         if (params.shouldConnectionContinue()) {
-                            final DoWithResultSet callback = taskQueueResultSet.poll(200, TimeUnit.MILLISECONDS);
-                            if (callback != null) {
-                                log.debug("before doWithResultSet()");
-                                callback.doWithResultSet(resultSetParams);
-                                log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
-                            }
+                            consumer.consume(taskQueueResultSet, callback -> {
+                                if (callback != null) {
+                                    log.debug("before doWithResultSet()");
+                                    callback.doWithResultSet(resultSetParams);
+                                    log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
+                                }
+                            });
                         } else {
                             resultSetParams.stopResultSet();
                         }
@@ -355,7 +363,7 @@ class DatabaseOperation {
                 .build();
     }
 
-    public QueryResult next(final NextConfig config) {
+    QueryResult next(final NextConfig config) {
         final CompletableFuture<List<Row>> future = new CompletableFuture<>();
 
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
@@ -406,7 +414,7 @@ class DatabaseOperation {
         }
     }
 
-    public boolean closeResultSet(final NextConfig config) {
+    boolean closeResultSet(final NextConfig config) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))

@@ -20,16 +20,22 @@ package com.dbpxy.service;
  * #L%
  */
 
+import java.time.Duration;
+
 class DatabaseUtil {
-    public static String getMaskedId(final String id) {
+    static String getMaskedId(final String id) {
         return id.substring(0, Math.min(32, id.length()));
     }
 
-    public static int sanitizeFetchSize(final long fetchSize) {
+    static int sanitizeFetchSize(final long fetchSize) {
         return Math.clamp(fetchSize, 25, Integer.MAX_VALUE);
     }
 
-    public static int sanitizeTimeout(final long timeout) {
-        return Math.clamp(timeout, 0, Integer.MAX_VALUE);
+    static int sanitizeTimeout(final long timeoutInMs) {
+        return Math.clamp(Duration.ofMillis(timeoutInMs).toSeconds(), 0, Integer.MAX_VALUE);
+    }
+
+    static int sanitizeTimeoutInMs(final long timeoutInMs) {
+        return Math.clamp(timeoutInMs, 0, Integer.MAX_VALUE);
     }
 }
