@@ -50,21 +50,25 @@ public class Statement implements java.sql.Statement {
     protected ResultSet executeQuery(
             final String sql,
             final List<Value> params
-    ) {
-        final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true))
-                .setQueryConfig(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeoutInMs(getQueryTimeoutInMs())
-                        .addAllArgs(params)
-                        .build())
-                .build());
-        this.resultSet = new ResultSet(
-                connection,
-                this,
-                result
-        );
-        return resultSet;
+    ) throws SQLException {
+        try {
+            final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
+                    .setTransaction(connection.getTransaction(true))
+                    .setQueryConfig(QueryConfig.newBuilder()
+                            .setQuery(sql)
+                            .setTimeoutInMs(getQueryTimeoutInMs())
+                            .addAllArgs(params)
+                            .build())
+                    .build());
+            this.resultSet = new ResultSet(
+                    connection,
+                    this,
+                    result
+            );
+            return resultSet;
+        } catch (final RuntimeException e) {
+            throw new SQLException(e.getMessage());
+        }
     }
 
     @Override
@@ -75,22 +79,28 @@ public class Statement implements java.sql.Statement {
     protected int executeUpdate(
             final String sql,
             final List<Value> params
-    ) {
-        final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true))
-                .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeoutInMs(getQueryTimeoutInMs())
-                        .addAllArgs(params)
-                        .build())
-                .build());
-        return result.getRowsAffected();
+    ) throws SQLException {
+        try {
+            final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
+                    .setTransaction(connection.getTransaction(true))
+                    .setExecuteConfig(ExecuteConfig.newBuilder()
+                            .setQuery(sql)
+                            .setTimeoutInMs(getQueryTimeoutInMs())
+                            .addAllArgs(params)
+                            .build())
+                    .build());
+            return result.getRowsAffected();
+        } catch (final RuntimeException e) {
+            throw new SQLException(e.getMessage());
+        }
     }
 
     @Override
     public void close() throws SQLException {
         try {
             connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
+        } catch (final RuntimeException e) {
+            throw new SQLException(e.getMessage());
         } finally {
             this.closed = true;
         }

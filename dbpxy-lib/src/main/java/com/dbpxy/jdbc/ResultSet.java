@@ -101,26 +101,30 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public boolean next() throws SQLException {
         log.trace("public boolean next() throws SQLException {");
-        if (localRow + 1 < queryResult.getRowsCount()) {
-            localRow++;
-            totalRow++;
-            return true;
+        try {
+            if (localRow + 1 < queryResult.getRowsCount()) {
+                localRow++;
+                totalRow++;
+                return true;
+            }
+
+            this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
+                    .setQueryResultId(queryResult.getId())
+                    .setTransaction(Optional.ofNullable(connection.getTransaction(false))
+                            .orElseGet(Transaction::getDefaultInstance))
+                    .build());
+
+            if (queryResult.getRowsCount() > 0) {
+                localRow = 0;
+                totalRow++;
+                return true;
+            }
+
+            last = true;
+            return false;
+        } catch (final RuntimeException e) {
+            throw new SQLException(e.getMessage());
         }
-
-        this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
-                .setQueryResultId(queryResult.getId())
-                .setTransaction(Optional.ofNullable(connection.getTransaction(false))
-                        .orElseGet(Transaction::getDefaultInstance))
-                .build());
-
-        if (queryResult.getRowsCount() > 0) {
-            localRow = 0;
-            totalRow++;
-            return true;
-        }
-
-        last = true;
-        return false;
     }
 
     @Override
@@ -132,6 +136,8 @@ public class ResultSet implements java.sql.ResultSet {
                     .setTransaction(Optional.ofNullable(connection.getTransaction(false))
                             .orElseGet(Transaction::getDefaultInstance))
                     .build());
+        } catch (final RuntimeException e) {
+            throw new SQLException(e.getMessage());
         } finally {
             this.closed = true;
         }

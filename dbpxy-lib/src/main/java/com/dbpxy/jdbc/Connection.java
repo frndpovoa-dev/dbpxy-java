@@ -240,8 +240,12 @@ public class Connection implements java.sql.Connection {
             log.debug("commit skipped (conn: {})", id);
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            final Transaction newTransaction = blockingStub.commitTransaction(transaction);
-            replaceTransaction(transaction, newTransaction);
+            try {
+                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
+                replaceTransaction(transaction, newTransaction);
+            } catch (final RuntimeException e) {
+                throw new SQLException(e.getMessage());
+            }
         }
     }
 
@@ -252,8 +256,12 @@ public class Connection implements java.sql.Connection {
             log.debug("rollback skipped (conn: {})", id);
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
-            replaceTransaction(transaction, newTransaction);
+            try {
+                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
+                replaceTransaction(transaction, newTransaction);
+            } catch (final RuntimeException e) {
+                throw new SQLException(e.getMessage());
+            }
         }
     }
 
