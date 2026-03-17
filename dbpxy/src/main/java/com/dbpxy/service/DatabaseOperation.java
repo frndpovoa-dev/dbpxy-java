@@ -111,15 +111,13 @@ class DatabaseOperation {
                 log.debug("openConnection() -> {}", opened);
                 future.complete(opened);
 
-                final AdaptiveConsumer<DoWithConnection> consumer = new AdaptiveConsumer<>();
                 while (params.shouldConnectionContinue()) {
-                    consumer.consume(taskQueue, callback -> {
-                        if (callback != null) {
-                            log.debug("before doWithConnection()");
-                            callback.doWithConnection(params);
-                            log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
-                        }
-                    });
+                    final DoWithConnection callback = taskQueue.poll(1, TimeUnit.MINUTES);
+                    if (callback != null) {
+                        log.debug("before doWithConnection()");
+                        callback.doWithConnection(params);
+                        log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
+                    }
                 }
 
                 // Wake up queue from poll() to be closed
@@ -327,16 +325,14 @@ class DatabaseOperation {
                     queryTaskMap.put(queryResultId, taskQueueResultSet);
                     future.complete(true);
 
-                    final AdaptiveConsumer<DoWithResultSet> consumer = new AdaptiveConsumer<>();
                     while (resultSetParams.shouldResultSetContinue()) {
                         if (params.shouldConnectionContinue()) {
-                            consumer.consume(taskQueueResultSet, callback -> {
-                                if (callback != null) {
-                                    log.debug("before doWithResultSet()");
-                                    callback.doWithResultSet(resultSetParams);
-                                    log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
-                                }
-                            });
+                            final DoWithResultSet callback = taskQueueResultSet.poll(1, TimeUnit.MINUTES);
+                            if (callback != null) {
+                                log.debug("before doWithResultSet()");
+                                callback.doWithResultSet(resultSetParams);
+                                log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
+                            }
                         } else {
                             resultSetParams.stopResultSet();
                         }
