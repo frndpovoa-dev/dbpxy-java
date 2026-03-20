@@ -53,7 +53,7 @@ public class DbpxyClient {
             .build();
 
     public DbpxyClient(
-            @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String certPath
+            @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath
     ) throws IOException {
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream()) {
             this.credentials = TlsChannelCredentials.newBuilder()

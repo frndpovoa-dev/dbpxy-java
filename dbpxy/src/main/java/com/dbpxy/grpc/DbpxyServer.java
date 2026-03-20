@@ -20,7 +20,7 @@ package com.dbpxy.grpc;
  * #L%
  */
 
-import com.dbpxy.config.GrpcProperties;
+import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.service.DatabaseService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
@@ -41,15 +41,15 @@ public class DbpxyServer {
     private final Server server;
 
     public DbpxyServer(
-            final GrpcProperties grpcProperties,
+            final DbpxyGrpcProperties dbpxyGrpcProperties,
             final DatabaseService databaseService,
-            @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String certPath,
-            @Value("${app.grpc.grpc-key-path:certs/key.pem}") final String keyPath
+            @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath,
+            @Value("${app.dbpxy-grpc.key-path:certs/key.pem}") final String keyPath
     ) throws IOException {
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
              final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
             this.server = ServerBuilder
-                    .forPort(grpcProperties.getPort())
+                    .forPort(dbpxyGrpcProperties.getPort())
                     .useTransportSecurity(cert, key)
                     .addService(databaseService)
                     .keepAliveTime(1, TimeUnit.MINUTES)
@@ -57,7 +57,7 @@ public class DbpxyServer {
                     .build();
         }
         server.start();
-        log.info("gRPC server started on port {}", grpcProperties.getPort());
+        log.info("gRPC server started on port {}", dbpxyGrpcProperties.getPort());
     }
 
     @EventListener(ContextStoppedEvent.class)

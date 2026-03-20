@@ -1,4 +1,4 @@
-package com.dbpxy.controller;
+package com.dbpxy.repository;
 
 /*-
  * #%L
@@ -20,5 +20,5 @@ package com.dbpxy.controller;
  * #L%
  */
 
-public interface ControllerPackage {
+public interface Package {
 }

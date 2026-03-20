@@ -1,6 +1,6 @@
 app:
   node: ${_pod_name:${HOSTNAME}}
-  grpc:
+  dbpxy-grpc:
     port: ${GRPC_PORT}
   postgresql:
     database: ${POSTGRESQL_DATABASE}

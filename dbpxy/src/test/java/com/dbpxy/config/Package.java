@@ -1,4 +1,4 @@
-package com.dbpxy.repository;
+package com.dbpxy.config;
 
 /*-
  * #%L
@@ -20,5 +20,5 @@ package com.dbpxy.repository;
  * #L%
  */
 
-public interface RepositoryPackage {
+public interface Package {
 }

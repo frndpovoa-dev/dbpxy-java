@@ -21,7 +21,7 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.BaseIntTest;
-import com.dbpxy.config.GrpcProperties;
+import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.proto.*;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
@@ -96,7 +96,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
             """;
 
     @Autowired
-    private GrpcProperties grpcProperties;
+    private DbpxyGrpcProperties dbpxyGrpcProperties;
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub databaseProxyServiceClient;
 
@@ -107,7 +107,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         this.channel = Grpc.newChannelBuilderForAddress(
                         "localhost",
-                        grpcProperties.getPort(),
+                        dbpxyGrpcProperties.getPort(),
                         credentials)
                 .build();
         this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(channel);

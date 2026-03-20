@@ -20,15 +20,14 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.*;
-import com.dbpxy.controller.ControllerPackage;
-import com.dbpxy.repository.RepositoryPackage;
+import com.dbpxy.config.DbpxyGrpcProperties;
+import com.dbpxy.config.TestConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
-import org.springframework.boot.jdbc.autoconfigure.DataSourceAutoConfiguration;
+import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -37,23 +36,23 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 @RequiredArgsConstructor
 @EnableTransactionManagement
 @EnableConfigurationProperties({
-        GrpcProperties.class,
-        DbpxyProperties.class,
-        DbpxyDatasourceProperties.class
+        DbpxyGrpcProperties.class
 })
+@EntityScan(
+        basePackageClasses = {
+                com.dbpxy.bo.Package.class,
+        }
+)
 @EnableJpaRepositories(
         basePackageClasses = {
-                RepositoryPackage.class,
+                com.dbpxy.repository.Package.class,
         }
 )
 @SpringBootApplication(
         scanBasePackageClasses = {
-                RootPackage.class,
-                ConfigPackage.class,
-                ControllerPackage.class,
-        },
-        exclude = {
-                DataSourceAutoConfiguration.class,
+                com.dbpxy.Package.class,
+                com.dbpxy.config.Package.class,
+                com.dbpxy.controller.Package.class,
         }
 )
 @Import(TestConfig.class)

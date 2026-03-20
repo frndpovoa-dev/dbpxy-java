@@ -1,4 +1,4 @@
-package com.dbpxy;
+package com.dbpxy.config;
 
 /*-
  * #%L
@@ -20,5 +20,13 @@ package com.dbpxy;
  * #L%
  */
 
-public interface RootPackage {
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@Getter
+@Setter
+@ConfigurationProperties(prefix = "app.dbpxy-grpc")
+public class DbpxyGrpcProperties {
+    private Integer port;
 }
