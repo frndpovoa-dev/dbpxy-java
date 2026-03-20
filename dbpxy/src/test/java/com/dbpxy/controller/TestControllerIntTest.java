@@ -54,7 +54,10 @@ import java.util.stream.IntStream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
+        properties = {"app.dbpxy.ddl-auto=create-drop"}
+)
 class TestControllerIntTest extends BaseIntTest {
     private static final String LIST_GROUP_WEB_URL = "http://localhost:9091/api/v1/test/list?group=web";
     private static final String INSERT_URL = "http://localhost:9091/api/v1/test/insert";

@@ -44,7 +44,10 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
+        properties = {"app.dbpxy.ddl-auto=create-drop"}
+)
 @Transactional(timeout = 10)
 class TestRepositoryIntTest extends BaseIntTest {
     @Autowired

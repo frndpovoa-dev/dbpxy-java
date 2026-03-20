@@ -29,6 +29,7 @@ import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.cfg.SchemaToolingSettings;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperties;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
@@ -90,18 +91,25 @@ public class DbpxyAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = {"dbpxyServer"})
+    public String dbpxyServer() {
+        return "dbpxyServer-not-available-in-dbpxy-lib";
+    }
+
+    @Bean
     @DependsOn({"dbpxyServer"})
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             final DataSource dataSource,
-            final ApplicationContext context
+            final ApplicationContext context,
+            @Value("${app.dbpxy.ddl-auto:none}") final String ddlAuto
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setDatabase(Database.POSTGRESQL);
 
         final Map<String, Object> jpaProperties = new HashMap<>();
-        jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, "create-drop");
+        jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, ddlAuto);
         jpaProperties.put(JdbcSettings.SHOW_SQL, true);
-        jpaProperties.put(JdbcSettings.FORMAT_SQL, true);
+        jpaProperties.put(JdbcSettings.FORMAT_SQL, false);
 
         final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);
