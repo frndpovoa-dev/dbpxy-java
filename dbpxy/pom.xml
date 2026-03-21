@@ -2,12 +2,15 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.dbpxy</groupId>
+    <parent>
+        <groupId>com.dbpxy</groupId>
+        <artifactId>dbpxy-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <artifactId>dbpxy</artifactId>
-    <version>${revision}</version>
     <packaging>jar</packaging>
     <properties>
-        <revision>0.1.0-SNAPSHOT</revision>
         <file.encoding>UTF-8</file.encoding>
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
@@ -22,7 +25,6 @@
         <org.postgresql_postgresql.version>42.7.9</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <org.testcontainers_testcontainers-java.version>1.21.4</org.testcontainers_testcontainers-java.version>
-        <spring-boot.version>4.0.3</spring-boot.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -201,7 +203,6 @@
             <plugin>
                 <groupId>org.graalvm.buildtools</groupId>
                 <artifactId>native-maven-plugin</artifactId>
-                <version>0.11.5</version>
             </plugin>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
@@ -271,7 +272,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
                 <executions>
                     <execution>
                         <goals>
