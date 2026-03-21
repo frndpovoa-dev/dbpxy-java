@@ -26,15 +26,18 @@ steps:
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
     args: [ 'install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
-  - id: 'build-backend-using-kaniko'
-    name: gcr.io/kaniko-project/executor
+  - id: 'build-image-using-maven'
+    name: maven:3.9-amazoncorretto-25-debian
+    entrypoint: mvn
+    args: [ 'spring-boot:build-image', '-Pnative', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+    dir: dbpxy
+  - id: 'tag-image-using-docker'
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
     args:
-      - --snapshot-mode=full
-      - --dockerfile=dbpxy/Dockerfile
-      - --destination=${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
-      - --context=dir:///workspace/dbpxy
-    env:
-      - 'DOCKER_CONFIG=/workspace/.docker'
+      - '-c'
+      - |
+        docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 artifacts:
   mavenArtifacts:
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
@@ -42,6 +45,8 @@ artifacts:
       groupId: com.dbpxy
       artifactId: dbpxy-lib
       version: ${_VERSION}
+images:
+  - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
   secretManager:
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_KEY_PEM/versions/1
