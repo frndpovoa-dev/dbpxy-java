@@ -23,7 +23,7 @@
             <dependency>
                 <groupId>com.dbpxy</groupId>
                 <artifactId>dbpxy-version</artifactId>
-                <version>${revision}</version>
+                <version>${project.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

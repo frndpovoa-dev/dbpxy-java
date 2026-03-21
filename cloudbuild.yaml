@@ -25,11 +25,11 @@ steps:
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: [ 'install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}', '-Dmaven.repo.local=/workspace/m2_repo' ]
+    args: [ 'install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
   - id: 'build-image-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: [ 'spring-boot:build-image', '-Pnative', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}', '-Dmaven.repo.local=/workspace/m2_repo' ]
+    args: [ 'spring-boot:build-image', '-Pnative', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
     dir: dbpxy
   - id: 'tag-image-using-docker'
     name: gcr.io/cloud-builders/docker
