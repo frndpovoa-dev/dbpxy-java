@@ -1,3 +1,7 @@
+volumes:
+  - name: docker-socket
+    hostPath:
+      path: /var/run/docker.sock
 steps:
   - id: 'authenticate-docker-cli'
     name: gcr.io/cloud-builders/docker
@@ -31,9 +35,11 @@ steps:
     entrypoint: mvn
     args: [ 'spring-boot:build-image', '-Pnative', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}', '-Dmaven.repo.local=/workspace/m2_repo' ]
     dir: dbpxy
+    env:
+      - DOCKER_HOST=unix:///docker.sock
     volumes:
-      - name: 'docker-socket'
-        path: /var/run/docker.sock
+      - name: docker-socket
+        path: /docker.sock
   - id: 'tag-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
