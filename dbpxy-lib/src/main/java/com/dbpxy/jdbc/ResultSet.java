@@ -86,9 +86,6 @@ public class ResultSet implements java.sql.ResultSet {
                 case TIME -> {
                     return ValueTime.parseFrom(value.getData()).getValue();
                 }
-                case NULL -> {
-                    return null;
-                }
                 default -> {
                     return null;
                 }
@@ -144,7 +141,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public boolean wasNull() throws SQLException {
+    public boolean wasNull() {
         log.trace("public boolean wasNull() throws SQLException {");
         return getCurrentRowColValue(col).getCode() == ValueCode.NULL;
     }
@@ -362,24 +359,24 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public SQLWarning getWarnings() throws SQLException {
+    public SQLWarning getWarnings() {
         log.trace("public SQLWarning getWarnings() throws SQLException {");
         return null;
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    public void clearWarnings() {
         log.trace("public void clearWarnings() throws SQLException {");
     }
 
     @Override
-    public String getCursorName() throws SQLException {
+    public String getCursorName() {
         log.trace("public String getCursorName() throws SQLException {");
         return queryResult.getId();
     }
 
     @Override
-    public ResultSetMetaData getMetaData() throws SQLException {
+    public ResultSetMetaData getMetaData() {
         if (resultSetMetaData == null) {
             this.resultSetMetaData = new ResultSetMetaData(queryResult);
         }
@@ -431,25 +428,25 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public boolean isBeforeFirst() throws SQLException {
+    public boolean isBeforeFirst() {
         log.trace("public boolean isBeforeFirst() throws SQLException {");
         return totalRow < 0;
     }
 
     @Override
-    public boolean isAfterLast() throws SQLException {
+    public boolean isAfterLast() {
         log.trace("public boolean isAfterLast() throws SQLException {");
         return last && (localRow >= queryResult.getRowsCount());
     }
 
     @Override
-    public boolean isFirst() throws SQLException {
+    public boolean isFirst() {
         log.trace("public boolean isFirst() throws SQLException {");
         return totalRow == 0;
     }
 
     @Override
-    public boolean isLast() throws SQLException {
+    public boolean isLast() {
         log.trace("public boolean isLast() throws SQLException {");
         return last && (localRow == queryResult.getRowsCount() - 1);
     }
@@ -479,7 +476,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public int getRow() throws SQLException {
+    public int getRow() {
         log.trace("public int getRow() throws SQLException {");
         return totalRow;
     }
@@ -510,7 +507,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public int getFetchDirection() throws SQLException {
+    public int getFetchDirection() {
         log.trace("public int getFetchDirection() throws SQLException {");
         return java.sql.ResultSet.FETCH_FORWARD;
     }
@@ -530,31 +527,31 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public int getType() throws SQLException {
+    public int getType() {
         log.trace("public int getType() throws SQLException {");
         return java.sql.ResultSet.TYPE_FORWARD_ONLY;
     }
 
     @Override
-    public int getConcurrency() throws SQLException {
+    public int getConcurrency() {
         log.trace("public int getConcurrency() throws SQLException {");
         return java.sql.ResultSet.CONCUR_READ_ONLY;
     }
 
     @Override
-    public boolean rowUpdated() throws SQLException {
+    public boolean rowUpdated() {
         log.trace("public boolean rowUpdated() throws SQLException {");
         return false;
     }
 
     @Override
-    public boolean rowInserted() throws SQLException {
+    public boolean rowInserted() {
         log.trace("public boolean rowInserted() throws SQLException {");
         return false;
     }
 
     @Override
-    public boolean rowDeleted() throws SQLException {
+    public boolean rowDeleted() {
         log.trace("public boolean rowDeleted() throws SQLException {");
         return false;
     }
@@ -830,7 +827,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Statement getStatement() throws SQLException {
+    public Statement getStatement() {
         log.trace("public Statement getStatement() throws SQLException {");
         return statement;
     }
@@ -1024,13 +1021,13 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public int getHoldability() throws SQLException {
+    public int getHoldability() {
         log.trace("public int getHoldability() throws SQLException {");
         return java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT;
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return closed;
     }
 
@@ -1307,7 +1304,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

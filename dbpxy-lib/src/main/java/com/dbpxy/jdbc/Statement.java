@@ -107,32 +107,32 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getMaxFieldSize() throws SQLException {
+    public int getMaxFieldSize() {
         return 0;
     }
 
     @Override
-    public void setMaxFieldSize(int max) throws SQLException {
+    public void setMaxFieldSize(int max) {
         // Do nothing
     }
 
     @Override
-    public int getMaxRows() throws SQLException {
+    public int getMaxRows() {
         return 0;
     }
 
     @Override
-    public void setMaxRows(int max) throws SQLException {
+    public void setMaxRows(int max) {
         // Do nothing
     }
 
     @Override
-    public void setEscapeProcessing(boolean enable) throws SQLException {
+    public void setEscapeProcessing(boolean enable) {
         // Do nothing
     }
 
     @Override
-    public int getQueryTimeout() throws SQLException {
+    public int getQueryTimeout() {
         if (queryTimeout != null) {
             return queryTimeout;
         }
@@ -158,12 +158,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public SQLWarning getWarnings() throws SQLException {
+    public SQLWarning getWarnings() {
         return null;
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    public void clearWarnings() {
     }
 
     @Override
@@ -184,17 +184,17 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public ResultSet getResultSet() throws SQLException {
+    public ResultSet getResultSet() {
         return resultSet;
     }
 
     @Override
-    public int getUpdateCount() throws SQLException {
+    public int getUpdateCount() {
         return -1;
     }
 
     @Override
-    public boolean getMoreResults() throws SQLException {
+    public boolean getMoreResults() {
         return false;
     }
 
@@ -204,7 +204,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getFetchDirection() throws SQLException {
+    public int getFetchDirection() {
         return resultSet.getFetchDirection();
     }
 
@@ -219,12 +219,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getResultSetConcurrency() throws SQLException {
+    public int getResultSetConcurrency() {
         return resultSet.getConcurrency();
     }
 
     @Override
-    public int getResultSetType() throws SQLException {
+    public int getResultSetType() {
         return resultSet.getType();
     }
 
@@ -247,12 +247,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public Connection getConnection() {
         return connection;
     }
 
     @Override
-    public boolean getMoreResults(int current) throws SQLException {
+    public boolean getMoreResults(int current) {
         return false;
     }
 
@@ -299,12 +299,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getResultSetHoldability() throws SQLException {
+    public int getResultSetHoldability() {
         return resultSet.getHoldability();
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return closed;
     }
 
@@ -315,7 +315,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isPoolable() throws SQLException {
+    public boolean isPoolable() {
         return false;
     }
 
@@ -326,7 +326,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isCloseOnCompletion() throws SQLException {
+    public boolean isCloseOnCompletion() {
         return false;
     }
 
@@ -339,7 +339,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

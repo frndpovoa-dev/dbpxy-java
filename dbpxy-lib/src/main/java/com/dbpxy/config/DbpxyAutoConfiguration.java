@@ -63,8 +63,8 @@ import java.util.Map;
         }
 )
 @ConditionalOnProperties({
-        @ConditionalOnProperty(value = "app.dbpxy.hostname", matchIfMissing = false),
-        @ConditionalOnProperty(value = "app.dbpxy.port", matchIfMissing = false)
+        @ConditionalOnProperty(value = "app.dbpxy.hostname"),
+        @ConditionalOnProperty(value = "app.dbpxy.port")
 })
 @EnableConfigurationProperties({
         DbpxyProperties.class,

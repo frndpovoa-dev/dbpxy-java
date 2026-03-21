@@ -56,6 +56,7 @@ public class UniqueIdGenerator {
             .expireAfterAccess(Duration.ofDays(1))
             .build(new CacheLoader<>() {
                 @Override
+                @SuppressWarnings({"deprecation"})
                 public String load(final String groupName) {
                     return Hashing.md5()
                             .hashString(groupName, StandardCharsets.UTF_8)

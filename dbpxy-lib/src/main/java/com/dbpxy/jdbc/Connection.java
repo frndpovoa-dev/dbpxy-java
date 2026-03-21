@@ -170,7 +170,7 @@ public class Connection implements java.sql.Connection {
             final String dbpxyCertPath
     ) throws SQLException {
         try {
-            try (final InputStream cert = getClass().getClassLoader().getResourceAsStream(dbpxyCertPath)) {
+            try (final InputStream cert = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(dbpxyCertPath))) {
                 final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                         .trustManager(cert)
                         .build();
@@ -199,12 +199,12 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public Statement createStatement() throws SQLException {
+    public Statement createStatement() {
         return new Statement(this, DEFAULT_QUERY_TIMEOUT_IN_MS);
     }
 
     @Override
-    public PreparedStatement prepareStatement(final String sql) throws SQLException {
+    public PreparedStatement prepareStatement(final String sql) {
         return new PreparedStatement(this, DEFAULT_QUERY_TIMEOUT_IN_MS, sql);
     }
 
@@ -215,17 +215,17 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public String nativeSQL(final String sql) throws SQLException {
+    public String nativeSQL(final String sql) {
         return sql;
     }
 
     @Override
-    public void setAutoCommit(final boolean autoCommit) throws SQLException {
+    public void setAutoCommit(final boolean autoCommit) {
         this.autoCommit = autoCommit;
     }
 
     @Override
-    public boolean getAutoCommit() throws SQLException {
+    public boolean getAutoCommit() {
         return autoCommit;
     }
 
@@ -285,32 +285,32 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return closed;
     }
 
     @Override
-    public PgDatabaseMetaData getMetaData() throws SQLException {
+    public PgDatabaseMetaData getMetaData() {
         return new PgDatabaseMetaData(this);
     }
 
     @Override
-    public void setReadOnly(final boolean readOnly) throws SQLException {
+    public void setReadOnly(final boolean readOnly) {
         this.readOnly = readOnly;
     }
 
     @Override
-    public boolean isReadOnly() throws SQLException {
+    public boolean isReadOnly() {
         return readOnly;
     }
 
     @Override
-    public void setCatalog(final String catalog) throws SQLException {
+    public void setCatalog(final String catalog) {
         this.catalog = catalog;
     }
 
     @Override
-    public String getCatalog() throws SQLException {
+    public String getCatalog() {
         return catalog;
     }
 
@@ -321,17 +321,17 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getTransactionIsolation() throws SQLException {
+    public int getTransactionIsolation() {
         return java.sql.Connection.TRANSACTION_READ_COMMITTED;
     }
 
     @Override
-    public SQLWarning getWarnings() throws SQLException {
+    public SQLWarning getWarnings() {
         return null;
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    public void clearWarnings() {
     }
 
     @Override
@@ -344,7 +344,7 @@ public class Connection implements java.sql.Connection {
     public PreparedStatement prepareStatement(
             final String sql,
             final int resultSetType,
-            final int resultSetConcurrency) throws SQLException {
+            final int resultSetConcurrency) {
         return prepareStatement(sql);
     }
 
@@ -373,7 +373,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getHoldability() throws SQLException {
+    public int getHoldability() {
         return java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT;
     }
 
@@ -462,7 +462,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public boolean isValid(final int timeout) throws SQLException {
+    public boolean isValid(final int timeout) {
         return !isClosed();
     }
 
@@ -532,7 +532,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getNetworkTimeout() throws SQLException {
+    public int getNetworkTimeout() {
         return 0;
     }
 
@@ -545,7 +545,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

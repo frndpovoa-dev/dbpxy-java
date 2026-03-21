@@ -79,7 +79,7 @@ class DatabaseOperation {
     @Builder.Default
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
 
-    boolean openConnection(final ConnectionString connectionString) {
+    void openConnection(final ConnectionString connectionString) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
@@ -131,10 +131,10 @@ class DatabaseOperation {
                 MDC.remove(MDC_TRANSACTION_ID);
             }
         }, taskExecutor);
-        return future.join();
+        future.join();
     }
 
-    boolean closeConnection() {
+    void closeConnection() {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
@@ -144,13 +144,11 @@ class DatabaseOperation {
         });
 
         if (accepted) {
-            return future.join();
-        } else {
-            return false;
+            future.join();
         }
     }
 
-    boolean beginTransaction(final BeginTransactionConfig config) {
+    void beginTransaction(final BeginTransactionConfig config) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
@@ -171,7 +169,7 @@ class DatabaseOperation {
                                 final boolean rolledBack = Optional.ofNullable(rollbackParams.getConnection())
                                         .flatMap(DatabaseOperation::rollback)
                                         .orElse(false);
-                                log.debug("rolledBack -> {}", rolledBack);
+                                log.debug("rolledBack after timeout -> {}", rolledBack);
                             } finally {
                                 rollbackParams.stopConnection();
                             }
@@ -188,9 +186,7 @@ class DatabaseOperation {
 
         log.debug("begin transaction task accepted -> {}", accepted);
         if (accepted) {
-            return future.join();
-        } else {
-            return false;
+            future.join();
         }
     }
 
@@ -410,7 +406,7 @@ class DatabaseOperation {
         }
     }
 
-    boolean closeResultSet(final NextConfig config) {
+    void closeResultSet(final NextConfig config) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
 
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
@@ -422,9 +418,7 @@ class DatabaseOperation {
 
         log.debug("close resultset task accepted -> {}", accepted);
         if (accepted) {
-            return future.join();
-        } else {
-            return false;
+            future.join();
         }
     }
 
@@ -524,9 +518,7 @@ class DatabaseOperation {
                 case Types.NULL -> {
                     return nullValue();
                 }
-                default -> {
-                    throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
-                }
+                default -> throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
             }
         } catch (final SQLException e) {
             throw new RuntimeException(e);
@@ -652,7 +644,6 @@ class DatabaseOperation {
                     final OffsetDateTime odt = OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     stmt.setTimestamp(i, new Timestamp(odt.toInstant().toEpochMilli()));
                 }
-                case NULL -> stmt.setNull(i, Types.NULL);
                 case ARRAY -> {
                     final ArrayMirror mirror = OBJECT_MAPPER.readValue(
                             ValueString.parseFrom(value.getData()).getValue(),
