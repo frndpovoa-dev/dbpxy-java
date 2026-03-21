@@ -1,7 +1,7 @@
 app:
   node: ${_pod_name:${HOSTNAME}}
   dbpxy-grpc:
-    port: ${GRPC_PORT}
+    port: ${GRPC_PORT:9090}
   postgresql:
     database: ${POSTGRESQL_DATABASE}
     hostname: ${POSTGRESQL_HOSTNAME}
@@ -14,10 +14,10 @@ app:
     enabled: ${USE_ENCRYPTION:true}
 
 server:
-  port: ${PORT}
+  port: ${PORT:9091}
   shutdown: graceful
   servlet:
-    context-path: ${APP_CONTEXT}
+    context-path: ${APP_CONTEXT:/}
 
 spring:
   main:
@@ -31,10 +31,15 @@ spring:
     error:
       whitelabel:
         enabled: false
+  grpc:
+    server:
+      enabled: false
+      servlet:
+        enabled: false
 
 management:
   server:
-    port: ${MGMT_PORT}
+    port: ${MGMT_PORT:9051}
   endpoint:
     health:
       enabled: true

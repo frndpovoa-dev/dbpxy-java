@@ -15,11 +15,6 @@
         <module>dbpxy-lib</module>
         <module>dbpxy</module>
     </modules>
-    <profiles>
-        <profile>
-            <id>native</id>
-        </profile>
-    </profiles>
     <build>
         <pluginManagement>
             <plugins>

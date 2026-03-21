@@ -1,8 +1,6 @@
 _pod_name: localhost
 
 app:
-  dbpxy-grpc:
-    port: 9090
   dbpxy:
     hostname: localhost
     port: 9090
@@ -11,15 +9,6 @@ app:
     props:
       user: postgres
       password: postgres
-
-server:
-  port: 9091
-  servlet:
-    context-path: /
-
-management:
-  server:
-    port: 9051
 
 logging:
   level:

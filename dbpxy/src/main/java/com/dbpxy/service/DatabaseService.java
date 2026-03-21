@@ -30,7 +30,8 @@ import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
-import org.springframework.stereotype.Service;
+import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
+import org.springframework.grpc.server.service.GrpcService;
 
 import java.time.Duration;
 import java.util.Objects;
@@ -39,7 +40,17 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Slf4j
-@Service
+@GrpcService
+@RegisterReflectionForBinding({
+        BeginTransactionConfig.class,
+        ExecuteTxConfig.class,
+        QueryTxConfig.class,
+        NextConfig.class,
+        Transaction.class,
+        ExecuteResult.class,
+        QueryResult.class,
+        Empty.class
+})
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
 
