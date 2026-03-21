@@ -7,6 +7,7 @@
     <version>${revision}</version>
     <packaging>pom</packaging>
     <properties>
+        <revision>0.1.0-SNAPSHOT</revision>
         <spring-boot.version>4.0.3</spring-boot.version>
     </properties>
     <modules>
