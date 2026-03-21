@@ -1,8 +1,6 @@
 .git/
 .github/
 .idea/
-.mvn/
-mvnw*
 .env-template
 .gitignore
 LICENSE.txt
