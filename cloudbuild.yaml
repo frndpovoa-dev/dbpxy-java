@@ -23,16 +23,16 @@ steps:
         EOF
     secretEnv: [ 'GRPC_KEY_PEM', 'GRPC_CERT_PEM' ]
   - id: 'build-backend-using-maven'
-    name: gcr.io/cloud-builders/docker
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        export DIR=$(pwd)
-        ./mvnw install -q -Dmaven.test.skip=true -Drevision=${_VERSION}
-        cd dbpxy
-        ../mvnw spring-boot:build-image -Pnative -q -Dmaven.test.skip=true -Drevision=${_VERSION}
-        cd $${DIR}
+    name: maven:3.9-amazoncorretto-25-debian
+    entrypoint: mvn
+    args: [ 'install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+  - id: 'build-image-using-maven'
+    name: gcr.io/cloud-builders/mvn
+    args: [ 'spring-boot:build-image', '-Pnative', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+    dir: dbpxy
+    volumes:
+      - name: docker-socket
+        path: /var/run/docker.sock
   - id: 'tag-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -59,6 +59,10 @@ availableSecrets:
       env: DHI_IO_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1
       env: DHI_IO_PASSWORD
+volumes:
+  - name: docker-socket
+    hostPath:
+      path: /var/run/docker.sock
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
   logging: CLOUD_LOGGING_ONLY
