@@ -15,6 +15,7 @@
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
+        <com.github.chrisvest_stormpot.version>4.2</com.github.chrisvest_stormpot.version>
         <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
         <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
@@ -88,6 +89,11 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.github.chrisvest</groupId>
+            <artifactId>stormpot</artifactId>
+            <version>${com.github.chrisvest_stormpot.version}</version>
         </dependency>
         <dependency>
             <groupId>com.google.cloud.sql</groupId>
