@@ -26,12 +26,13 @@ steps:
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
     args: [ 'clean', 'compile', 'spring-boot:process-aot', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
-  - id: 'tag-image-using-docker'
+  - id: 'build-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
     args:
       - '-c'
       - |
+        docker build -t dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} -f dbpxy/Dockerfile dbpxy
         docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 artifacts:
   mavenArtifacts:
