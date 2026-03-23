@@ -22,22 +22,30 @@ package com.dbpxy.service;
 
 import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.grpc.DbpxyClient;
+import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.*;
+import com.dbpxy.stormpot.ConnectionExpiration;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import com.google.common.hash.Hashing;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.grpc.server.service.GrpcService;
+import stormpot.Allocator;
+import stormpot.Pool;
+import stormpot.Slot;
 
+import java.nio.charset.StandardCharsets;
+import java.sql.DriverManager;
 import java.time.Duration;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Slf4j
 @GrpcService
@@ -53,6 +61,15 @@ import java.util.concurrent.Executors;
 })
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
+
+    private final Cache<String, Pool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
+            .expireAfterAccess(Duration.ofDays(1))
+            .<String, Pool<ConnectionProxy>>removalListener((key, pool, cause) -> {
+                if (pool != null) {
+                    pool.shutdown();
+                }
+            })
+            .build();
 
     private final Cache<String, DatabaseOperation> transactionCache = Caffeine.newBuilder()
             .expireAfter(new Expiry<String, DatabaseOperation>() {
@@ -99,6 +116,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
+    private final int poolTargetSize;
+    private final long poolMaxAgeInMs;
 
     private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-task-").build());
 
@@ -107,7 +126,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final DbpxyClient dbpxyClient,
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
-            @org.springframework.beans.factory.annotation.Value("${app.node}") final String node
+            @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
+            @org.springframework.beans.factory.annotation.Value("${app.stormpot.target-size:3}") final int poolTargetSize,
+            @org.springframework.beans.factory.annotation.Value("${app.stormpot.max-age-ms:60000}") final long poolMaxAgeInMs
     ) {
         log.info("hello from dbpxy on {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
@@ -115,6 +136,19 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
         this.node = node;
+        this.poolTargetSize = poolTargetSize;
+        this.poolMaxAgeInMs = poolMaxAgeInMs;
+    }
+
+    static String connectionStringHash(final ConnectionString connectionString) {
+        final List<ConnectionStringProp> propsList = new ArrayList<>(connectionString.getPropsList());
+        propsList.sort(Comparator.comparing(ConnectionStringProp::getName));
+
+        final String urlParams = propsList.stream()
+                .map(prop -> prop.getName() + "=" + prop.getValue())
+                .collect(Collectors.joining("&"));
+
+        return connectionString.getUrl() + "#" + Hashing.sha512().hashString(urlParams, StandardCharsets.UTF_8);
     }
 
     @Override
@@ -133,7 +167,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             log.debug("beginTransaction() -> {}", transaction.getStatus());
 
             final DatabaseOperation ops = DatabaseOperation.builder()
-                    .taskExecutor(taskExecutor)
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
@@ -142,7 +175,27 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             transactionCache.put(transactionId, ops);
 
-            ops.openConnection(config.getConnectionString());
+            final Pool<ConnectionProxy> connectionPool = connectionPoolCache.get(
+                    connectionStringHash(config.getConnectionString()),
+                    ignored -> Pool.from(new Allocator<ConnectionProxy>() {
+                                @Override
+                                public ConnectionProxy allocate(final Slot slot) throws Exception {
+                                    final Properties props = new Properties();
+                                    config.getConnectionString().getPropsList()
+                                            .forEach(prop -> props.put(prop.getName(), prop.getValue()));
+                                    return new ConnectionProxy(slot, DriverManager.getConnection(config.getConnectionString().getUrl(), props));
+                                }
+
+                                @Override
+                                public void deallocate(final ConnectionProxy proxy) throws Exception {
+                                    proxy.getConnection().close();
+                                }
+                            })
+                            .setSize(poolTargetSize)
+                            .setExpiration(new ConnectionExpiration(Duration.ofMillis(poolMaxAgeInMs).toMillis()))
+                            .build());
+
+            ops.openConnection(connectionPool, taskExecutor);
             ops.beginTransaction(config);
 
             responseObserver.onNext(transaction);

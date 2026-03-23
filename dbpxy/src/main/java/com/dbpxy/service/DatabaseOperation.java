@@ -24,13 +24,9 @@ package com.dbpxy.service;
 import com.dbpxy.jdbc.Array;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.*;
-import com.dbpxy.stormpot.ConnectionExpiration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.hash.Hashing;
 import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.Builder;
 import lombok.Getter;
@@ -39,23 +35,20 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.openjpa.lib.jdbc.SQLFormatter;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
-import stormpot.Allocator;
 import stormpot.Pool;
-import stormpot.Slot;
 import stormpot.Timeout;
 
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.sql.*;
-import java.sql.Date;
-import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.concurrent.*;
-import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static java.util.function.Predicate.not;
@@ -79,17 +72,7 @@ class DatabaseOperation {
         return formatter;
     });
 
-    private static final Cache<String, Pool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofDays(1))
-            .<String, Pool<ConnectionProxy>>removalListener((key, pool, cause) -> {
-                if (pool != null) {
-                    pool.shutdown();
-                }
-            })
-            .build();
-
     private final CryptoService cryptoService;
-    private final ExecutorService taskExecutor;
     private final UniqueIdGenerator uniqueIdGenerator;
     @Getter
     private final long timeoutInMs;
@@ -100,41 +83,13 @@ class DatabaseOperation {
     @Builder.Default
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
 
-    static String connectionStringHash(final ConnectionString connectionString) {
-        final List<ConnectionStringProp> propsList = new ArrayList<>(connectionString.getPropsList());
-        propsList.sort(Comparator.comparing(ConnectionStringProp::getName));
-
-        final String urlParams = propsList.stream()
-                .map(prop -> prop.getName() + "=" + prop.getValue())
-                .collect(Collectors.joining("&"));
-
-        return connectionString.getUrl() + "#" + Hashing.sha512().hashString(urlParams, StandardCharsets.UTF_8);
-    }
-
-    void openConnection(final ConnectionString connectionString) {
+    void openConnection(
+            final Pool<ConnectionProxy> connectionPool,
+            final ExecutorService taskExecutor) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
             MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-
-            final Pool<ConnectionProxy> connectionPool = connectionPoolCache.get(
-                    connectionStringHash(connectionString),
-                    ignored -> Pool.from(new Allocator<ConnectionProxy>() {
-                                @Override
-                                public ConnectionProxy allocate(final Slot slot) throws Exception {
-                                    final Properties props = new Properties();
-                                    connectionString.getPropsList()
-                                            .forEach(prop -> props.put(prop.getName(), prop.getValue()));
-                                    return new ConnectionProxy(slot, DriverManager.getConnection(connectionString.getUrl(), props));
-                                }
-
-                                @Override
-                                public void deallocate(final ConnectionProxy proxy) throws Exception {
-                                    proxy.getConnection().close();
-                                }
-                            })
-                            .setExpiration(new ConnectionExpiration(Duration.ofMinutes(1).toMillis()))
-                            .build());
 
             try (final Connection connection = connectionPool.claim(new Timeout(1, TimeUnit.MINUTES));
                  final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
