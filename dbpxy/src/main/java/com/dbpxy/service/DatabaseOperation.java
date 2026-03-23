@@ -105,10 +105,10 @@ class DatabaseOperation {
         propsList.sort(Comparator.comparing(ConnectionStringProp::getName));
 
         final String urlParams = propsList.stream()
-                .map(prop -> prop.getName() + "==" + prop.getValue())
-                .collect(Collectors.joining("&&"));
+                .map(prop -> prop.getName() + "=" + prop.getValue())
+                .collect(Collectors.joining("&"));
 
-        return connectionString.getUrl() + "??" + Hashing.sha512().hashString(urlParams, StandardCharsets.UTF_8);
+        return connectionString.getUrl() + "#" + Hashing.sha512().hashString(urlParams, StandardCharsets.UTF_8);
     }
 
     void openConnection(final ConnectionString connectionString) {
