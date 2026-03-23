@@ -1,6 +1,6 @@
 ARG VERSION
 
-FROM dhi.io/amazoncorretto:25-alpine3.23-dev AS builder
+FROM alpine:3.23 AS builder
 WORKDIR /staging
 RUN true \
     && apk add --no-cache curl ca-certificates \
