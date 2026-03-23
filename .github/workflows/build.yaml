@@ -51,11 +51,9 @@ jobs:
       - name: Set app version
         run: echo "APP_VERSION=$(cat version.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
 
-      # begin compilation
-      - name: Compile
-        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
-      # end
-
+      # begin scanning for vulnerabilities
+      - name: List dependencies
+        run: mvn dependency:tree
       - name: Setup Snyk
         uses: snyk/actions/setup@master
       - name: Snyk test
@@ -64,6 +62,12 @@ jobs:
           snyk test --all-projects --dev --severity-threshold=high
         env:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
+      # end
+
+      # begin compilation
+      - name: Compile
+        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
+      # end
 
       # begin testing
       - name: Generate testing SSL key/cert files
