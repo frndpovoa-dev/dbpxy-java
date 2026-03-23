@@ -127,7 +127,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
-            @org.springframework.beans.factory.annotation.Value("${app.stormpot.target-size:3}") final int poolTargetSize,
+            @org.springframework.beans.factory.annotation.Value("${app.stormpot.target-size:5}") final int poolTargetSize,
             @org.springframework.beans.factory.annotation.Value("${app.stormpot.max-age-ms:60000}") final long poolMaxAgeInMs
     ) {
         log.info("hello from dbpxy on {}", node);
