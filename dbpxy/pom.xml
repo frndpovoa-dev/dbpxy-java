@@ -284,7 +284,9 @@
                                 -H:+SharedArenaSupport
                                 -H:IncludeResources=certs/.*
                                 --trace-object-instantiation=ch.qos.logback.classic.Logger
+                                --trace-object-instantiation=stormpot.internal.PoisonException
                                 --initialize-at-run-time=io.netty
+                                --initialize-at-build-time=stormpot
                             </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                         </env>
                     </image>
