@@ -24,6 +24,7 @@ package com.dbpxy.service;
 import com.dbpxy.jdbc.Array;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.*;
+import com.dbpxy.stormpot.ConnectionExpiration;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -132,6 +133,7 @@ class DatabaseOperation {
                                     proxy.getConnection().close();
                                 }
                             })
+                            .setExpiration(new ConnectionExpiration(Duration.ofMinutes(1).toMillis()))
                             .build());
 
             try (final Connection connection = connectionPool.claim(new Timeout(1, TimeUnit.MINUTES));
