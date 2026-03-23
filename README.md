@@ -4,12 +4,12 @@
 
 [See the original LinkedIn post here.](https://www.linkedin.com/posts/activity-7343623220677201920-6qk9?utm_source=share&utm_medium=member_desktop&rcm=ACoAABC2-aoB9oRA7fI-ca2qc4EhypSjGLhoDaE)
 
-I'd like to share a project I've been working on in past couple of years. In simple words: it's an implementation of shared database transactions for architectures based on microservices.
+I'd like to share a project I've been working on in past couple of years. In simple words: it's an implementation of shareable database transactions for architectures based on microservices.
 
 It can be used to try and solve problem scenarios such as the ones below:
 
-1. Spring Boot + JPA => Begin Tx via @Transactional => Read/Write locally, Read/Write API in same Tx => Commit/Rollback Tx.
-2. Begin Tx via gRPC => Read API1, Read API2, Write API1, Read API1, Read API2 => Commit/Rollback Tx via gRPC.
+1. Using Spring Boot and JPA do begin transaction via @Transactional, then read/write local repository, then read/write API in same transaction, then commit/rollback.
+2. Using gRPC do begin transaction, then read/write APIs 1..N in same transaction, then commit/rollback.
 
 Other than those scenarios above, it might be helpful to:
 
