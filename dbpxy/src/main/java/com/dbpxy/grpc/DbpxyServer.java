@@ -24,6 +24,8 @@ import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.service.DatabaseService;
 import io.grpc.Server;
 import io.grpc.ServerBuilder;
+import io.grpc.health.v1.HealthCheckResponse;
+import io.grpc.protobuf.services.HealthStatusManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.ContextStoppedEvent;
@@ -46,17 +48,20 @@ public class DbpxyServer {
             @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath,
             @Value("${app.dbpxy-grpc.key-path:certs/key.pem}") final String keyPath
     ) throws IOException {
+        final HealthStatusManager health = new HealthStatusManager();
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
              final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
             this.server = ServerBuilder
                     .forPort(dbpxyGrpcProperties.getPort())
                     .useTransportSecurity(cert, key)
                     .addService(databaseService)
+                    .addService(health.getHealthService())
                     .keepAliveTime(1, TimeUnit.MINUTES)
                     .keepAliveTimeout(1, TimeUnit.SECONDS)
                     .build();
         }
         server.start();
+        health.setStatus("", HealthCheckResponse.ServingStatus.SERVING);
         log.info("gRPC server started on port {}", dbpxyGrpcProperties.getPort());
     }
 
