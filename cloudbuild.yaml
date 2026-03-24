@@ -32,8 +32,10 @@ steps:
     args:
       - '-c'
       - |
-        docker build -t dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} -f dbpxy/Dockerfile dbpxy
+        docker build --tag dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} --file dbpxy/Dockerfile dbpxy
         docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
+    env:
+      - DOCKER_BUILDKIT=1
 artifacts:
   mavenArtifacts:
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
