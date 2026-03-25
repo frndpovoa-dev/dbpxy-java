@@ -128,6 +128,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final String node;
     private final int poolMaxTotalSize;
     private final int poolMaxIdleSize;
+    private final int poolMinIdleSize;
     private final long poolMaxIdleAgeInMs;
     private final long poolMaxWaitInMs;
 
@@ -140,7 +141,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
             @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-total-size:5}") final int poolMaxTotalSize,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-size:1}") final int poolMaxIdleSize,
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-size:5}") final int poolMaxIdleSize,
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.min-idle-size:1}") final int poolMinIdleSize,
             @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-age-ms:60000}") final long poolMaxIdleAgeInMs,
             @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-wait-ms:60000}") final long poolMaxWaitInMs
     ) {
@@ -152,6 +154,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.node = node;
         this.poolMaxTotalSize = poolMaxTotalSize;
         this.poolMaxIdleSize = poolMaxIdleSize;
+        this.poolMinIdleSize = poolMinIdleSize;
         this.poolMaxIdleAgeInMs = poolMaxIdleAgeInMs;
         this.poolMaxWaitInMs = poolMaxWaitInMs;
     }
@@ -202,7 +205,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         poolConfig.setMaxWait(Duration.ofMillis(poolMaxWaitInMs));
                         poolConfig.setMaxTotal(poolMaxTotalSize);
                         poolConfig.setMaxIdle(poolMaxIdleSize);
-                        poolConfig.setMinIdle(0);
+                        poolConfig.setMinIdle(poolMinIdleSize);
                         poolConfig.setTestOnBorrow(true);
                         poolConfig.setTestWhileIdle(true);
 
@@ -520,7 +523,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private boolean shouldNotExecuteOnThisNode(final Transaction transaction) {
         final boolean matches = Objects.equals(transaction.getNode(), node);
         if (!matches) {
-            log.debug("oh no! incorrect node {}", node);
+            log.warn("oh no! incorrect node {}", node);
         }
         return !matches;
     }

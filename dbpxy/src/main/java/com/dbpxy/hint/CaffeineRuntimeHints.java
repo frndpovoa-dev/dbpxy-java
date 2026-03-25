@@ -1,4 +1,4 @@
-package com.dbpxy.hints;
+package com.dbpxy.hint;
 
 /*-
  * #%L
