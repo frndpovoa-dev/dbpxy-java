@@ -129,6 +129,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final int poolMaxTotalSize;
     private final int poolMaxIdleSize;
     private final long poolMaxIdleAgeInMs;
+    private final long poolMaxWaitInMs;
 
     private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-task-").build());
 
@@ -140,7 +141,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
             @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-total-size:5}") final int poolMaxTotalSize,
             @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-size:1}") final int poolMaxIdleSize,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-age-ms:60000}") final long poolMaxIdleAgeInMs
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-age-ms:60000}") final long poolMaxIdleAgeInMs,
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-wait-ms:60000}") final long poolMaxWaitInMs
     ) {
         log.info("hello from dbpxy on {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
@@ -151,6 +153,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.poolMaxTotalSize = poolMaxTotalSize;
         this.poolMaxIdleSize = poolMaxIdleSize;
         this.poolMaxIdleAgeInMs = poolMaxIdleAgeInMs;
+        this.poolMaxWaitInMs = poolMaxWaitInMs;
     }
 
     static String connectionStringHash(final ConnectionString connectionString) {
@@ -196,9 +199,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(poolMaxIdleAgeInMs / 2));
                         poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
                         poolConfig.setBlockWhenExhausted(true);
+                        poolConfig.setMaxWait(Duration.ofMillis(poolMaxWaitInMs));
                         poolConfig.setMaxTotal(poolMaxTotalSize);
                         poolConfig.setMaxIdle(poolMaxIdleSize);
                         poolConfig.setMinIdle(0);
+                        poolConfig.setTestOnBorrow(true);
+                        poolConfig.setTestWhileIdle(true);
 
                         final Properties props = new Properties();
                         config.getConnectionString().getPropsList()
