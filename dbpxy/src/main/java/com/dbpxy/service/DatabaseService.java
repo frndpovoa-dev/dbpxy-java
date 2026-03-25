@@ -198,13 +198,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         poolConfig.setMaxIdle(poolMaxIdleSize);
                         poolConfig.setMinIdle(0);
 
+                        final Properties props = new Properties();
+                        config.getConnectionString().getPropsList()
+                                .forEach(prop -> props.put(prop.getName(), prop.getValue()));
+
                         final BasePooledObjectFactory<ConnectionProxy> poolFactory = new BasePooledObjectFactory<>() {
 
                             @Override
                             public ConnectionProxy create() throws Exception {
-                                final Properties props = new Properties();
-                                config.getConnectionString().getPropsList()
-                                        .forEach(prop -> props.put(prop.getName(), prop.getValue()));
                                 return new ConnectionProxy(DriverManager.getConnection(config.getConnectionString().getUrl(), props));
                             }
 
