@@ -426,10 +426,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
             // Pre-fetches the first page and allows for more pages to be fetched later.
-            result = ops.next(NextConfig.newBuilder()
-                    .setTransaction(config.getTransaction())
-                    .setQueryResultId(result.getId())
-                    .build());
+            if (result.getHasNext()) {
+                result = ops.next(NextConfig.newBuilder()
+                        .setTransaction(config.getTransaction())
+                        .setQueryResultId(result.getId())
+                        .build());
+            }
             responseObserver.onNext(result);
             responseObserver.onCompleted();
         } catch (final Exception e) {

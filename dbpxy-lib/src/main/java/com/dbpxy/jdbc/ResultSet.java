@@ -105,16 +105,18 @@ public class ResultSet implements java.sql.ResultSet {
                 return true;
             }
 
-            this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
-                    .setQueryResultId(queryResult.getId())
-                    .setTransaction(Optional.ofNullable(connection.getTransaction(false))
-                            .orElseGet(Transaction::getDefaultInstance))
-                    .build());
+            if (queryResult.getHasNext()) {
+                this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
+                        .setQueryResultId(queryResult.getId())
+                        .setTransaction(Optional.ofNullable(connection.getTransaction(false))
+                                .orElseGet(Transaction::getDefaultInstance))
+                        .build());
 
-            if (queryResult.getRowsCount() > 0) {
-                localRow = 0;
-                totalRow++;
-                return true;
+                if (queryResult.getRowsCount() > 0) {
+                    localRow = 0;
+                    totalRow++;
+                    return true;
+                }
             }
 
             last = true;

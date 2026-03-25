@@ -296,7 +296,7 @@ class DatabaseOperation {
 
     QueryResult query(final QueryConfig config) {
         final String queryResultId = uniqueIdGenerator.globalUUID(QueryResult.class.getName());
-        final CompletableFuture<Boolean> future = new CompletableFuture<>();
+        final CompletableFuture<QueryResult> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
             MDC.put(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
@@ -332,7 +332,11 @@ class DatabaseOperation {
                     };
 
                     queryTaskMap.put(queryResultId, taskQueueResultSet);
-                    future.complete(true);
+
+                    future.complete(QueryResult.newBuilder()
+                            .setId(queryResultId)
+                            .setHasNext(!resultSet.isAfterLast())
+                            .build());
 
                     while (resultSetParams.shouldResultSetContinue()) {
                         if (params.shouldConnectionContinue()) {
@@ -361,34 +365,35 @@ class DatabaseOperation {
 
         log.debug("query task accepted -> {}", accepted);
         if (accepted) {
-            future.join();
+            return future.join();
         }
         return QueryResult.newBuilder()
                 .setId(queryResultId)
+                .setHasNext(false)
                 .build();
     }
 
     QueryResult next(final NextConfig config) {
-        final CompletableFuture<List<Row>> future = new CompletableFuture<>();
+        final CompletableFuture<QueryResult> future = new CompletableFuture<>();
 
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
                 .map(queryTaskQueue -> queryTaskQueue.add(resultSetParams -> {
                     try {
                         final List<Row> results = new ArrayList<>();
 
-                        final ResultSet rs = resultSetParams.getResultSet();
+                        final ResultSet resultSet = resultSetParams.getResultSet();
 
                         boolean next = true;
                         int rowsFetched = 0;
-                        while (resultSetParams.shouldResultSetContinue() && next && rowsFetched < rs.getFetchSize()) {
-                            next = rs.next();
+                        while (resultSetParams.shouldResultSetContinue() && next && rowsFetched < resultSet.getFetchSize()) {
+                            next = resultSet.next();
                             if (next) {
                                 rowsFetched++;
                                 final Row.Builder rowBuilder = Row.newBuilder();
-                                final ResultSetMetaData metadata = rs.getMetaData();
+                                final ResultSetMetaData metadata = resultSet.getMetaData();
                                 final int columnCount = metadata.getColumnCount();
                                 for (int i = 1; i <= columnCount; i++) {
-                                    rowBuilder.addCols(getSqlArg(metadata, rs, i));
+                                    rowBuilder.addCols(getSqlArg(metadata, resultSet, i));
                                 }
                                 results.add(rowBuilder.build());
                             }
@@ -398,7 +403,11 @@ class DatabaseOperation {
                             resultSetParams.stopResultSet();
                         }
 
-                        future.complete(results);
+                        future.complete(QueryResult.newBuilder()
+                                .setId(config.getQueryResultId())
+                                .addAllRows(results)
+                                .setHasNext(!resultSet.isAfterLast())
+                                .build());
                     } catch (final Exception e) {
                         log.error(e.getMessage(), e);
                         future.completeExceptionally(e);
@@ -408,13 +417,11 @@ class DatabaseOperation {
 
         log.debug("next task accepted -> {}", accepted);
         if (accepted) {
-            return QueryResult.newBuilder()
-                    .setId(config.getQueryResultId())
-                    .addAllRows(future.join())
-                    .build();
+            return future.join();
         } else {
             return QueryResult.newBuilder()
                     .setId(config.getQueryResultId())
+                    .setHasNext(false)
                     .build();
         }
     }
