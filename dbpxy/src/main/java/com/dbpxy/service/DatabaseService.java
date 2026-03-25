@@ -24,7 +24,6 @@ import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.*;
-import com.dbpxy.stormpot.ConnectionExpiration;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
@@ -32,15 +31,19 @@ import com.google.common.hash.Hashing;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.pool2.BasePooledObjectFactory;
+import org.apache.commons.pool2.ObjectPool;
+import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultPooledObject;
+import org.apache.commons.pool2.impl.GenericObjectPool;
+import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.slf4j.MDC;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.grpc.server.service.GrpcService;
-import stormpot.Allocator;
-import stormpot.Pool;
-import stormpot.Slot;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
+import java.sql.SQLException;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -62,16 +65,22 @@ import java.util.stream.Collectors;
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
 
-    private final Cache<String, Pool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
+    private static final Cache<String, ObjectPool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
-            .<String, Pool<ConnectionProxy>>removalListener((key, pool, cause) -> {
+            .<String, ObjectPool<ConnectionProxy>>removalListener((key, pool, cause) -> {
                 if (pool != null) {
-                    pool.shutdown();
+                    log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
+                    try {
+                        pool.clear();
+                    } catch (final Exception e) {
+                        log.error("failed to clear connection pool", e);
+                    }
+                    pool.close();
                 }
             })
             .build();
 
-    private final Cache<String, DatabaseOperation> transactionCache = Caffeine.newBuilder()
+    private static final Cache<String, DatabaseOperation> transactionCache = Caffeine.newBuilder()
             .expireAfter(new Expiry<String, DatabaseOperation>() {
                 @Override
                 public long expireAfterCreate(
@@ -103,7 +112,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 if (ops != null) {
                     try {
                         MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(ops.getTransaction().getId()) + "@" + ops.getTransaction().getNode());
-                        log.debug("cache eviction");
+                        log.debug("transaction cache eviction. cause: {}", cause);
                         ops.closeConnection();
                     } finally {
                         MDC.remove(MDC_TRANSACTION_ID);
@@ -116,8 +125,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
-    private final int poolTargetSize;
-    private final long poolMaxAgeInMs;
+    private final int poolMaxTotalSize;
+    private final int poolMaxIdleSize;
+    private final long poolMaxIdleAgeInMs;
 
     private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-task-").build());
 
@@ -127,8 +137,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
-            @org.springframework.beans.factory.annotation.Value("${app.stormpot.target-size:5}") final int poolTargetSize,
-            @org.springframework.beans.factory.annotation.Value("${app.stormpot.max-age-ms:60000}") final long poolMaxAgeInMs
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-total-size:5}") final int poolMaxTotalSize,
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-size:1}") final int poolMaxIdleSize,
+            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-age-ms:60000}") final long poolMaxIdleAgeInMs
     ) {
         log.info("hello from dbpxy on {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
@@ -136,8 +147,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
         this.node = node;
-        this.poolTargetSize = poolTargetSize;
-        this.poolMaxAgeInMs = poolMaxAgeInMs;
+        this.poolMaxTotalSize = poolMaxTotalSize;
+        this.poolMaxIdleSize = poolMaxIdleSize;
+        this.poolMaxIdleAgeInMs = poolMaxIdleAgeInMs;
     }
 
     static String connectionStringHash(final ConnectionString connectionString) {
@@ -175,25 +187,49 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             transactionCache.put(transactionId, ops);
 
-            final Pool<ConnectionProxy> connectionPool = connectionPoolCache.get(
+            final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
                     connectionStringHash(config.getConnectionString()),
-                    ignored -> Pool.from(new Allocator<ConnectionProxy>() {
-                                @Override
-                                public ConnectionProxy allocate(final Slot slot) throws Exception {
-                                    final Properties props = new Properties();
-                                    config.getConnectionString().getPropsList()
-                                            .forEach(prop -> props.put(prop.getName(), prop.getValue()));
-                                    return new ConnectionProxy(slot, DriverManager.getConnection(config.getConnectionString().getUrl(), props));
-                                }
+                    ignored -> {
+                        final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
+                        poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(poolMaxIdleAgeInMs));
+                        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(poolMaxIdleAgeInMs / 2));
+                        poolConfig.setBlockWhenExhausted(true);
+                        poolConfig.setMaxTotal(poolMaxTotalSize);
+                        poolConfig.setMaxIdle(poolMaxIdleSize);
+                        poolConfig.setMinIdle(0);
 
-                                @Override
-                                public void deallocate(final ConnectionProxy proxy) throws Exception {
-                                    proxy.getConnection().close();
+                        final BasePooledObjectFactory<ConnectionProxy> poolFactory = new BasePooledObjectFactory<>() {
+
+                            @Override
+                            public ConnectionProxy create() throws Exception {
+                                final Properties props = new Properties();
+                                config.getConnectionString().getPropsList()
+                                        .forEach(prop -> props.put(prop.getName(), prop.getValue()));
+                                return new ConnectionProxy(DriverManager.getConnection(config.getConnectionString().getUrl(), props));
+                            }
+
+                            @Override
+                            public void destroyObject(final PooledObject<ConnectionProxy> p) throws Exception {
+                                p.getObject().getConnection().close();
+                            }
+
+                            @Override
+                            public boolean validateObject(final PooledObject<ConnectionProxy> p) {
+                                try {
+                                    return p.getObject().isValid(1);
+                                } catch (final SQLException e) {
+                                    return false;
                                 }
-                            })
-                            .setSize(poolTargetSize)
-                            .setExpiration(new ConnectionExpiration(Duration.ofMillis(poolMaxAgeInMs).toMillis()))
-                            .build());
+                            }
+
+                            @Override
+                            public PooledObject<ConnectionProxy> wrap(final ConnectionProxy connection) {
+                                return new DefaultPooledObject<>(connection);
+                            }
+                        };
+
+                        return new GenericObjectPool<>(poolFactory, poolConfig);
+                    });
 
             ops.openConnection(connectionPool, taskExecutor);
             ops.beginTransaction(config);

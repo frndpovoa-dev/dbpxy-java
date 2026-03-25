@@ -32,11 +32,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.pool2.ObjectPool;
 import org.apache.openjpa.lib.jdbc.SQLFormatter;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.MDC;
-import stormpot.Pool;
-import stormpot.Timeout;
 
 import java.math.BigDecimal;
 import java.sql.*;
@@ -84,15 +83,17 @@ class DatabaseOperation {
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
 
     void openConnection(
-            final Pool<ConnectionProxy> connectionPool,
+            final ObjectPool<ConnectionProxy> connectionPool,
             final ExecutorService taskExecutor) {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
             MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
 
-            try (final Connection connection = connectionPool.claim(new Timeout(1, TimeUnit.MINUTES));
-                 final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
+            ConnectionProxy connection = null;
+
+            try (final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
+                connection = connectionPool.borrowObject();
 
                 final DoWithConnection.Params params = DoWithConnection.Params.builder()
                         .connection(connection)
@@ -130,7 +131,17 @@ class DatabaseOperation {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             } finally {
-                MDC.remove(MDC_TRANSACTION_ID);
+                try {
+                    if (connection != null) {
+                        connection.close();
+                        connectionPool.returnObject(connection);
+                    }
+                } catch (final Exception e) {
+                    log.error(e.getMessage(), e);
+                    future.completeExceptionally(e);
+                } finally {
+                    MDC.remove(MDC_TRANSACTION_ID);
+                }
             }
         }, taskExecutor);
         future.join();

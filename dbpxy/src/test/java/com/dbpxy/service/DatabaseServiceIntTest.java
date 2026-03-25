@@ -92,7 +92,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
             );
             """;
     public static final String DROP_TABLE_IF_EXISTS_TEST = """
-            drop table if exists test;
+            drop table if exists test cascade;
             """;
 
     @Autowired
@@ -230,7 +230,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeoutInMs(1_000)
+                .setTimeoutInMs(2_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());
@@ -331,7 +331,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeoutInMs(1_000)
+                .setTimeoutInMs(2_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());

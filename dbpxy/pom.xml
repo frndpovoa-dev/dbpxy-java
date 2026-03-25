@@ -15,18 +15,18 @@
         <java.version>25</java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.github.chrisvest_stormpot.version>4.2</com.github.chrisvest_stormpot.version>
         <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
         <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
         <io.grpc_grpc-bom.version>1.79.0</io.grpc_grpc-bom.version>
         <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
+        <org.apache.commons_commons-pool2.version>2.13.1</org.apache.commons_commons-pool2.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.postgresql_postgresql.version>42.7.9</org.postgresql_postgresql.version>
+        <org.postgresql_postgresql.version>42.7.10</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
         <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
-        <org.testcontainers_testcontainers-java.version>1.21.4</org.testcontainers_testcontainers-java.version>
+        <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
     </properties>
     <dependencyManagement>
         <dependencies>
@@ -91,11 +91,6 @@
             <artifactId>caffeine</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.github.chrisvest</groupId>
-            <artifactId>stormpot</artifactId>
-            <version>${com.github.chrisvest_stormpot.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.google.cloud.sql</groupId>
             <artifactId>postgres-socket-factory</artifactId>
             <version>${com.google.cloud.sql_postgres-socket-factory.version}</version>
@@ -112,6 +107,11 @@
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${org.apache.commons_commons-lang3.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>${org.apache.commons_commons-pool2.version}</version>
         </dependency>
         <dependency>
             <groupId>org.apache.openjpa</groupId>
@@ -176,7 +176,7 @@
         <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${org.testcontainers_testcontainers-java.version}</version>
+            <version>${org.testcontainers_junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -284,9 +284,7 @@
                                 -H:+SharedArenaSupport
                                 -H:IncludeResources=certs/.*
                                 --trace-object-instantiation=ch.qos.logback.classic.Logger
-                                --trace-object-instantiation=stormpot.internal.PoisonException
                                 --initialize-at-run-time=io.netty
-                                --initialize-at-build-time=stormpot
                             </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                         </env>
                     </image>

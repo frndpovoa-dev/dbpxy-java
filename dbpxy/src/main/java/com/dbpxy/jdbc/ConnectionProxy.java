@@ -9,9 +9,9 @@ package com.dbpxy.jdbc;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,20 +22,16 @@ package com.dbpxy.jdbc;
 
 import lombok.Getter;
 import lombok.experimental.Delegate;
-import stormpot.BasePoolable;
-import stormpot.Slot;
 
+import java.sql.Connection;
 import java.sql.SQLException;
 
-public class ConnectionProxy extends BasePoolable implements java.sql.Connection {
+public class ConnectionProxy implements Connection {
     @Getter
-    @Delegate(types = java.sql.Connection.class)
-    private final java.sql.Connection connection;
+    @Delegate(types = Connection.class)
+    private final Connection connection;
 
-    public ConnectionProxy(
-            final Slot slot,
-            final java.sql.Connection connection) {
-        super(slot);
+    public ConnectionProxy(final Connection connection) {
         this.connection = connection;
     }
 
@@ -43,9 +39,9 @@ public class ConnectionProxy extends BasePoolable implements java.sql.Connection
     public void close() throws SQLException {
         if (!connection.getAutoCommit()) {
             connection.rollback();
-            connection.setAutoCommit(true);
         }
+        connection.setAutoCommit(true);
+        connection.setReadOnly(false);
         connection.clearWarnings();
-        slot.release(this);
     }
 }
