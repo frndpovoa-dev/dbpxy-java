@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObject;
+import org.apache.commons.pool2.impl.DefaultEvictionPolicy;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
@@ -193,6 +194,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
                         poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(poolMaxIdleAgeInMs));
                         poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(poolMaxIdleAgeInMs / 2));
+                        poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
                         poolConfig.setBlockWhenExhausted(true);
                         poolConfig.setMaxTotal(poolMaxTotalSize);
                         poolConfig.setMaxIdle(poolMaxIdleSize);
