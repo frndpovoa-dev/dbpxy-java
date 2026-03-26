@@ -27,10 +27,12 @@ import com.dbpxy.proto.*;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObject;
@@ -49,7 +51,6 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.stream.Collectors;
 
 @Slf4j
 @GrpcService
@@ -65,6 +66,7 @@ import java.util.stream.Collectors;
 })
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
+    private static final String RANDOM_PASSPHRASE = RandomStringUtils.secure().next(30, true, true);
 
     private static final Cache<String, ObjectPool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
@@ -160,14 +162,23 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     }
 
     static String connectionStringHash(final ConnectionString connectionString) {
-        final List<ConnectionStringProp> propsList = new ArrayList<>(connectionString.getPropsList());
-        propsList.sort(Comparator.comparing(ConnectionStringProp::getName));
+        final List<ConnectionStringProp> sortedPropList = new ArrayList<>(connectionString.getPropsList());
+        sortedPropList.sort(Comparator.comparing(ConnectionStringProp::getName));
 
-        final String urlParams = propsList.stream()
-                .map(prop -> prop.getName() + "=" + prop.getValue())
-                .collect(Collectors.joining("&"));
+        final Hasher hasher = Hashing.sha256().newHasher()
+                .putString(connectionString.getUrl(), StandardCharsets.UTF_8)
+                .putChar('#')
+                .putString(RANDOM_PASSPHRASE, StandardCharsets.UTF_8)
+                .putChar('&');
 
-        return connectionString.getUrl() + "#" + Hashing.sha512().hashString(urlParams, StandardCharsets.UTF_8);
+        for (final ConnectionStringProp prop : sortedPropList) {
+            hasher.putString(prop.getName(), StandardCharsets.UTF_8)
+                    .putChar('=')
+                    .putString(prop.getValue(), StandardCharsets.UTF_8)
+                    .putChar('&');
+        }
+
+        return hasher.hash().toString();
     }
 
     @Override
