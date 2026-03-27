@@ -117,9 +117,9 @@ class DatabaseOperation {
                 while (params.shouldConnectionContinue()) {
                     final DoWithConnection callback = taskQueue.poll(1, TimeUnit.MINUTES);
                     if (callback != null) {
-                        log.debug("before doWithConnection()");
+                        log.trace("before doWithConnection()");
                         callback.doWithConnection(params);
-                        log.debug("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
+                        log.trace("after doWithConnection(), shouldConnectionContinue: {}", params.shouldConnectionContinue());
                     }
                 }
 
@@ -197,7 +197,7 @@ class DatabaseOperation {
             }
         });
 
-        log.debug("begin transaction task accepted -> {}", accepted);
+        log.trace("begin transaction task accepted -> {}", accepted);
         if (accepted) {
             future.join();
         }
@@ -223,7 +223,7 @@ class DatabaseOperation {
             }
         });
 
-        log.debug("commit task accepted -> {}", accepted);
+        log.trace("commit task accepted -> {}", accepted);
         if (accepted) {
             return future.join();
         } else {
@@ -251,7 +251,7 @@ class DatabaseOperation {
             }
         });
 
-        log.debug("rollback task accepted -> {}", accepted);
+        log.trace("rollback task accepted -> {}", accepted);
         if (accepted) {
             return future.join();
         } else {
@@ -282,7 +282,7 @@ class DatabaseOperation {
             }
         });
 
-        log.debug("execute task accepted -> {}", accepted);
+        log.trace("execute task accepted -> {}", accepted);
         if (accepted) {
             return ExecuteResult.newBuilder()
                     .setRowsAffected(future.join())
@@ -300,7 +300,7 @@ class DatabaseOperation {
 
         final boolean accepted = taskQueue.add(params -> {
             MDC.put(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
-            log.debug("before prepared statement");
+            log.trace("before prepared statement");
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
                 stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
@@ -314,7 +314,7 @@ class DatabaseOperation {
 
                 logQuery(config.getQuery());
 
-                log.debug("before open resultset");
+                log.trace("before open resultset");
                 try (final ResultSet resultSet = stmt.executeQuery()) {
 
                     final DoWithResultSet.Params resultSetParams = DoWithResultSet.Params.builder()
@@ -342,9 +342,9 @@ class DatabaseOperation {
                         if (params.shouldConnectionContinue()) {
                             final DoWithResultSet callback = taskQueueResultSet.poll(1, TimeUnit.MINUTES);
                             if (callback != null) {
-                                log.debug("before doWithResultSet()");
+                                log.trace("before doWithResultSet()");
                                 callback.doWithResultSet(resultSetParams);
-                                log.debug("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
+                                log.trace("after doWithResultSet(), shouldConnectionContinue: {}, shouldResultSetContinue: {}", params.shouldConnectionContinue(), resultSetParams.shouldResultSetContinue());
                             }
                         } else {
                             resultSetParams.stopResultSet();
@@ -352,18 +352,18 @@ class DatabaseOperation {
                     }
                 }
 
-                log.debug("after close resultset");
+                log.trace("after close resultset");
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             } finally {
                 MDC.remove(MDC_QUERY_ID);
                 queryTaskMap.remove(queryResultId);
-                log.debug("after prepared statement");
+                log.trace("after prepared statement");
             }
         });
 
-        log.debug("query task accepted -> {}", accepted);
+        log.trace("query task accepted -> {}", accepted);
         if (accepted) {
             return future.join();
         }
@@ -415,7 +415,7 @@ class DatabaseOperation {
                 }))
                 .orElse(false);
 
-        log.debug("next task accepted -> {}", accepted);
+        log.trace("next task accepted -> {}", accepted);
         if (accepted) {
             return future.join();
         } else {
@@ -436,7 +436,7 @@ class DatabaseOperation {
                 }))
                 .orElse(false);
 
-        log.debug("close resultset task accepted -> {}", accepted);
+        log.trace("close resultset task accepted -> {}", accepted);
         if (accepted) {
             future.join();
         }

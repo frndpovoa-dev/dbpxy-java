@@ -58,7 +58,7 @@ public class UniqueIdGenerator {
                 @Override
                 @SuppressWarnings({"deprecation"})
                 public String load(final String groupName) {
-                    return Hashing.md5()
+                    return Hashing.murmur3_128()
                             .hashString(groupName, StandardCharsets.UTF_8)
                             .toString()
                             .substring(0, 7);

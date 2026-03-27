@@ -90,7 +90,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         final String transactionId,
                         final DatabaseOperation ops,
                         final long currentTime) {
-                    return Duration.ofMillis(ops.getTimeoutInMs()).toNanos() + Duration.ofSeconds(1).toNanos();
+                    return Duration.ofMillis(ops.getTimeoutInMs()).plus(Duration.ofSeconds(1)).toNanos();
                 }
 
                 @Override
@@ -166,8 +166,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         sortedPropList.sort(Comparator.comparing(ConnectionStringProp::getName));
 
         final Hasher hasher = Hashing.sha256().newHasher()
-                .putString(connectionString.getUrl(), StandardCharsets.UTF_8)
-                .putChar('#')
                 .putString(RANDOM_PASSPHRASE, StandardCharsets.UTF_8)
                 .putChar('&');
 
@@ -178,7 +176,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .putChar('&');
         }
 
-        return hasher.hash().toString();
+        return connectionString.getUrl() + "#" + hasher.hash();
     }
 
     @Override
@@ -194,7 +192,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .build();
         try {
             MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-            log.debug("beginTransaction() -> {}", transaction.getStatus());
+            log.trace("beginTransaction() -> {}", transaction.getStatus());
 
             final DatabaseOperation ops = DatabaseOperation.builder()
                     .cryptoService(cryptoService)
@@ -301,7 +299,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             ops.setTransaction(result);
 
-            log.debug("commitTransaction() -> {}", result.getStatus());
+            log.trace("commitTransaction() -> {}", result.getStatus());
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();
@@ -360,7 +358,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             ops.setTransaction(result);
 
-            log.debug("rollbackTransaction() -> {}", result.getStatus());
+            log.trace("rollbackTransaction() -> {}", result.getStatus());
 
             responseObserver.onNext(result);
             responseObserver.onCompleted();
@@ -547,7 +545,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {
         Optional.ofNullable(transaction)
-                .filter(it -> Objects.equals(it.getNode(), node))
                 .map(it -> cryptoService.decrypt(it.getId()))
                 .ifPresent(transactionCache::invalidate);
     }
