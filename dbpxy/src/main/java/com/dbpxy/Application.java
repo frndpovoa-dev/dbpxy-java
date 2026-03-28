@@ -57,7 +57,7 @@ public class Application {
     @EventListener
     public void onReady(final ApplicationReadyEvent event) {
         buildProperties.ifPresent(app ->
-                log.info("app_info,{},v={},t={}",
+                log.info("app_info,n={},v={},t={}",
                         app.getName(),
                         app.getVersion(),
                         app.getTime())

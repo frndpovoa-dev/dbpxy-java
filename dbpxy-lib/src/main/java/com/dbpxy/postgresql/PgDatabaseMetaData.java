@@ -24,14 +24,35 @@ import com.dbpxy.jdbc.Connection;
 import com.dbpxy.jdbc.Statement;
 import com.dbpxy.proto.ConnectionStringProp;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Properties;
 
+@Slf4j
 @RequiredArgsConstructor
 public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
+    private static String version = "UNSET";
+    private static int majorVersion = 0;
+    private static int minorVersion = 0;
+
+    static {
+        final Properties prop = new Properties();
+        try (final InputStream input = PgDatabaseMetaData.class.getClassLoader().getResourceAsStream("dbpxy.properties")) {
+            prop.load(input);
+            version = prop.getProperty("version");
+            majorVersion = Integer.parseInt(prop.getProperty("majorVersion"));
+            minorVersion = Integer.parseInt(prop.getProperty("minorVersion"));
+        } catch (final IOException e) {
+            log.error(e.getMessage(), e);
+        }
+    }
+
     private final Connection connection;
     private String keywords;
 
@@ -96,22 +117,22 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
 
     @Override
     public String getDriverName() {
-        return "";
+        return "DBPXY JDBC Driver for PostgreSQL";
     }
 
     @Override
     public String getDriverVersion() {
-        return "";
+        return version;
     }
 
     @Override
     public int getDriverMajorVersion() {
-        return 0;
+        return majorVersion;
     }
 
     @Override
     public int getDriverMinorVersion() {
-        return 1;
+        return minorVersion;
     }
 
     @Override

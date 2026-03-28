@@ -1,4 +1,4 @@
-package com.dbpxy.service;
+package com.dbpxy.util;
 
 /*-
  * #%L
@@ -36,6 +36,7 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
+import java.util.HexFormat;
 import java.util.UUID;
 
 import static java.time.temporal.ChronoField.*;
@@ -73,10 +74,6 @@ public class UniqueIdGenerator {
 
     public String compactUUID() {
         final UUID uuid = Generators.randomBasedGenerator().generate();
-        final StringBuilder sb = new StringBuilder(32);
-        for (final byte b : UUIDUtil.asByteArray(uuid)) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        return HexFormat.of().formatHex(UUIDUtil.asByteArray(uuid));
     }
 }

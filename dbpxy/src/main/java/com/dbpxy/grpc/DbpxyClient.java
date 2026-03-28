@@ -46,11 +46,15 @@ import java.util.function.Consumer;
 @Slf4j
 @Component
 public class DbpxyClient {
-    private final ChannelCredentials credentials;
-    private final Cache<String, ManagedChannel> channelCache = Caffeine.newBuilder()
+    private static final Cache<String, ManagedChannel> channelCache = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
-            .removalListener((final String key, final ManagedChannel channel, final RemovalCause cause) -> channel.shutdown())
+            .removalListener((final String ignored, final ManagedChannel channel, final RemovalCause cause) -> {
+                log.debug("gRPC channel cache eviction. cause: {}", cause);
+                channel.shutdown();
+            })
             .build();
+
+    private final ChannelCredentials credentials;
 
     public DbpxyClient(
             @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath

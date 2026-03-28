@@ -62,7 +62,7 @@ public class DbpxyServer {
         }
         server.start();
         health.setStatus("", HealthCheckResponse.ServingStatus.SERVING);
-        log.info("gRPC server started on port {}", dbpxyGrpcProperties.getPort());
+        log.info("gRPC server started on port {}", server.getPort());
     }
 
     @EventListener(ContextStoppedEvent.class)
@@ -75,8 +75,8 @@ public class DbpxyServer {
             }
         } catch (final InterruptedException e) {
             log.error("Shutdown interrupted. Forcing gRPC shutdown...", e);
-            Thread.currentThread().interrupt();
             server.shutdownNow();
+            Thread.currentThread().interrupt();
         }
         log.info("gRPC server stopped");
     }

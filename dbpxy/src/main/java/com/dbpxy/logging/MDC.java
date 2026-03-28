@@ -1,4 +1,4 @@
-package com.dbpxy.service;
+package com.dbpxy.logging;
 
 /*-
  * #%L
@@ -20,22 +20,27 @@ package com.dbpxy.service;
  * #L%
  */
 
-import java.time.Duration;
+import com.dbpxy.proto.Transaction;
+import com.dbpxy.util.DatabaseUtil;
 
-class DatabaseUtil {
-    static String getMaskedId(final String id) {
-        return id.substring(0, Math.min(32, id.length()));
+public class MDC implements AutoCloseable {
+    private final String key;
+
+    public MDC(
+            final String key,
+            final String value) {
+        this.key = key;
+        org.slf4j.MDC.put(key, value);
     }
 
-    static int sanitizeFetchSize(final long fetchSize) {
-        return Math.clamp(fetchSize, 25, Integer.MAX_VALUE);
+    public MDC(
+            final String key,
+            final Transaction transaction) {
+        this(key, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
     }
 
-    static int sanitizeTimeout(final long timeoutInMs) {
-        return Math.clamp(Duration.ofMillis(timeoutInMs).toSeconds(), 0, Integer.MAX_VALUE);
-    }
-
-    static int sanitizeTimeoutInMs(final long timeoutInMs) {
-        return Math.clamp(timeoutInMs, 0, Integer.MAX_VALUE);
+    @Override
+    public void close() {
+        org.slf4j.MDC.remove(key);
     }
 }

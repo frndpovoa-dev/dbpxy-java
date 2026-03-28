@@ -8,6 +8,14 @@
     <packaging>pom</packaging>
     <properties>
         <revision>0.1.0-SNAPSHOT</revision>
+        <file.encoding>UTF-8</file.encoding>
+        <java.version>25</java.version>
+        <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
+        <com.google.cloud_libraries-bom.version>26.78.0</com.google.cloud_libraries-bom.version>
+        <com.google.protobuf_protoc.version>4.33.4</com.google.protobuf_protoc.version>
+        <io.grpc_grpc-bom.version>1.77.1</io.grpc_grpc-bom.version>
+        <org.projectlombok_lombok.version>1.18.44</org.projectlombok_lombok.version>
+        <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
         <spring-boot.version>4.0.3</spring-boot.version>
     </properties>
     <modules>

@@ -21,12 +21,17 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.config.DbpxyGrpcProperties;
+import com.dbpxy.config.DbpxyPoolProperties;
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.jdbc.ConnectionProxy;
+import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.DatabaseUtil;
+import com.dbpxy.util.UniqueIdGenerator;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.benmanes.caffeine.cache.Expiry;
+import com.github.benmanes.caffeine.cache.RemovalCause;
 import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import io.grpc.Status;
@@ -40,7 +45,6 @@ import org.apache.commons.pool2.impl.DefaultEvictionPolicy;
 import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
-import org.slf4j.MDC;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
 import org.springframework.grpc.server.service.GrpcService;
 
@@ -70,16 +74,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
     private static final Cache<String, ObjectPool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
-            .<String, ObjectPool<ConnectionProxy>>removalListener((key, pool, cause) -> {
-                if (pool != null) {
-                    log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
-                    try {
-                        pool.clear();
-                    } catch (final Exception e) {
-                        log.error("failed to clear connection pool", e);
-                    }
-                    pool.close();
+            .removalListener((final String ignored, final ObjectPool<ConnectionProxy> pool, final RemovalCause cause) -> {
+                log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
+                try {
+                    pool.clear();
+                } catch (final Exception e) {
+                    log.error("failed to clear connection pool", e);
                 }
+                pool.close();
             })
             .build();
 
@@ -111,54 +113,37 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     return currentDuration;
                 }
             })
-            .removalListener((transactionId, ops, cause) -> {
-                if (ops != null) {
-                    try {
-                        MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(ops.getTransaction().getId()) + "@" + ops.getTransaction().getNode());
-                        log.debug("transaction cache eviction. cause: {}", cause);
-                        ops.closeConnection();
-                    } finally {
-                        MDC.remove(MDC_TRANSACTION_ID);
-                    }
+            .removalListener((final String ignored, final DatabaseOperation ops, final RemovalCause cause) -> {
+                try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
+                    log.debug("transaction cache eviction. cause: {}", cause);
+                    ops.closeConnection();
                 }
             })
             .build();
+
     private final DbpxyGrpcProperties dbpxyGrpcProperties;
+    private final DbpxyPoolProperties dbpxyPoolProperties;
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
-    private final int poolMaxTotalSize;
-    private final int poolMaxIdleSize;
-    private final int poolMinIdleSize;
-    private final long poolMaxIdleAgeInMs;
-    private final long poolMaxWaitInMs;
 
-    private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-task-").build());
+    private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-").build());
 
     public DatabaseService(
             final DbpxyGrpcProperties dbpxyGrpcProperties,
+            final DbpxyPoolProperties dbpxyPoolProperties,
             final DbpxyClient dbpxyClient,
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
-            @org.springframework.beans.factory.annotation.Value("${app.node}") final String node,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-total-size:5}") final int poolMaxTotalSize,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-size:5}") final int poolMaxIdleSize,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.min-idle-size:1}") final int poolMinIdleSize,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-idle-age-ms:60000}") final long poolMaxIdleAgeInMs,
-            @org.springframework.beans.factory.annotation.Value("${app.dbpxy-pool.max-wait-ms:60000}") final long poolMaxWaitInMs
-    ) {
+            @org.springframework.beans.factory.annotation.Value("${app.node}") final String node) {
         log.info("hello from dbpxy on {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
+        this.dbpxyPoolProperties = dbpxyPoolProperties;
         this.dbpxyClient = dbpxyClient;
         this.cryptoService = cryptoService;
         this.uniqueIdGenerator = uniqueIdGenerator;
         this.node = node;
-        this.poolMaxTotalSize = poolMaxTotalSize;
-        this.poolMaxIdleSize = poolMaxIdleSize;
-        this.poolMinIdleSize = poolMinIdleSize;
-        this.poolMaxIdleAgeInMs = poolMaxIdleAgeInMs;
-        this.poolMaxWaitInMs = poolMaxWaitInMs;
     }
 
     static String connectionStringHash(final ConnectionString connectionString) {
@@ -190,8 +175,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
             log.trace("beginTransaction() -> {}", transaction.getStatus());
 
             final DatabaseOperation ops = DatabaseOperation.builder()
@@ -207,14 +191,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     connectionStringHash(config.getConnectionString()),
                     ignored -> {
                         final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
-                        poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(poolMaxIdleAgeInMs));
-                        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(poolMaxIdleAgeInMs / 2));
+                        poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs()));
+                        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs() / 2));
                         poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
                         poolConfig.setBlockWhenExhausted(true);
-                        poolConfig.setMaxWait(Duration.ofMillis(poolMaxWaitInMs));
-                        poolConfig.setMaxTotal(poolMaxTotalSize);
-                        poolConfig.setMaxIdle(poolMaxIdleSize);
-                        poolConfig.setMinIdle(poolMinIdleSize);
+                        poolConfig.setMaxWait(Duration.ofMillis(dbpxyPoolProperties.getMaxWaitMs()));
+                        poolConfig.setMaxTotal(dbpxyPoolProperties.getMaxTotalSize());
+                        poolConfig.setMaxIdle(dbpxyPoolProperties.getMaxIdleSize());
+                        poolConfig.setMinIdle(dbpxyPoolProperties.getMinIdleSize());
                         poolConfig.setTestOnBorrow(true);
                         poolConfig.setTestWhileIdle(true);
 
@@ -263,8 +247,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
-        } finally {
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -272,8 +254,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void commitTransaction(
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -323,7 +304,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .asRuntimeException());
         } finally {
             closeDatabaseOperationByTransaction(transaction);
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -331,8 +311,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void rollbackTransaction(
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -382,7 +361,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .asRuntimeException());
         } finally {
             closeDatabaseOperationByTransaction(transaction);
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -390,8 +368,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void executeTx(
             final ExecuteTxConfig config,
             final StreamObserver<ExecuteResult> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -413,8 +390,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
-        } finally {
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -422,8 +397,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void queryTx(
             final QueryTxConfig config,
             final StreamObserver<QueryResult> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -452,8 +426,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
-        } finally {
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -461,8 +433,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void next(
             final NextConfig config,
             final StreamObserver<QueryResult> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -484,8 +455,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
-        } finally {
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 
@@ -501,8 +470,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void closeResultSet(
             final NextConfig config,
             final StreamObserver<Empty> responseObserver) {
-        try {
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(config.getTransaction().getId()) + "@" + config.getTransaction().getNode());
+        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -524,8 +492,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
-        } finally {
-            MDC.remove(MDC_TRANSACTION_ID);
         }
     }
 

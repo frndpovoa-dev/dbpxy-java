@@ -23,7 +23,10 @@ package com.dbpxy.service;
 
 import com.dbpxy.jdbc.Array;
 import com.dbpxy.jdbc.ConnectionProxy;
+import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.DatabaseUtil;
+import com.dbpxy.util.UniqueIdGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -35,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.openjpa.lib.jdbc.SQLFormatter;
 import org.jspecify.annotations.NonNull;
-import org.slf4j.MDC;
 
 import java.math.BigDecimal;
 import java.sql.*;
@@ -88,11 +90,10 @@ class DatabaseOperation {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
-            MDC.put(MDC_TRANSACTION_ID, DatabaseUtil.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-
             ConnectionProxy connection = null;
 
-            try (final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
+            try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction);
+                 final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
                 connection = connectionPool.borrowObject();
 
                 final DoWithConnection.Params params = DoWithConnection.Params.builder()
@@ -123,7 +124,7 @@ class DatabaseOperation {
                     }
                 }
 
-                // Wake up queue from poll() to be closed
+                // Soft wake up on all queries from poll() call so they can be closed
                 queryTaskMap.values()
                         .forEach(queue -> queue.add(null));
 
@@ -139,8 +140,6 @@ class DatabaseOperation {
                 } catch (final Exception e) {
                     log.error(e.getMessage(), e);
                     future.completeExceptionally(e);
-                } finally {
-                    MDC.remove(MDC_TRANSACTION_ID);
                 }
             }
         }, taskExecutor);
@@ -299,9 +298,8 @@ class DatabaseOperation {
         final CompletableFuture<QueryResult> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
-            MDC.put(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
-            log.trace("before prepared statement");
-            try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
+            try (final MDC queryIdMDC = new MDC(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
+                 final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
                 stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
 
@@ -357,9 +355,7 @@ class DatabaseOperation {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
             } finally {
-                MDC.remove(MDC_QUERY_ID);
                 queryTaskMap.remove(queryResultId);
-                log.trace("after prepared statement");
             }
         });
 
@@ -379,9 +375,8 @@ class DatabaseOperation {
         final boolean accepted = Optional.ofNullable(queryTaskMap.get(config.getQueryResultId()))
                 .map(queryTaskQueue -> queryTaskQueue.add(resultSetParams -> {
                     try {
-                        final List<Row> results = new ArrayList<>();
-
                         final ResultSet resultSet = resultSetParams.getResultSet();
+                        final List<Row> results = new ArrayList<>(resultSet.getFetchSize());
 
                         boolean next = true;
                         int rowsFetched = 0;

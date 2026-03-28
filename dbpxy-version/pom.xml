@@ -13,6 +13,7 @@
     <properties>
         <com.fasterxml.jackson.core_all.version>2.21.1</com.fasterxml.jackson.core_all.version>
         <com.fasterxml.jackson.core_jackson-annotations.version>2.21</com.fasterxml.jackson.core_jackson-annotations.version>
+        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <tools.jackson.core_all.version>3.1.0</tools.jackson.core_all.version>
     </properties>
     <dependencyManagement>
@@ -52,6 +53,12 @@
                 <groupId>tools.jackson.core</groupId>
                 <artifactId>jackson-databind</artifactId>
                 <version>${tools.jackson.core_all.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.awaitility</groupId>
+                <artifactId>awaitility</artifactId>
+                <version>${org.awaitility_awaitility.version}</version>
+                <scope>test</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

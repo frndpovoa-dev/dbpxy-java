@@ -11,15 +11,6 @@
     <artifactId>dbpxy-lib</artifactId>
     <packaging>jar</packaging>
     <properties>
-        <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
-        <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
-        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc-bom.version>1.79.0</io.grpc_grpc-bom.version>
-        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
         <spring-boot.aot.skip>true</spring-boot.aot.skip>
         <spring-boot.build-image.skip>true</spring-boot.build-image.skip>
     </properties>
@@ -81,7 +72,6 @@
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -154,6 +144,14 @@
                 <version>3.6.1</version>
                 <executions>
                     <execution>
+                        <id>parse-version</id>
+                        <phase>validate</phase>
+                        <goals>
+                            <goal>parse-version</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>add-source</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>add-source</goal>

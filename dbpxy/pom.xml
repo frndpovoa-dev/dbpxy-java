@@ -11,21 +11,12 @@
     <artifactId>dbpxy</artifactId>
     <packaging>jar</packaging>
     <properties>
-        <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
-        <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
-        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc-bom.version>1.79.0</io.grpc_grpc-bom.version>
+        <com.google.cloud.sql_postgres-socket-factory.version>1.28.2</com.google.cloud.sql_postgres-socket-factory.version>
         <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
         <org.apache.commons_commons-pool2.version>2.13.1</org.apache.commons_commons-pool2.version>
         <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
-        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.postgresql_postgresql.version>42.7.10</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
     </properties>
     <dependencyManagement>
@@ -121,7 +112,6 @@
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>

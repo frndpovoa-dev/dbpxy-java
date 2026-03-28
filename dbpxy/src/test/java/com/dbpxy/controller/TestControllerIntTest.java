@@ -171,7 +171,7 @@ class TestControllerIntTest extends BaseIntTest {
                 }));
             }
         });
-        log.debug("Concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
+        log.info("Concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
         assertThat(stopWatch.getDuration())
                 .isLessThan(Duration.ofSeconds(20));
     }
