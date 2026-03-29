@@ -23,6 +23,7 @@ package com.dbpxy.postgresql;
 import com.dbpxy.jdbc.Connection;
 import com.dbpxy.jdbc.Statement;
 import com.dbpxy.proto.ConnectionStringProp;
+import com.google.common.primitives.Ints;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,6 +33,7 @@ import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Optional;
 import java.util.Properties;
 
 @Slf4j
@@ -46,8 +48,8 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
         try (final InputStream input = PgDatabaseMetaData.class.getClassLoader().getResourceAsStream("dbpxy.properties")) {
             prop.load(input);
             version = prop.getProperty("version");
-            majorVersion = Integer.parseInt(prop.getProperty("majorVersion"));
-            minorVersion = Integer.parseInt(prop.getProperty("minorVersion"));
+            majorVersion = Optional.ofNullable(Ints.tryParse(prop.getProperty("majorVersion"))).orElse(0);
+            minorVersion = Optional.ofNullable(Ints.tryParse(prop.getProperty("minorVersion"))).orElse(0);
         } catch (final IOException e) {
             log.error(e.getMessage(), e);
         }
