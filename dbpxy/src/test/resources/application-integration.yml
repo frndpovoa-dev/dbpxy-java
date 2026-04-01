@@ -10,6 +10,12 @@ app:
       user: postgres
       password: postgres
 
+server:
+  port: 9091
+  shutdown: graceful
+  servlet:
+    context-path: /
+
 logging:
   level:
     root: info

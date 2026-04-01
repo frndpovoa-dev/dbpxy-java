@@ -9,9 +9,9 @@ package com.dbpxy.grpc;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -41,6 +41,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class DbpxyServer {
     private final Server server;
+    private final HealthStatusManager health = new HealthStatusManager();
 
     public DbpxyServer(
             final DbpxyGrpcProperties dbpxyGrpcProperties,
@@ -48,7 +49,6 @@ public class DbpxyServer {
             @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath,
             @Value("${app.dbpxy-grpc.key-path:certs/key.pem}") final String keyPath
     ) throws IOException {
-        final HealthStatusManager health = new HealthStatusManager();
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
              final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
             this.server = ServerBuilder
@@ -68,6 +68,7 @@ public class DbpxyServer {
     @EventListener(ContextStoppedEvent.class)
     public void onApplicationEvent(final ContextStoppedEvent event) {
         log.info("Shutting down gRPC server...");
+        health.setStatus("", HealthCheckResponse.ServingStatus.NOT_SERVING);
         try {
             if (!server.shutdown().awaitTermination(5, TimeUnit.SECONDS)) {
                 log.warn("Forcing gRPC shutdown...");

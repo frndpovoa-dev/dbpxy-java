@@ -20,11 +20,12 @@ package com.dbpxy;
  * #L%
  */
 
-
 import com.dbpxy.hint.CaffeineRuntimeHints;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -41,17 +42,43 @@ import java.util.TimeZone;
 @ImportRuntimeHints({CaffeineRuntimeHints.class})
 @SpringBootApplication(scanBasePackageClasses = {Package.class})
 @ConfigurationPropertiesScan(basePackageClasses = {Package.class})
-public class Application {
+public class Application implements CommandLineRunner {
     private final Optional<BuildProperties> buildProperties;
+    private final Object lock = new Object();
+    private boolean shouldContinueRunning = true;
 
     static void main(final String[] args) {
         new SpringApplicationBuilder(Application.class)
                 .run(args);
     }
 
+    @Override
+    public void run(final String[] args) {
+        synchronized (lock) {
+            while (shouldContinueRunning) {
+                try {
+                    log.info("Application started");
+                    lock.wait();
+                } catch (final InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        log.info("Application stopped");
+    }
+
     @PostConstruct
-    public void init() {
+    public void onInit() {
         TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+    }
+
+    @PreDestroy
+    public void onShutdown() {
+        synchronized (lock) {
+            log.info("Stopping application...");
+            shouldContinueRunning = false;
+            lock.notifyAll();
+        }
     }
 
     @EventListener
