@@ -11,10 +11,10 @@
     <artifactId>dbpxy-version</artifactId>
     <packaging>pom</packaging>
     <properties>
-        <com.fasterxml.jackson.core_all.version>2.21.1</com.fasterxml.jackson.core_all.version>
+        <com.fasterxml.jackson.core_all.version>2.21.2</com.fasterxml.jackson.core_all.version>
         <com.fasterxml.jackson.core_jackson-annotations.version>2.21</com.fasterxml.jackson.core_jackson-annotations.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <tools.jackson.core_all.version>3.1.0</tools.jackson.core_all.version>
+        <tools.jackson.core_all.version>3.1.1</tools.jackson.core_all.version>
     </properties>
     <dependencyManagement>
         <dependencies>
