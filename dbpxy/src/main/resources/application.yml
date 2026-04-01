@@ -13,6 +13,12 @@ app:
   encryption:
     enabled: ${USE_ENCRYPTION:true}
 
+server:
+  port: ${PORT:9091}
+  shutdown: graceful
+  servlet:
+    context-path: ${APP_CONTEXT:/}
+
 spring:
   main:
     banner-mode: off
@@ -21,6 +27,10 @@ spring:
       integration: integration
       staging: staging
       production: production
+  web:
+    error:
+      whitelabel:
+        enabled: false
   grpc:
     server:
       enabled: false
