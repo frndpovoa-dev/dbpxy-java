@@ -21,6 +21,7 @@ package com.dbpxy;
  */
 
 import com.dbpxy.hint.CaffeineRuntimeHints;
+import com.dbpxy.hint.LogbackRuntimeHints;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
@@ -39,7 +40,10 @@ import java.util.TimeZone;
 
 @Slf4j
 @RequiredArgsConstructor
-@ImportRuntimeHints({CaffeineRuntimeHints.class})
+@ImportRuntimeHints(value = {
+        CaffeineRuntimeHints.class,
+        LogbackRuntimeHints.class,
+})
 @SpringBootApplication(scanBasePackageClasses = {Package.class})
 @ConfigurationPropertiesScan(basePackageClasses = {Package.class})
 public class Application implements CommandLineRunner {

@@ -270,7 +270,7 @@
                             <BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                                 -H:+SharedArenaSupport
                                 -H:IncludeResources=certs/.*
-                                --trace-object-instantiation=ch.qos.logback.classic.Logger
+                                --initialize-at-build-time=ch.qos.logback
                                 --initialize-at-run-time=io.netty
                             </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                         </env>
