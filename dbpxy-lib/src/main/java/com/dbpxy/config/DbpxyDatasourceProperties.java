@@ -35,5 +35,5 @@ import java.util.Map;
 public class DbpxyDatasourceProperties {
     private String url;
     @Builder.Default
-    private Map<String, String> props = new HashMap<>();
+    private Map<String, String> props = new HashMap<>(0);
 }

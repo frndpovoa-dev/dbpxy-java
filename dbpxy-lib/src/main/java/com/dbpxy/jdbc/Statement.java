@@ -52,8 +52,9 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
+            final Transaction transaction = connection.getTransaction(true);
             final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                    .setTransaction(connection.getTransaction(true))
+                    .setTransaction(transaction)
                     .setQueryConfig(QueryConfig.newBuilder()
                             .setQuery(sql)
                             .setTimeoutInMs(getQueryTimeoutInMs())
@@ -81,8 +82,9 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
+            final Transaction transaction = connection.getTransaction(true);
             final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                    .setTransaction(connection.getTransaction(true))
+                    .setTransaction(transaction)
                     .setExecuteConfig(ExecuteConfig.newBuilder()
                             .setQuery(sql)
                             .setTimeoutInMs(getQueryTimeoutInMs())

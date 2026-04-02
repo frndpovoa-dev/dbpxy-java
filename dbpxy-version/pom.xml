@@ -11,48 +11,15 @@
     <artifactId>dbpxy-version</artifactId>
     <packaging>pom</packaging>
     <properties>
-        <com.fasterxml.jackson.core_all.version>2.21.2</com.fasterxml.jackson.core_all.version>
-        <com.fasterxml.jackson.core_jackson-annotations.version>2.21</com.fasterxml.jackson.core_jackson-annotations.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <tools.jackson.core_all.version>3.1.1</tools.jackson.core_all.version>
     </properties>
     <dependencyManagement>
         <dependencies>
-            <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${com.fasterxml.jackson.core_jackson-annotations.version}</version>
-            </dependency>
-            <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${com.fasterxml.jackson.core_all.version}</version>
-            </dependency>
-            <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-COMFASTERXMLJACKSONCORE-15365924]-->
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${com.fasterxml.jackson.core_all.version}</version>
-            </dependency>
             <dependency>
                 <!--[https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296]-->
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>1.28.0</version>
-            </dependency>
-            <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-15365915]-->
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-core</artifactId>
-                <version>${tools.jackson.core_all.version}</version>
-            </dependency>
-            <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-TOOLSJACKSONCORE-15365915]-->
-                <groupId>tools.jackson.core</groupId>
-                <artifactId>jackson-databind</artifactId>
-                <version>${tools.jackson.core_all.version}</version>
             </dependency>
             <dependency>
                 <groupId>org.awaitility</groupId>

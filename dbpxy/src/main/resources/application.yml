@@ -2,14 +2,6 @@ app:
   node: ${_pod_name:${HOSTNAME:localhost}}
   dbpxy-grpc:
     port: ${GRPC_PORT:9090}
-  postgresql:
-    database: ${POSTGRESQL_DATABASE}
-    hostname: ${POSTGRESQL_HOSTNAME}
-    port: ${POSTGRESQL_PORT}
-    username: ${POSTGRESQL_USERNAME}
-    password: ${POSTGRESQL_PASSWORD}
-    url: ${POSTGRESQL_URL:jdbc:postgresql://${app.postgresql.hostname}:${app.postgresql.port}/${app.postgresql.database}?user=${app.postgresql.username}&password=${app.postgresql.password}}
-    show-sql: true
   encryption:
     enabled: ${USE_ENCRYPTION:true}
 

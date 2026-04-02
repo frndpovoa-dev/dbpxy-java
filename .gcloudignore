@@ -1,12 +1,11 @@
 .git/
 .github/
 .idea/
-.mvn/
 .env-template
+.flattened-pom.xml
 .gitignore
 **/*.drawio
 LICENSE.txt
-mvnw*
 *.sh
 README.md
 gha-creds-*.json

@@ -29,7 +29,7 @@ Have a good day!
 
 ```bash
 true \
-  && ./mvnw clean install
+  && mvn clean install -Drevision=0.1.0-0
 ```
 
 ## Publish

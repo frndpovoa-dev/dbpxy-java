@@ -101,15 +101,17 @@ public class DbpxyAutoConfiguration {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             final DataSource dataSource,
             final ApplicationContext context,
-            @Value("${app.dbpxy.ddl-auto:none}") final String ddlAuto
+            @Value("${app.dbpxy.ddl-auto:none}") final String ddlAuto,
+            @Value("${app.dbpxy.show-sql:false}") final boolean showSql,
+            @Value("${app.dbpxy.format-sql:false}") final boolean formatSql
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
         vendorAdapter.setDatabase(Database.POSTGRESQL);
 
         final Map<String, Object> jpaProperties = new HashMap<>();
         jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, ddlAuto);
-        jpaProperties.put(JdbcSettings.SHOW_SQL, true);
-        jpaProperties.put(JdbcSettings.FORMAT_SQL, false);
+        jpaProperties.put(JdbcSettings.SHOW_SQL, showSql);
+        jpaProperties.put(JdbcSettings.FORMAT_SQL, formatSql);
 
         final LocalContainerEntityManagerFactoryBean em = new LocalContainerEntityManagerFactoryBean();
         em.setDataSource(dataSource);

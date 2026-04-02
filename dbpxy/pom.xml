@@ -65,7 +65,7 @@
         <dependency>
             <groupId>com.dbpxy</groupId>
             <artifactId>dbpxy-lib</artifactId>
-            <version>${revision}</version>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -271,6 +271,7 @@
                                 -H:+SharedArenaSupport
                                 -H:IncludeResources=certs/.*
                                 --initialize-at-build-time=ch.qos.logback
+                                --initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory
                                 --initialize-at-run-time=io.netty
                             </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                         </env>

@@ -55,6 +55,7 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 @Slf4j
 @GrpcService
@@ -72,7 +73,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
     private static final String RANDOM_PASSPHRASE = RandomStringUtils.secure().next(30, true, true);
 
-    private static final Cache<String, ObjectPool<ConnectionProxy>> connectionPoolCache = Caffeine.newBuilder()
+    private static final Cache<String, ObjectPool<ConnectionProxy>> CONNECTION_POOL_CACHE = Caffeine.newBuilder()
             .expireAfterAccess(Duration.ofDays(1))
             .removalListener((final String ignored, final ObjectPool<ConnectionProxy> pool, final RemovalCause cause) -> {
                 log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
@@ -85,7 +86,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             })
             .build();
 
-    private static final Cache<String, DatabaseOperation> transactionCache = Caffeine.newBuilder()
+    private static final Cache<String, DatabaseOperation> TRANSACTION_CACHE = Caffeine.newBuilder()
             .expireAfter(new Expiry<String, DatabaseOperation>() {
                 @Override
                 public long expireAfterCreate(
@@ -121,14 +122,21 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             })
             .build();
 
+    private static final ExecutorService TASK_EXECUTOR;
+
+    static {
+        final ThreadFactory factory = Thread.ofVirtual()
+                .name("dbpxy-", 0)
+                .factory();
+        TASK_EXECUTOR = Executors.newThreadPerTaskExecutor(factory);
+    }
+
     private final DbpxyGrpcProperties dbpxyGrpcProperties;
     private final DbpxyPoolProperties dbpxyPoolProperties;
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
-
-    private final ExecutorService taskExecutor = Executors.newCachedThreadPool(ThreadFactory.builder().prefix("dbpxy-").build());
 
     public DatabaseService(
             final DbpxyGrpcProperties dbpxyGrpcProperties,
@@ -185,9 +193,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .timeoutInMs(DatabaseUtil.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                     .build();
 
-            transactionCache.put(transactionId, ops);
+            TRANSACTION_CACHE.put(transactionId, ops);
 
-            final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
+            final ObjectPool<ConnectionProxy> connectionPool = CONNECTION_POOL_CACHE.get(
                     connectionStringHash(config.getConnectionString()),
                     ignored -> {
                         final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
@@ -236,7 +244,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         return new GenericObjectPool<>(poolFactory, poolConfig);
                     });
 
-            ops.openConnection(connectionPool, taskExecutor);
+            ops.openConnection(connectionPool, TASK_EXECUTOR);
             ops.beginTransaction(config);
 
             responseObserver.onNext(transaction);
@@ -506,12 +514,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionCache::getIfPresent);
+                .map(TRANSACTION_CACHE::getIfPresent);
     }
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {
         Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .ifPresent(transactionCache::invalidate);
+                .ifPresent(TRANSACTION_CACHE::invalidate);
     }
 }

@@ -106,16 +106,18 @@ public class ResultSet implements java.sql.ResultSet {
             }
 
             if (queryResult.getHasNext()) {
-                this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
-                        .setQueryResultId(queryResult.getId())
-                        .setTransaction(Optional.ofNullable(connection.getTransaction(false))
-                                .orElseGet(Transaction::getDefaultInstance))
-                        .build());
+                final Transaction transaction = connection.getTransaction(false);
+                if (transaction != null) {
+                    this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
+                            .setQueryResultId(queryResult.getId())
+                            .setTransaction(transaction)
+                            .build());
 
-                if (queryResult.getRowsCount() > 0) {
-                    localRow = 0;
-                    totalRow++;
-                    return true;
+                    if (queryResult.getRowsCount() > 0) {
+                        localRow = 0;
+                        totalRow++;
+                        return true;
+                    }
                 }
             }
 
@@ -130,11 +132,13 @@ public class ResultSet implements java.sql.ResultSet {
     public void close() throws SQLException {
         log.trace("public void close() throws SQLException {");
         try {
-            connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
-                    .setQueryResultId(queryResult.getId())
-                    .setTransaction(Optional.ofNullable(connection.getTransaction(false))
-                            .orElseGet(Transaction::getDefaultInstance))
-                    .build());
+            final Transaction transaction = connection.getTransaction(false);
+            if (transaction != null) {
+                connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
+                        .setQueryResultId(queryResult.getId())
+                        .setTransaction(transaction)
+                        .build());
+            }
         } catch (final RuntimeException e) {
             throw new SQLException(e.getMessage());
         } finally {

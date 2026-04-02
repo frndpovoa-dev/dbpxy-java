@@ -62,16 +62,17 @@ class DatabaseOperation {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    private static final ThreadLocal<SQLFormatter> SQL_FORMATTER = ThreadLocal.withInitial(() -> {
-        final SQLFormatter formatter = new SQLFormatter();
-        formatter.setClauseIndent("");
-        formatter.setDoubleSpace(false);
-        formatter.setLineLength(Integer.MAX_VALUE);
-        formatter.setMultiLine(false);
-        formatter.setNewline("");
-        formatter.setWrapIndent("");
-        return formatter;
-    });
+    private static final SQLFormatter SQL_FORMATTER;
+
+    static {
+        SQL_FORMATTER = new SQLFormatter();
+        SQL_FORMATTER.setClauseIndent("");
+        SQL_FORMATTER.setDoubleSpace(false);
+        SQL_FORMATTER.setLineLength(Integer.MAX_VALUE);
+        SQL_FORMATTER.setMultiLine(false);
+        SQL_FORMATTER.setNewline("");
+        SQL_FORMATTER.setWrapIndent("");
+    }
 
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
@@ -680,7 +681,7 @@ class DatabaseOperation {
 
     private static void logQuery(final String query) {
         if (log.isDebugEnabled()) {
-            log.debug(Objects.toString(SQL_FORMATTER.get().prettyPrint(query)).trim());
+            log.debug(Objects.toString(SQL_FORMATTER.prettyPrint(query)).trim());
         }
     }
 }

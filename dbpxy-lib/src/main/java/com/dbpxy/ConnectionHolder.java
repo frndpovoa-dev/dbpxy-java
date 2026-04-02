@@ -58,10 +58,12 @@ public class ConnectionHolder {
     }
 
     public void clear() {
-        CONNECTIONS.get().forEach(conn -> {
+        CONNECTIONS.get().stream()
+                .filter(connection -> !connection.isClosed())
+                .forEach(connection -> {
             try {
-                log.error("dbpxy connection {} did not finish properly, closing it...", conn.getId());
-                conn.close();
+                log.error("dbpxy connection {} did not finish properly, closing it...", connection.getId());
+                connection.close();
             } catch (final SQLException e) {
                 log.error(e.getMessage(), e);
             }

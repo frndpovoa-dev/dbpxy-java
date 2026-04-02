@@ -77,7 +77,7 @@ class TestRepositoryIntTest extends BaseIntTest {
 
     @Test
     @Sql(value = "classpath:com.dbpxy.repository/TestRepositoryIntTest.sql", config = @SqlConfig(dataSource = "dataSource"))
-    void testJpaUsingSharedTransaction() {
+    void testJpaUsingSharedTransaction() throws Exception {
         final String transactionId = connectionHolder.getConnection().getTransactionId();
         log.debug("Tx transactionId({})", transactionId);
 

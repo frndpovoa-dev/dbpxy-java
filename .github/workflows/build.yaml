@@ -58,7 +58,6 @@ jobs:
         uses: snyk/actions/setup@master
       - name: Snyk test
         run: |
-          chmod +x ./mvnw
           snyk test --all-projects --dev --severity-threshold=high
         env:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
