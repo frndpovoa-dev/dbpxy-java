@@ -20,6 +20,7 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
+import com.dbpxy.exception.PreemptiveTimeoutException;
 import com.dbpxy.proto.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,6 +29,7 @@ import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
 import java.time.Duration;
+import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.regex.Pattern;
 
@@ -53,6 +55,9 @@ public class Statement implements java.sql.Statement {
     ) throws SQLException {
         try {
             final Transaction transaction = connection.getTransaction(true);
+            if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
+                throw new PreemptiveTimeoutException();
+            }
             final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
                     .setTransaction(transaction)
                     .setQueryConfig(QueryConfig.newBuilder()
@@ -68,7 +73,7 @@ public class Statement implements java.sql.Statement {
             );
             return resultSet;
         } catch (final RuntimeException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e);
         }
     }
 
@@ -83,6 +88,9 @@ public class Statement implements java.sql.Statement {
     ) throws SQLException {
         try {
             final Transaction transaction = connection.getTransaction(true);
+            if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
+                throw new PreemptiveTimeoutException();
+            }
             final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
                     .setTransaction(transaction)
                     .setExecuteConfig(ExecuteConfig.newBuilder()
@@ -93,7 +101,7 @@ public class Statement implements java.sql.Statement {
                     .build());
             return result.getRowsAffected();
         } catch (final RuntimeException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e);
         }
     }
 
@@ -102,7 +110,7 @@ public class Statement implements java.sql.Statement {
         try {
             connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
         } catch (final RuntimeException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e);
         } finally {
             this.closed = true;
         }

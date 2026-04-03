@@ -23,8 +23,10 @@ package com.dbpxy.controller;
 import com.dbpxy.BaseIntTest;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
+import com.dbpxy.config.Headers;
 import com.dbpxy.dto.TestDto;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.TransactionUtils;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
@@ -56,7 +58,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {"app.dbpxy.ddl-auto=create-drop"}
+        properties = {"app.dbpxy.ddl-auto=create"}
 )
 class TestControllerIntTest extends BaseIntTest {
     private static final String LIST_GROUP_WEB_URL = "http://localhost:9091/api/v1/test/list?group=web";
@@ -112,11 +114,11 @@ class TestControllerIntTest extends BaseIntTest {
                         .setReadOnly(false)
                         .build());
 
-        this.tx1Id = tx1Transaction.getId() + "@" + tx1Transaction.getNode();
-        log.debug("Tx 1 transactionId({})", tx1Id);
+        this.tx1Id = TransactionUtils.format(tx1Transaction);
+        log.debug("tx 1 transactionId({})", tx1Id);
 
-        this.tx2Id = tx2Transaction.getId() + "@" + tx2Transaction.getNode();
-        log.debug("Tx 2 transactionId({})", tx2Id);
+        this.tx2Id = TransactionUtils.format(tx2Transaction);
+        log.debug("tx 2 transactionId({})", tx2Id);
     }
 
     @AfterEach
@@ -131,15 +133,15 @@ class TestControllerIntTest extends BaseIntTest {
         final ParameterizedTypeReference<List<TestDto>> listTypeReference = new ParameterizedTypeReference<>() {
         };
 
-        log.debug("Read before insert using tx 1");
+        log.debug("read before insert using tx 1");
         assertThat(listGroupWeb(tx1Id, listTypeReference))
                 .isEmpty();
 
-        log.debug("Read before insert using tx 2");
+        log.debug("read before insert using tx 2");
         assertThat(listGroupWeb(tx2Id, listTypeReference))
                 .isEmpty();
 
-        log.debug("Insert using tx 1");
+        log.debug("insert using tx 1");
         final TestDto insertTx1 = TestDto.builder()
                 .id(2025L)
                 .name("Hello World!")
@@ -158,7 +160,7 @@ class TestControllerIntTest extends BaseIntTest {
                 .isNotNull()
                 .isEqualTo(insertTx1);
 
-        log.debug("Concurrent reads after insert using tx 1 and tx 2");
+        log.debug("concurrent reads after insert using tx 1 and tx 2");
         stopWatch.run(() -> {
             try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
                 forkJoinPool.execute(() -> IntStream.range(0, 1000).parallel().forEach(ignored -> {
@@ -171,7 +173,7 @@ class TestControllerIntTest extends BaseIntTest {
                 }));
             }
         });
-        log.info("Concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
+        log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
         assertThat(stopWatch.getDuration())
                 .isLessThan(Duration.ofSeconds(20));
     }
@@ -184,7 +186,7 @@ class TestControllerIntTest extends BaseIntTest {
         return restTemplate.exchange(
                         INSERT_URL,
                         HttpMethod.POST,
-                        new HttpEntity<>(data, MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", transactionId))),
+                        new HttpEntity<>(data, MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))),
                         clazz)
                 .getBody();
     }
@@ -196,7 +198,7 @@ class TestControllerIntTest extends BaseIntTest {
         return restTemplate.exchange(
                         LIST_GROUP_WEB_URL,
                         HttpMethod.GET,
-                        new HttpEntity<>(MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", transactionId))),
+                        new HttpEntity<>(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))),
                         typeReference)
                 .getBody();
     }

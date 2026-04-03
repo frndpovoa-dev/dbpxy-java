@@ -9,9 +9,9 @@ package com.dbpxy;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,43 +21,49 @@ package com.dbpxy;
  */
 
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.DockerImageName;
 
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
-public class PostgresExtension implements BeforeAllCallback {
-    private static final AtomicBoolean started = new AtomicBoolean(false);
+public class PostgresExtension implements BeforeAllCallback, AfterAllCallback {
+    private final int port = 5432;
+    private final String database = "postgres";
+    private final String username = "postgres";
+    private final String password = "postgres";
+
     private GenericContainer<?> postgresql;
+
+    public String getMappedPort() {
+        return "" + postgresql.getMappedPort(port);
+    }
+
+    @Override
+    public void afterAll(final ExtensionContext context) throws Exception {
+        if (postgresql != null) {
+            postgresql.stop();
+        }
+    }
 
     @Override
     public void beforeAll(final ExtensionContext context) throws Exception {
-        if (started.get()) {
-            return;
-        } else {
-            started.set(true);
-        }
-
-        final int port = 5432;
-        final String database = "postgres";
-        final String username = "postgres";
-        final String password = "postgres";
         postgresql = new GenericContainer(DockerImageName
                 .parse("postgres")
                 .withTag(context.getConfigurationParameter("postgresql.version").orElse("latest"))
         ) {
         }
+                .withReuse(false)
                 .withSharedMemorySize(1000 * 1000 * 512L)
                 .withEnv("POSTGRES_DB", database)
                 .withEnv("POSTGRES_USER", username)
                 .withEnv("POSTGRES_PASSWORD", password)
         ;
 
-        postgresql.setPortBindings(List.of(String.format("%s:%s", port, port)));
+        postgresql.setExposedPorts(List.of(port));
         postgresql.start();
 
         System.setProperty("POSTGRESQL_HOSTNAME", postgresql.getHost());

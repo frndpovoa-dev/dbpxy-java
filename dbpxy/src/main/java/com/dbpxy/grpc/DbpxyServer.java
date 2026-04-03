@@ -26,8 +26,11 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.health.v1.HealthCheckResponse;
 import io.grpc.protobuf.services.HealthStatusManager;
+import jakarta.annotation.PreDestroy;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.availability.AvailabilityChangeEvent;
+import org.springframework.boot.availability.ReadinessState;
 import org.springframework.context.event.ContextStoppedEvent;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.io.ClassPathResource;
@@ -41,6 +44,7 @@ import java.util.concurrent.TimeUnit;
 @Component
 public class DbpxyServer {
     private final Server server;
+    private final DatabaseService databaseService;
     private final HealthStatusManager health = new HealthStatusManager();
 
     public DbpxyServer(
@@ -49,6 +53,7 @@ public class DbpxyServer {
             @Value("${app.dbpxy-grpc.cert-path:certs/cert.pem}") final String certPath,
             @Value("${app.dbpxy-grpc.key-path:certs/key.pem}") final String keyPath
     ) throws IOException {
+        this.databaseService = databaseService;
         try (final InputStream cert = new ClassPathResource(certPath).getInputStream();
              final InputStream key = new ClassPathResource(keyPath).getInputStream()) {
             this.server = ServerBuilder
@@ -58,27 +63,45 @@ public class DbpxyServer {
                     .addService(health.getHealthService())
                     .keepAliveTime(1, TimeUnit.MINUTES)
                     .keepAliveTimeout(1, TimeUnit.SECONDS)
-                    .build();
+                    .build()
+                    .start();
         }
-        server.start();
-        health.setStatus("", HealthCheckResponse.ServingStatus.SERVING);
-        log.info("gRPC server started on port {}", server.getPort());
+        log.info("gRPC server started");
     }
 
-    @EventListener(ContextStoppedEvent.class)
-    public void onApplicationEvent(final ContextStoppedEvent event) {
-        log.info("Shutting down gRPC server...");
-        health.setStatus("", HealthCheckResponse.ServingStatus.NOT_SERVING);
+    @EventListener(AvailabilityChangeEvent.class)
+    public void onReadinessStateChange(
+            final AvailabilityChangeEvent<ReadinessState> event) throws InterruptedException {
+        if (event.getState() == ReadinessState.ACCEPTING_TRAFFIC) {
+            health.setStatus(HealthStatusManager.SERVICE_NAME_ALL_SERVICES, HealthCheckResponse.ServingStatus.SERVING);
+            log.info("gRPC server listening on port {}", server.getPort());
+        } else if (event.getState() == ReadinessState.REFUSING_TRAFFIC) {
+            log.info("gRPC server graceful shutdown...");
+            health.setStatus(HealthStatusManager.SERVICE_NAME_ALL_SERVICES, HealthCheckResponse.ServingStatus.NOT_SERVING);
+        }
+    }
+
+    @PreDestroy
+    public void onShutdown() {
         try {
-            if (!server.shutdown().awaitTermination(5, TimeUnit.SECONDS)) {
-                log.warn("Forcing gRPC shutdown...");
+            log.info("stopping gRPC server...");
+            if (server.shutdown().awaitTermination(15, TimeUnit.SECONDS)) {
+                log.info("gRPC server stopped");
+            } else {
+                log.warn("forcing gRPC shutdown...");
                 server.shutdownNow();
             }
         } catch (final InterruptedException e) {
-            log.error("Shutdown interrupted. Forcing gRPC shutdown...", e);
+            log.error("shutdown interrupted, forcing gRPC shutdown...", e);
             server.shutdownNow();
             Thread.currentThread().interrupt();
+        } finally {
+            databaseService.onShutdown();
         }
-        log.info("gRPC server stopped");
+    }
+
+    @EventListener(ContextStoppedEvent.class)
+    public void onContextStoppedEvent(final ContextStoppedEvent event) {
+        onShutdown();
     }
 }

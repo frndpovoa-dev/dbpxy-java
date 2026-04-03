@@ -63,8 +63,8 @@ import java.util.Map;
         }
 )
 @ConditionalOnProperties({
-        @ConditionalOnProperty(value = "app.dbpxy.hostname"),
-        @ConditionalOnProperty(value = "app.dbpxy.port")
+        @ConditionalOnProperty(prefix = "app.dbpxy", name = "hostname"),
+        @ConditionalOnProperty(prefix = "app.dbpxy", name = "port")
 })
 @EnableConfigurationProperties({
         DbpxyProperties.class,
@@ -76,7 +76,7 @@ public class DbpxyAutoConfiguration {
         return new ConnectionHolder();
     }
 
-    @Bean
+    @Bean(name = "dataSource")
     public DataSource dataSource(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,

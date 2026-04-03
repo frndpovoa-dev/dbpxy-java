@@ -25,6 +25,7 @@ import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.TransactionUtils;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
@@ -37,20 +38,19 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.sql.*;
 import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
-    private static final Pattern TRANSACTION_ID_PATTERN = Pattern.compile("^(.+?)@(.+)$");
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
+
     @Getter
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString();
@@ -58,6 +58,8 @@ public class Connection implements java.sql.Connection {
     private final DbpxyProperties dbpxyProperties;
     private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
     private final String dbpxyCertPath;
+    private final Deque<Transaction> transactions = new ArrayDeque<>(5);
+
     private ManagedChannel channel;
     @Getter(AccessLevel.PACKAGE)
     private DbpxyGrpc.DbpxyBlockingStub blockingStub;
@@ -68,9 +70,7 @@ public class Connection implements java.sql.Connection {
     private boolean closed = false;
     private String catalog;
 
-    private final Deque<Transaction> transactions = new ArrayDeque<>();
-
-    private synchronized void initGrpcChannelIfNeeded(final String node) throws SQLException {
+    private synchronized void initGrpcChannelIfNeeded() throws SQLException {
         if (channel != null) {
             return;
         }
@@ -79,7 +79,7 @@ public class Connection implements java.sql.Connection {
                     .trustManager(cert)
                     .build();
             this.channel = Grpc.newChannelBuilderForAddress(
-                            node,
+                            dbpxyProperties.getHostname(),
                             dbpxyProperties.getPort(),
                             credentials)
                     .build();
@@ -91,14 +91,17 @@ public class Connection implements java.sql.Connection {
     }
 
     public String getTransactionId() throws SQLException {
-        return Optional.ofNullable(getTransaction(true))
-                .map(transaction -> transaction.getId() + "@" + transaction.getNode())
-                .orElse(null);
+        try {
+            final Transaction transaction = getTransaction(true);
+            return TransactionUtils.format(transaction);
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
     }
 
     public synchronized Transaction getTransaction(final boolean create) throws SQLException {
         if (create) {
-            initGrpcChannelIfNeeded(dbpxyProperties.getHostname());
+            initGrpcChannelIfNeeded();
 
             transactions.removeIf(transaction ->
                     !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
@@ -114,14 +117,18 @@ public class Connection implements java.sql.Connection {
                                 .toList())
                         .build();
 
-                final Transaction transaction = blockingStub
-                        .beginTransaction(BeginTransactionConfig.newBuilder()
-                                .setConnectionString(connectionString)
-                                .setTimeoutInMs(transactionTimeoutInMs)
-                                .setAutoCommit(autoCommit)
-                                .setReadOnly(readOnly)
-                                .build());
-                pushTransaction(transaction);
+                try {
+                    final Transaction transaction = blockingStub
+                            .beginTransaction(BeginTransactionConfig.newBuilder()
+                                    .setConnectionString(connectionString)
+                                    .setTimeoutInMs(transactionTimeoutInMs)
+                                    .setAutoCommit(autoCommit)
+                                    .setReadOnly(readOnly)
+                                    .build());
+                    pushTransaction(transaction);
+                } catch (final RuntimeException e) {
+                    throw new SQLException(e);
+                }
             }
         }
         return transactions.peek();
@@ -148,11 +155,12 @@ public class Connection implements java.sql.Connection {
             runnable.run();
             return;
         }
+        final Transaction transaction = TransactionUtils.parse(transactionId);
         try {
-            joinSharedTransaction(transactionId);
+            joinSharedTransaction(transaction);
             runnable.run();
         } finally {
-            leaveSharedTransaction(transactionId);
+            leaveSharedTransaction(transaction);
         }
     }
 
@@ -162,41 +170,28 @@ public class Connection implements java.sql.Connection {
         if (transactionId == null) {
             return callable.call();
         }
+        final Transaction transaction = TransactionUtils.parse(transactionId);
         try {
-            joinSharedTransaction(transactionId);
+            joinSharedTransaction(transaction);
             return callable.call();
         } finally {
-            leaveSharedTransaction(transactionId);
+            leaveSharedTransaction(transaction);
         }
     }
 
-    public synchronized void joinSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("joinSharedTransaction({})", getMaskedId(transactionId));
-        final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
-        if (!m.matches()) {
-            throw new SQLException("Invalid transaction id format");
-        }
-        final Transaction transaction = Transaction.newBuilder()
-                .setId(m.group(1))
-                .setNode(m.group(2))
+    public synchronized void joinSharedTransaction(final Transaction transaction) throws SQLException {
+        log.trace("joinSharedTransaction({})", getMaskedId(transaction.getId()));
+        initGrpcChannelIfNeeded();
+        pushTransaction(transaction.toBuilder()
                 .setStatus(Transaction.Status.JOINED)
-                .build();
-        initGrpcChannelIfNeeded(transaction.getNode());
-        pushTransaction(transaction);
-        log.debug("joined(conn: {}, tx: {})", id, getMaskedId(transactionId));
+                .build());
+        log.debug("joined(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
     }
 
-    public void leaveSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("leaveSharedTransaction({})", getMaskedId(transactionId));
-        final Matcher m = TRANSACTION_ID_PATTERN.matcher(transactionId);
-        if (!m.matches()) {
-            throw new SQLException("Invalid transaction id format");
-        }
-        popTransaction(Transaction.newBuilder()
-                .setId(m.group(1))
-                .setNode(m.group(2))
-                .build());
-        log.debug("left(conn: {}, tx: {})", id, getMaskedId(transactionId));
+    public void leaveSharedTransaction(final Transaction transaction) throws SQLException {
+        log.trace("leaveSharedTransaction({})", getMaskedId(transaction.getId()));
+        popTransaction(transaction);
+        log.debug("left(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
     }
 
     public Connection(
@@ -258,10 +253,9 @@ public class Connection implements java.sql.Connection {
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             try {
-                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
+                replaceTransaction(transaction, blockingStub.commitTransaction(transaction));
             } catch (final RuntimeException e) {
-                throw new SQLException(e.getMessage());
+                throw new SQLException(e);
             }
         }
     }
@@ -269,15 +263,16 @@ public class Connection implements java.sql.Connection {
     @Override
     public void rollback() throws SQLException {
         final Transaction transaction = getTransaction(false);
-        if (readOnly || transaction == null) {
-            log.debug("rollback skipped (conn: {})", id);
+        if (transaction == null) {
+            log.debug("rollback skipped(conn: {})", id);
+        } else if (readOnly) {
+            log.debug("rollback skipped(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
         } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
             log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
             try {
-                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
+                replaceTransaction(transaction, blockingStub.rollbackTransaction(transaction));
             } catch (final RuntimeException e) {
-                throw new SQLException(e.getMessage());
+                throw new SQLException(e);
             }
         }
     }

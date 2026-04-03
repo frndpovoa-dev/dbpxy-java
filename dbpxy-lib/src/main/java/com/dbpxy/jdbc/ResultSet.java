@@ -124,7 +124,7 @@ public class ResultSet implements java.sql.ResultSet {
             last = true;
             return false;
         } catch (final RuntimeException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e);
         }
     }
 
@@ -140,7 +140,7 @@ public class ResultSet implements java.sql.ResultSet {
                         .build());
             }
         } catch (final RuntimeException e) {
-            throw new SQLException(e.getMessage());
+            throw new SQLException(e);
         } finally {
             this.closed = true;
         }

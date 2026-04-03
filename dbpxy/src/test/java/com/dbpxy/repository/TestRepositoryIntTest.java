@@ -9,9 +9,9 @@ package com.dbpxy.repository;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,6 +23,7 @@ package com.dbpxy.repository;
 import com.dbpxy.BaseIntTest;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.bo.TestBo;
+import com.dbpxy.config.Headers;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +47,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 @Slf4j
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {"app.dbpxy.ddl-auto=create-drop"}
+        properties = {"app.dbpxy.ddl-auto=create"}
 )
 @Transactional(timeout = 10)
 class TestRepositoryIntTest extends BaseIntTest {
@@ -79,34 +80,34 @@ class TestRepositoryIntTest extends BaseIntTest {
     @Sql(value = "classpath:com.dbpxy.repository/TestRepositoryIntTest.sql", config = @SqlConfig(dataSource = "dataSource"))
     void testJpaUsingSharedTransaction() throws Exception {
         final String transactionId = connectionHolder.getConnection().getTransactionId();
-        log.debug("Tx transactionId({})", transactionId);
+        log.debug("tx transactionId({})", transactionId);
 
-        log.debug("Read before insert using JPA");
+        log.debug("read before insert using JPA");
         final List<TestBo> before = repository.findByGroupName("repo");
         assertThat(before)
                 .containsExactly(TEST_1);
 
-        log.debug("Insert");
+        log.debug("insert");
         final TestBo t2 = repository.saveAndFlush(TEST_2);
         assertThat(t2)
                 .isEqualTo(TEST_2);
 
-        log.debug("Read after insert using JPA");
+        log.debug("read after insert using JPA");
         final List<TestBo> after = repository.findByGroupName("repo");
         assertThat(after)
                 .isNotEmpty()
                 .containsExactly(TEST_1, TEST_2);
 
-        log.debug("Read after insert using API no TX");
+        log.debug("read after insert using API no TX");
         final List<TestBo> apiResponseNoTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
                 MultiValueMap.fromSingleValue(Map.of())), new ParameterizedTypeReference<List<TestBo>>() {
         }).getBody();
         assertThat(apiResponseNoTx)
                 .isEmpty();
 
-        log.debug("Read after insert using API");
+        log.debug("read after insert using API");
         final List<TestBo> apiResponseTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", transactionId))), new ParameterizedTypeReference<List<TestBo>>() {
+                MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))), new ParameterizedTypeReference<List<TestBo>>() {
         }).getBody();
         assertThat(apiResponseTx)
                 .isNotEmpty()

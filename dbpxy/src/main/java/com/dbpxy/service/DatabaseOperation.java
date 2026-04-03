@@ -161,8 +161,8 @@ class DatabaseOperation {
         }
     }
 
-    void beginTransaction(final BeginTransactionConfig config) {
-        final CompletableFuture<Boolean> future = new CompletableFuture<>();
+    OffsetDateTime beginTransaction(final BeginTransactionConfig config) {
+        final CompletableFuture<OffsetDateTime> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
             try {
@@ -174,7 +174,7 @@ class DatabaseOperation {
                 params.getConnection().setAutoCommit(config.getAutoCommit());
                 params.getConnection().setReadOnly(config.getReadOnly());
 
-                params.setRollbackTask(config.getTimeoutInMs(), () -> {
+                final OffsetDateTime rollbackTaskStartTime = params.setRollbackTask(config.getTimeoutInMs(), () -> {
                     if (params.shouldConnectionContinue()) {
                         taskQueue.add(rollbackParams -> {
                             try {
@@ -190,7 +190,7 @@ class DatabaseOperation {
                     }
                 });
 
-                future.complete(true);
+                future.complete(rollbackTaskStartTime);
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
@@ -199,8 +199,10 @@ class DatabaseOperation {
 
         log.trace("begin transaction task accepted -> {}", accepted);
         if (accepted) {
-            future.join();
+            return future.join();
         }
+
+        return OffsetDateTime.now().minusYears(10);
     }
 
     boolean commitTransaction() {

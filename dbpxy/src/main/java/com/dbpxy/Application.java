@@ -22,7 +22,7 @@ package com.dbpxy;
 
 import com.dbpxy.hint.CaffeineRuntimeHints;
 import com.dbpxy.hint.LogbackRuntimeHints;
-import jakarta.annotation.PostConstruct;
+import jakarta.annotation.Nullable;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -57,29 +57,26 @@ public class Application implements CommandLineRunner {
     }
 
     @Override
-    public void run(final String[] args) {
+    public void run(@Nullable final String[] args) {
+        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        log.info("default timezone set to UTC");
         synchronized (lock) {
             while (shouldContinueRunning) {
                 try {
-                    log.info("Application started");
+                    log.info("dbpxy is running");
                     lock.wait();
                 } catch (final InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
         }
-        log.info("Application stopped");
-    }
-
-    @PostConstruct
-    public void onInit() {
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
+        log.info("dbpxy stopped");
     }
 
     @PreDestroy
     public void onShutdown() {
         synchronized (lock) {
-            log.info("Stopping application...");
+            log.info("stopping dbpxy...");
             shouldContinueRunning = false;
             lock.notifyAll();
         }
@@ -88,7 +85,7 @@ public class Application implements CommandLineRunner {
     @EventListener
     public void onReady(final ApplicationReadyEvent event) {
         buildProperties.ifPresent(app ->
-                log.info("app_info,n={},v={},t={}",
+                log.info("dbpxy,n={},v={},t={}",
                         app.getName(),
                         app.getVersion(),
                         app.getTime())

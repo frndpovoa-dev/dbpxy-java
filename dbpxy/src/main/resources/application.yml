@@ -8,11 +8,16 @@ app:
 spring:
   main:
     banner-mode: off
+    web-application-type: none
   profiles:
     group:
       integration: integration
       staging: staging
       production: production
+  lifecycle:
+    timeout-per-shutdown-phase: 20s
+  jpa:
+    open-in-view: false
   grpc:
     server:
       enabled: false

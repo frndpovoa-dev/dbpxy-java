@@ -42,6 +42,8 @@ message Transaction {
   string id = 1;
   Status status = 2;
   string node = 3;
+  string creation = 4;
+  string expiration = 5;
 
   enum Status {
     NOT_STARTED = 0;

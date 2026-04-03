@@ -22,8 +22,10 @@ package com.dbpxy.config;
  * #L%
  */
 
+import com.dbpxy.ConnectionHolder;
 import com.dbpxy.jdbc.Connection;
-import com.dbpxy.jdbc.DataSource;
+import com.dbpxy.proto.Transaction;
+import com.dbpxy.util.TransactionUtils;
 import graphql.ExecutionResult;
 import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.execution.ExecutionContext;
@@ -31,7 +33,6 @@ import graphql.execution.ExecutionStrategyParameters;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,7 +44,7 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 @Transactional(timeout = 60)
 public class TransactionExecutionStrategy extends AsyncSerialExecutionStrategy {
-    private final DataSource dataSource;
+    private final ConnectionHolder connectionHolder;
 
     @Override
     public CompletableFuture<ExecutionResult> execute(
@@ -54,17 +55,17 @@ public class TransactionExecutionStrategy extends AsyncSerialExecutionStrategy {
 
         if (StringUtils.isNotEmpty(transactionId)) {
             try {
-                final Connection connection = (Connection) DataSourceUtils.getConnection(dataSource);
-                connection.joinSharedTransaction(transactionId);
+                final Connection connection = connectionHolder.getConnection();
+
+                final Transaction transaction = TransactionUtils.parse(transactionId);
+                connection.joinSharedTransaction(transaction);
 
                 return super.execute(executionContext, parameters)
                         .whenComplete((executionResult, throwable) -> {
                             try {
-                                connection.leaveSharedTransaction(transactionId);
+                                connection.leaveSharedTransaction(transaction);
                             } catch (final SQLException e) {
                                 throw new RuntimeException(e);
-                            } finally {
-                                DataSourceUtils.releaseConnection(connection, dataSource);
                             }
                         });
             } catch (final SQLException e) {

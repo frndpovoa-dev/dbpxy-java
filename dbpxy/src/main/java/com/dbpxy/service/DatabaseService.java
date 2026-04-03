@@ -36,6 +36,7 @@ import com.google.common.hash.Hasher;
 import com.google.common.hash.Hashing;
 import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
@@ -52,10 +53,11 @@ import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
 
 @Slf4j
 @GrpcService
@@ -73,70 +75,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private static final String MDC_TRANSACTION_ID = "transaction.id";
     private static final String RANDOM_PASSPHRASE = RandomStringUtils.secure().next(30, true, true);
 
-    private static final Cache<String, ObjectPool<ConnectionProxy>> CONNECTION_POOL_CACHE = Caffeine.newBuilder()
-            .expireAfterAccess(Duration.ofDays(1))
-            .removalListener((final String ignored, final ObjectPool<ConnectionProxy> pool, final RemovalCause cause) -> {
-                log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
-                try {
-                    pool.clear();
-                } catch (final Exception e) {
-                    log.error("failed to clear connection pool", e);
-                }
-                pool.close();
-            })
-            .build();
-
-    private static final Cache<String, DatabaseOperation> TRANSACTION_CACHE = Caffeine.newBuilder()
-            .expireAfter(new Expiry<String, DatabaseOperation>() {
-                @Override
-                public long expireAfterCreate(
-                        final String transactionId,
-                        final DatabaseOperation ops,
-                        final long currentTime) {
-                    return Duration.ofMillis(ops.getTimeoutInMs()).plus(Duration.ofSeconds(1)).toNanos();
-                }
-
-                @Override
-                public long expireAfterUpdate(
-                        final String transactionId,
-                        final DatabaseOperation ops,
-                        final long currentTime,
-                        final long currentDuration) {
-                    return currentDuration;
-                }
-
-                @Override
-                public long expireAfterRead(
-                        final String transactionId,
-                        final DatabaseOperation ops,
-                        final long currentTime,
-                        final long currentDuration) {
-                    return currentDuration;
-                }
-            })
-            .removalListener((final String ignored, final DatabaseOperation ops, final RemovalCause cause) -> {
-                try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
-                    log.debug("transaction cache eviction. cause: {}", cause);
-                    ops.closeConnection();
-                }
-            })
-            .build();
-
-    private static final ExecutorService TASK_EXECUTOR;
-
-    static {
-        final ThreadFactory factory = Thread.ofVirtual()
-                .name("dbpxy-", 0)
-                .factory();
-        TASK_EXECUTOR = Executors.newThreadPerTaskExecutor(factory);
-    }
-
     private final DbpxyGrpcProperties dbpxyGrpcProperties;
     private final DbpxyPoolProperties dbpxyPoolProperties;
     private final DbpxyClient dbpxyClient;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     private final String node;
+
+    private ExecutorService taskExecutor;
+    private Cache<String, ObjectPool<ConnectionProxy>> connectionPoolCache;
+    private Cache<String, DatabaseOperation> transactionCache;
 
     public DatabaseService(
             final DbpxyGrpcProperties dbpxyGrpcProperties,
@@ -172,6 +120,67 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         return connectionString.getUrl() + "#" + hasher.hash();
     }
 
+    @PostConstruct
+    public void onInit() {
+        this.taskExecutor = Executors.newThreadPerTaskExecutor(Thread.ofVirtual().name("dbpxy-", 0).factory());
+
+        this.connectionPoolCache = Caffeine.newBuilder()
+                .expireAfterAccess(Duration.ofDays(1))
+                .removalListener((final String ignored, final ObjectPool<ConnectionProxy> pool, final RemovalCause cause) -> {
+                    log.debug("connection pool cache eviction. active: {}, idle: {}, cause: {}", pool.getNumActive(), pool.getNumIdle(), cause);
+                    try {
+                        pool.clear();
+                    } catch (final Exception e) {
+                        log.error("failed to clear connection pool", e);
+                    }
+                    pool.close();
+                })
+                .build();
+
+        this.transactionCache = Caffeine.newBuilder()
+                .expireAfter(new Expiry<String, DatabaseOperation>() {
+                    @Override
+                    public long expireAfterCreate(
+                            final String transactionId,
+                            final DatabaseOperation ops,
+                            final long currentTime) {
+                        return Duration.ofMillis(ops.getTimeoutInMs()).plus(Duration.ofSeconds(1)).toNanos();
+                    }
+
+                    @Override
+                    public long expireAfterUpdate(
+                            final String transactionId,
+                            final DatabaseOperation ops,
+                            final long currentTime,
+                            final long currentDuration) {
+                        return currentDuration;
+                    }
+
+                    @Override
+                    public long expireAfterRead(
+                            final String transactionId,
+                            final DatabaseOperation ops,
+                            final long currentTime,
+                            final long currentDuration) {
+                        return currentDuration;
+                    }
+                })
+                .removalListener((final String ignored, final DatabaseOperation ops, final RemovalCause cause) -> {
+                    try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
+                        log.debug("transaction cache eviction. cause: {}", cause);
+                        ops.closeConnection();
+                    }
+                })
+                .build();
+    }
+
+    public void onShutdown() {
+        transactionCache.invalidateAll();
+        connectionPoolCache.invalidateAll();
+        taskExecutor.shutdownNow();
+        log.info("goodbye from dbpxy on {}", node);
+    }
+
     @Override
     public void beginTransaction(
             final BeginTransactionConfig config,
@@ -183,6 +192,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
+
         try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
             log.trace("beginTransaction() -> {}", transaction.getStatus());
 
@@ -193,9 +203,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .timeoutInMs(DatabaseUtil.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                     .build();
 
-            TRANSACTION_CACHE.put(transactionId, ops);
+            transactionCache.put(transactionId, ops);
 
-            final ObjectPool<ConnectionProxy> connectionPool = CONNECTION_POOL_CACHE.get(
+            final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
                     connectionStringHash(config.getConnectionString()),
                     ignored -> {
                         final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
@@ -244,10 +254,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         return new GenericObjectPool<>(poolFactory, poolConfig);
                     });
 
-            ops.openConnection(connectionPool, TASK_EXECUTOR);
-            ops.beginTransaction(config);
+            ops.openConnection(connectionPool, taskExecutor);
 
-            responseObserver.onNext(transaction);
+            final OffsetDateTime creationTime = ops.beginTransaction(config);
+
+            responseObserver.onNext(transaction.toBuilder()
+                    .setCreation(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime))
+                    .setExpiration(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime.plus(Duration.ofMillis(config.getTimeoutInMs()))))
+                    .build());
             responseObserver.onCompleted();
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
@@ -514,12 +528,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
         return Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(TRANSACTION_CACHE::getIfPresent);
+                .map(transactionCache::getIfPresent);
     }
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {
         Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .ifPresent(TRANSACTION_CACHE::invalidate);
+                .ifPresent(transactionCache::invalidate);
     }
 }

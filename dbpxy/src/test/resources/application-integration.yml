@@ -5,16 +5,20 @@ app:
     hostname: localhost
     port: 9090
   dbpxy-datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT:5432}/postgres
     props:
       user: postgres
       password: postgres
 
 server:
   port: 9091
-  shutdown: graceful
+  shutdown: immediate
   servlet:
     context-path: /
+
+spring:
+  main:
+    web-application-type: servlet
 
 logging:
   level:

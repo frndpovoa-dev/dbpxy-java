@@ -24,6 +24,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.sql.Connection;
+import java.time.OffsetDateTime;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
@@ -42,10 +43,11 @@ interface DoWithConnection {
         private boolean shouldConnectionContinue = true;
         private ScheduledFuture<?> rollbackTask;
 
-        void setRollbackTask(
+        OffsetDateTime setRollbackTask(
                 final long timeoutInMs,
                 final Runnable runnable) {
             this.rollbackTask = rollbackExecutor.schedule(runnable, timeoutInMs, TimeUnit.MILLISECONDS);
+            return OffsetDateTime.now();
         }
 
         void cancelRollbackTask() {

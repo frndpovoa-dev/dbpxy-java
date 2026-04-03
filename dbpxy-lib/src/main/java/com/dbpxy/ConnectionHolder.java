@@ -21,7 +21,9 @@ package com.dbpxy;
  */
 
 import com.dbpxy.jdbc.Connection;
+import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.sql.SQLException;
@@ -32,17 +34,43 @@ import java.util.concurrent.Callable;
 @RequiredArgsConstructor
 public class ConnectionHolder {
     private static final ThreadLocal<ArrayDeque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
+    @Setter
+    private EntityManager entityManager;
 
     public void doWithSharedTransaction(
             final String transactionId,
             final Runnable runnable) throws Exception {
-        getConnection().doWithSharedTransaction(transactionId, runnable);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        getConnection().doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    runnable.run();
+
+                    entityManager.flush();
+                    entityManager.clear();
+                });
     }
 
     public <T> T doWithSharedTransaction(
             final String transactionId,
             final Callable<T> callable) throws Exception {
-        return getConnection().doWithSharedTransaction(transactionId, callable);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        return getConnection().doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    final T result = callable.call();
+
+                    entityManager.flush();
+                    entityManager.clear();
+
+                    return result;
+                });
     }
 
     public Connection getConnection() {
@@ -61,13 +89,13 @@ public class ConnectionHolder {
         CONNECTIONS.get().stream()
                 .filter(connection -> !connection.isClosed())
                 .forEach(connection -> {
-            try {
-                log.error("dbpxy connection {} did not finish properly, closing it...", connection.getId());
-                connection.close();
-            } catch (final SQLException e) {
-                log.error(e.getMessage(), e);
-            }
-        });
+                    try {
+                        log.error("dbpxy connection {} did not finish properly, closing it...", connection.getId());
+                        connection.close();
+                    } catch (final SQLException e) {
+                        log.error(e.getMessage(), e);
+                    }
+                });
         CONNECTIONS.remove();
     }
 }
