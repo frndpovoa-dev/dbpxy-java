@@ -31,6 +31,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
+import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -41,6 +42,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.sql.*;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
@@ -76,10 +78,10 @@ class DatabaseOperation {
 
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
-    @Getter
+    @Getter(AccessLevel.PACKAGE)
     private final long timeoutInMs;
-    @Getter
-    @Setter
+    @Getter(AccessLevel.PACKAGE)
+    @Setter(AccessLevel.PACKAGE)
     private Transaction transaction;
     private LinkedBlockingQueue<DoWithConnection> taskQueue;
     @Builder.Default
@@ -268,16 +270,20 @@ class DatabaseOperation {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setQueryTimeout(DatabaseUtils.sanitizeTimeout(config.getTimeoutInMs()));
 
-                log.debug("execute() -> executeTimeout: {}s",
-                        stmt.getQueryTimeout());
+                if (log.isDebugEnabled()) {
+                    log.debug("execute() -> executeTimeout: {}ms",
+                            Duration.ofSeconds(stmt.getQueryTimeout()).toMillis());
+                }
 
                 for (int i = 0; i < config.getArgsCount(); i++) {
                     setSqlArg(stmt, i + 1, config.getArgs(i));
                 }
 
+                final int result = stmt.executeUpdate();
+
                 logQuery(config.getQuery());
 
-                future.complete(stmt.executeUpdate());
+                future.complete(result);
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
@@ -306,17 +312,19 @@ class DatabaseOperation {
                 stmt.setFetchSize(DatabaseUtils.sanitizeFetchSize(config.getFetchSize()));
                 stmt.setQueryTimeout(DatabaseUtils.sanitizeTimeout(config.getTimeoutInMs()));
 
-                log.debug("query() -> fetchSize: {}, queryTimeout: {}s",
-                        stmt.getFetchSize(),
-                        stmt.getQueryTimeout());
+                if (log.isDebugEnabled()) {
+                    log.debug("query() -> fetchSize: {}, queryTimeout: {}ms",
+                            stmt.getFetchSize(),
+                            Duration.ofSeconds(stmt.getQueryTimeout()).toMillis());
+                }
 
                 IntStream.range(0, config.getArgsCount())
                         .forEach(i -> setSqlArg(stmt, i + 1, config.getArgs(i)));
 
-                logQuery(config.getQuery());
-
                 log.trace("before open resultset");
                 try (final ResultSet resultSet = stmt.executeQuery()) {
+
+                    logQuery(config.getQuery());
 
                     final DoWithResultSet.Params resultSetParams = DoWithResultSet.Params.builder()
                             .resultSet(resultSet)

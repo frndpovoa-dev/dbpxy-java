@@ -22,8 +22,10 @@ package com.dbpxy.jdbc;
 
 import com.dbpxy.exception.PreemptiveTimeoutException;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.DatabaseUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
@@ -36,6 +38,7 @@ import java.util.regex.Pattern;
 @Slf4j
 @RequiredArgsConstructor
 public class Statement implements java.sql.Statement {
+    private static final String MDC_QUERY_ID = "dbpxy.qry.id";
     private static final Pattern SELECT_QUERY_PATTERN = Pattern.compile("(?i)^\\s*(select)\\s+.+");
 
     private final Connection connection;
@@ -71,6 +74,8 @@ public class Statement implements java.sql.Statement {
                     this,
                     result
             );
+            MDC.put(MDC_QUERY_ID, DatabaseUtils.getMaskedId(result.getId()));
+            log.debug("query executed");
             return resultSet;
         } catch (final RuntimeException e) {
             throw new SQLException(e);

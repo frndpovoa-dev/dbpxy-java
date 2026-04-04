@@ -26,5 +26,5 @@ spring:
 
 logging:
   level:
-    root: info
-    com.dbpxy: info
+    root: INFO
+    com.dbpxy: DEBUG

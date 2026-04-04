@@ -132,6 +132,7 @@ public class Connection implements java.sql.Connection {
                                     .setReadOnly(readOnly)
                                     .build());
                     pushTransaction(transaction);
+                    log.debug("transaction began");
                 } catch (final RuntimeException e) {
                     throw new SQLException(e);
                 }
@@ -199,7 +200,7 @@ public class Connection implements java.sql.Connection {
         pushTransaction(transaction.toBuilder()
                 .setStatus(Transaction.Status.JOINED)
                 .build());
-        log.debug("joined tx");
+        log.debug("joined transaction");
     }
 
     public void leaveSharedTransaction(@Nullable final Transaction transaction) throws SQLException {
@@ -210,7 +211,7 @@ public class Connection implements java.sql.Connection {
             log.trace("leaveSharedTransaction({})", DatabaseUtils.getMaskedId(transaction.getId()));
         }
         popTransaction(transaction);
-        log.debug("left tx");
+        log.debug("left transaction");
     }
 
     public Connection(
@@ -224,7 +225,7 @@ public class Connection implements java.sql.Connection {
         this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
         connectionHolder.pushConnection(this);
-        log.debug("lazyly opened");
+        log.debug("connection lazyly opened");
     }
 
     @Override
@@ -270,7 +271,7 @@ public class Connection implements java.sql.Connection {
                 } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                     try {
                         blockingStub.commitTransaction(transaction);
-                        log.debug("commited");
+                        log.debug("transaction commited");
                     } catch (final RuntimeException e) {
                         throw new SQLException(e);
                     }
@@ -293,7 +294,7 @@ public class Connection implements java.sql.Connection {
                 } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                     try {
                         blockingStub.rollbackTransaction(transaction);
-                        log.debug("rolled back");
+                        log.debug("transaction rolled back");
                     } catch (final RuntimeException e) {
                         throw new SQLException(e);
                     }

@@ -23,6 +23,7 @@ package com.dbpxy.jdbc;
 import com.dbpxy.proto.*;
 import com.google.protobuf.InvalidProtocolBufferException;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 
 import java.io.InputStream;
 import java.io.Reader;
@@ -39,6 +40,7 @@ import java.util.Optional;
 
 @Slf4j
 public class ResultSet implements java.sql.ResultSet {
+    private static final String MDC_QUERY_ID = "dbpxy.qry.id";
     private final Connection connection;
     private final Statement statement;
     private QueryResult queryResult;
@@ -139,10 +141,12 @@ public class ResultSet implements java.sql.ResultSet {
                         .setTransaction(transaction)
                         .build());
             }
+            log.debug("query closed");
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         } finally {
             this.closed = true;
+            MDC.remove(MDC_QUERY_ID);
         }
     }
 

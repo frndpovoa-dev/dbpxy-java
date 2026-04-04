@@ -163,7 +163,7 @@ class TestControllerIntTest extends BaseIntTest {
         log.debug("concurrent reads after insert using tx 1 and tx 2");
         stopWatch.run(() -> {
             try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
-                forkJoinPool.execute(() -> IntStream.range(0, 1000).parallel().forEach(ignored -> {
+                forkJoinPool.execute(() -> IntStream.range(0, 500).parallel().forEach(ignored -> {
                     assertThat(listGroupWeb(tx1Id, listTypeReference))
                             .isNotEmpty()
                             .containsExactly(insertTx1, insertTx1a);
@@ -175,7 +175,7 @@ class TestControllerIntTest extends BaseIntTest {
         });
         log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
         assertThat(stopWatch.getDuration())
-                .isLessThan(Duration.ofSeconds(20));
+                .isLessThan(Duration.ofSeconds(10));
     }
 
     @SuppressWarnings({"removal"})

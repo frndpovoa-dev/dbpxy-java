@@ -28,6 +28,7 @@ import java.time.Duration;
 @UtilityClass
 public class DatabaseUtils {
     public static String getMaskedId(@NonNull final String id) {
+        // TODO: Make it configurable
         return id.substring(0, Math.min(20, id.length()));
     }
 

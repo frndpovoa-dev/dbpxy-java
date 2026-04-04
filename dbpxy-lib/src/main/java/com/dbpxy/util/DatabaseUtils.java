@@ -21,10 +21,12 @@ package com.dbpxy.util;
  */
 
 import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.NonNull;
 
 @UtilityClass
 public class DatabaseUtils {
-    public static String getMaskedId(final String id) {
+    public static String getMaskedId(@NonNull final String id) {
+        // TODO: Make it configurable
         return id.substring(0, Math.min(20, id.length()));
     }
 }
