@@ -217,7 +217,9 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         poolConfig.setMaxTotal(dbpxyPoolProperties.getMaxTotalSize());
                         poolConfig.setMaxIdle(dbpxyPoolProperties.getMaxIdleSize());
                         poolConfig.setMinIdle(dbpxyPoolProperties.getMinIdleSize());
+                        poolConfig.setTestOnCreate(true);
                         poolConfig.setTestOnBorrow(true);
+                        poolConfig.setTestOnReturn(true);
                         poolConfig.setTestWhileIdle(true);
 
                         final Properties props = new Properties();
