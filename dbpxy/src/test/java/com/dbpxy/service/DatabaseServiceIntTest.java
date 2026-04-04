@@ -188,7 +188,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         Transaction tx1a = tx1;
         assertThatThrownBy(() -> queryTx(tx1a, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null))
                 .isInstanceOf(io.grpc.StatusRuntimeException.class)
-                .hasMessage("UNKNOWN: Transaction not found");
+                .hasMessage("NOT_FOUND: Transaction not found");
 
         query(0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
     }
