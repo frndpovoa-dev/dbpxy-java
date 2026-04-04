@@ -36,7 +36,7 @@ public class MDC implements AutoCloseable {
     public MDC(
             final String key,
             final Transaction transaction) {
-        this(key, DatabaseUtils.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
+        this(key, DatabaseUtils.getMaskedId(transaction.getId()));
     }
 
     @Override
