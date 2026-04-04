@@ -90,7 +90,7 @@ public class Connection implements java.sql.Connection {
                             credentials)
                     .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            log.debug("open");
+            log.debug("gRPC opened");
         } catch (final IOException e) {
             throw new SQLException(e);
         }
@@ -224,7 +224,7 @@ public class Connection implements java.sql.Connection {
         this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
         connectionHolder.pushConnection(this);
-        log.debug("lazy open");
+        log.debug("lazyly opened");
     }
 
     @Override
@@ -311,15 +311,17 @@ public class Connection implements java.sql.Connection {
             if (transaction == null) {
                 // Do nothing
             } else if (transaction.getStatus() == Transaction.Status.JOINED) {
-                log.debug("close skipped on shared connection");
-            } else {
+                log.debug("close skipped on shared transaction");
+            } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                 if (autoCommit) {
                     commit();
                 }
                 log.debug("closed");
             }
             if (channel != null) {
-                channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+                if (channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)) {
+                    log.debug("gRPC closed");
+                }
             }
         } catch (final InterruptedException e) {
             throw new SQLException(e);
