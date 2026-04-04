@@ -406,6 +406,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final IllegalArgumentException e) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .augmentDescription(node)
@@ -442,6 +448,12 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             }
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final IllegalArgumentException e) {
+            responseObserver.onError(Status.NOT_FOUND
+                    .augmentDescription(node)
+                    .withDescription(e.getMessage())
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .augmentDescription(node)

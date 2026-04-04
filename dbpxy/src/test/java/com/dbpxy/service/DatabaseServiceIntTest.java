@@ -181,12 +181,15 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .build())
                 .toList());
 
+        queryTx(tx1, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
+
         sleepUninterruptibly(Duration.ofMillis(2_000));
 
-        tx1 = commit(tx1, Transaction.Status.UNKNOWN);
+        assertThatThrownBy(() -> commit(tx1, Transaction.Status.UNKNOWN))
+                .isInstanceOf(io.grpc.StatusRuntimeException.class)
+                .hasMessage("NOT_FOUND: Transaction not found");
 
-        Transaction tx1a = tx1;
-        assertThatThrownBy(() -> queryTx(tx1a, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null))
+        assertThatThrownBy(() -> queryTx(tx1, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null))
                 .isInstanceOf(io.grpc.StatusRuntimeException.class)
                 .hasMessage("NOT_FOUND: Transaction not found");
 
