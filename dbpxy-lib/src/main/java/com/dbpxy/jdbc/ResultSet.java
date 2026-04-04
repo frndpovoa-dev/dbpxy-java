@@ -521,14 +521,12 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public void setFetchSize(int rows) throws SQLException {
         log.trace("public void setFetchSize(int rows) throws SQLException {");
-        log.trace("setFetchSize");
         throw new SQLFeatureNotSupportedException();
     }
 
     @Override
     public int getFetchSize() throws SQLException {
         log.trace("public int getFetchSize() throws SQLException {");
-        log.trace("getFetchSize");
         throw new SQLFeatureNotSupportedException();
     }
 

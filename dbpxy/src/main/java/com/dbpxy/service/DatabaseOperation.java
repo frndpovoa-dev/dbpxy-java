@@ -25,7 +25,7 @@ import com.dbpxy.jdbc.Array;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
-import com.dbpxy.util.DatabaseUtil;
+import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.UniqueIdGenerator;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -57,8 +57,8 @@ import static java.util.function.Predicate.not;
 @Slf4j
 @Builder
 class DatabaseOperation {
-    private static final String MDC_TRANSACTION_ID = "transaction.id";
-    private static final String MDC_QUERY_ID = "query.id";
+    private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
+    private static final String MDC_QUERY_ID = "dbpxy.qry.id";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
@@ -266,7 +266,7 @@ class DatabaseOperation {
 
         final boolean accepted = taskQueue.add(params -> {
             try (final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
+                stmt.setQueryTimeout(DatabaseUtils.sanitizeTimeout(config.getTimeoutInMs()));
 
                 log.debug("execute() -> executeTimeout: {}s",
                         stmt.getQueryTimeout());
@@ -301,10 +301,10 @@ class DatabaseOperation {
         final CompletableFuture<QueryResult> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
-            try (final MDC queryIdMDC = new MDC(MDC_QUERY_ID, DatabaseUtil.getMaskedId(queryResultId));
+            try (final MDC queryIdMDC = new MDC(MDC_QUERY_ID, DatabaseUtils.getMaskedId(queryResultId));
                  final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
-                stmt.setFetchSize(DatabaseUtil.sanitizeFetchSize(config.getFetchSize()));
-                stmt.setQueryTimeout(DatabaseUtil.sanitizeTimeout(config.getTimeoutInMs()));
+                stmt.setFetchSize(DatabaseUtils.sanitizeFetchSize(config.getFetchSize()));
+                stmt.setQueryTimeout(DatabaseUtils.sanitizeTimeout(config.getTimeoutInMs()));
 
                 log.debug("query() -> fetchSize: {}, queryTimeout: {}s",
                         stmt.getFetchSize(),

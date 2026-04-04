@@ -37,11 +37,13 @@ public class ConnectionProxy implements Connection {
 
     @Override
     public void close() throws SQLException {
-        if (!connection.getAutoCommit()) {
-            connection.rollback();
+        if (connection.isValid(1)) {
+            if (!connection.getAutoCommit()) {
+                connection.rollback();
+            }
+            connection.setAutoCommit(true);
+            connection.setReadOnly(false);
+            connection.clearWarnings();
         }
-        connection.setAutoCommit(true);
-        connection.setReadOnly(false);
-        connection.clearWarnings();
     }
 }

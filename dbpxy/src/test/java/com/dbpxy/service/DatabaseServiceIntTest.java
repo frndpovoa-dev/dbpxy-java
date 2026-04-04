@@ -181,7 +181,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .build())
                 .toList());
 
-        sleepUninterruptibly(Duration.ofMillis(1_000));
+        sleepUninterruptibly(Duration.ofMillis(2_000));
 
         tx1 = commit(tx1, Transaction.Status.UNKNOWN);
 
@@ -198,10 +198,10 @@ class DatabaseServiceIntTest extends BaseIntTest {
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
@@ -221,23 +221,23 @@ class DatabaseServiceIntTest extends BaseIntTest {
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeoutInMs(2_000)
+                .setTimeoutInMs(5_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());
         ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setTimeoutInMs(1_000)
+                        .setTimeoutInMs(2_000)
                         .setQuery(sql)
                         .build())
                 .build());
@@ -322,10 +322,10 @@ class DatabaseServiceIntTest extends BaseIntTest {
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();

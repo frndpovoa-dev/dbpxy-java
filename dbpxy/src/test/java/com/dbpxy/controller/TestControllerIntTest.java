@@ -94,10 +94,10 @@ class TestControllerIntTest extends BaseIntTest {
 
         final ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dbpxyDatasourceProperties.getUrl())
-                .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
@@ -115,10 +115,10 @@ class TestControllerIntTest extends BaseIntTest {
                         .build());
 
         this.tx1Id = TransactionUtils.format(tx1Transaction);
-        log.debug("tx 1 transactionId({})", tx1Id);
+        log.debug("tx 1 {}", tx1Id);
 
         this.tx2Id = TransactionUtils.format(tx2Transaction);
-        log.debug("tx 2 transactionId({})", tx2Id);
+        log.debug("tx 2 {}", tx2Id);
     }
 
     @AfterEach

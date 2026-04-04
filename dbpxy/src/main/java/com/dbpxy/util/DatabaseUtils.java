@@ -20,15 +20,19 @@ package com.dbpxy.util;
  * #L%
  */
 
+import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.NonNull;
+
 import java.time.Duration;
 
-public class DatabaseUtil {
-    public static String getMaskedId(final String id) {
-        return id.substring(0, Math.min(32, id.length()));
+@UtilityClass
+public class DatabaseUtils {
+    public static String getMaskedId(@NonNull final String id) {
+        return id.substring(0, Math.min(20, id.length()));
     }
 
     public static int sanitizeFetchSize(final long fetchSize) {
-        // FIXME: Make it configurable
+        // TODO: Make it configurable
         return Math.clamp(fetchSize, 25, 1_000);
     }
 

@@ -25,6 +25,7 @@ import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.TransactionUtils;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
@@ -35,6 +36,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -44,16 +48,18 @@ import java.time.Duration;
 import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
+    private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
 
     @Getter
     @EqualsAndHashCode.Include
-    private final String id = UUID.randomUUID().toString();
+    private final String id = UUID.randomUUID().toString().replace("-", "");
     private final ConnectionHolder connectionHolder;
     private final DbpxyProperties dbpxyProperties;
     private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
@@ -84,7 +90,7 @@ public class Connection implements java.sql.Connection {
                             credentials)
                     .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            log.debug("open(conn: {})", id);
+            log.debug("open");
         } catch (final IOException e) {
             throw new SQLException(e);
         }
@@ -109,10 +115,10 @@ public class Connection implements java.sql.Connection {
             if (transactions.isEmpty()) {
                 final ConnectionString connectionString = ConnectionString.newBuilder()
                         .setUrl(dbpxyDatasourceProperties.getUrl())
-                        .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
-                                .map(e -> ConnectionStringProp.newBuilder()
-                                        .setName(e.getKey())
-                                        .setValue(e.getValue())
+                        .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                                .map(prop -> ConnectionStringProp.newBuilder()
+                                        .setName(prop.getName())
+                                        .setValue(prop.getValue())
                                         .build())
                                 .toList())
                         .build();
@@ -134,18 +140,21 @@ public class Connection implements java.sql.Connection {
         return transactions.peek();
     }
 
-    private void pushTransaction(final Transaction transaction) {
+    private void pushTransaction(@NonNull final Transaction transaction) {
         transactions.push(transaction);
+        MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(transaction.getId()));
     }
 
-    private void popTransaction(final Transaction transaction) {
+    private void popTransaction(@NonNull final Transaction transaction) {
         transactions.removeIf(it ->
                 Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode()));
-    }
-
-    private void replaceTransaction(final Transaction out, final Transaction in) {
-        popTransaction(out);
-        pushTransaction(in);
+        try {
+            Optional.ofNullable(getTransaction(false))
+                    .ifPresentOrElse(it -> MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(it.getId())), () -> MDC.remove(MDC_TRANSACTION_ID));
+        } catch (final SQLException e) {
+            log.error(e.getMessage(), e);
+            MDC.remove(MDC_TRANSACTION_ID);
+        }
     }
 
     public void doWithSharedTransaction(
@@ -155,7 +164,7 @@ public class Connection implements java.sql.Connection {
             runnable.run();
             return;
         }
-        final Transaction transaction = TransactionUtils.parse(transactionId);
+        final Transaction transaction = TransactionUtils.tryParse(transactionId);
         try {
             joinSharedTransaction(transaction);
             runnable.run();
@@ -170,7 +179,7 @@ public class Connection implements java.sql.Connection {
         if (transactionId == null) {
             return callable.call();
         }
-        final Transaction transaction = TransactionUtils.parse(transactionId);
+        final Transaction transaction = TransactionUtils.tryParse(transactionId);
         try {
             joinSharedTransaction(transaction);
             return callable.call();
@@ -179,19 +188,29 @@ public class Connection implements java.sql.Connection {
         }
     }
 
-    public synchronized void joinSharedTransaction(final Transaction transaction) throws SQLException {
-        log.trace("joinSharedTransaction({})", getMaskedId(transaction.getId()));
+    public synchronized void joinSharedTransaction(@Nullable final Transaction transaction) throws SQLException {
+        if (transaction == null) {
+            throw new SQLException("unable to join shared transaction. invalid value: null");
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("joinSharedTransaction({})", DatabaseUtils.getMaskedId(transaction.getId()));
+        }
         initGrpcChannelIfNeeded();
         pushTransaction(transaction.toBuilder()
                 .setStatus(Transaction.Status.JOINED)
                 .build());
-        log.debug("joined(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
+        log.debug("joined tx");
     }
 
-    public void leaveSharedTransaction(final Transaction transaction) throws SQLException {
-        log.trace("leaveSharedTransaction({})", getMaskedId(transaction.getId()));
+    public void leaveSharedTransaction(@Nullable final Transaction transaction) throws SQLException {
+        if (transaction == null) {
+            throw new SQLException("unable to leave shared transaction. invalid value: null");
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("leaveSharedTransaction({})", DatabaseUtils.getMaskedId(transaction.getId()));
+        }
         popTransaction(transaction);
-        log.debug("left(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
+        log.debug("left tx");
     }
 
     public Connection(
@@ -205,7 +224,7 @@ public class Connection implements java.sql.Connection {
         this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
         connectionHolder.pushConnection(this);
-        log.debug("lazy open(conn: {})", id);
+        log.debug("lazy open");
     }
 
     @Override
@@ -239,23 +258,25 @@ public class Connection implements java.sql.Connection {
         return autoCommit;
     }
 
-    private static String getMaskedId(final String id) {
-        return id.substring(0, Math.min(32, id.length()));
-    }
-
     @Override
     public void commit() throws SQLException {
         final Transaction transaction = getTransaction(false);
         if (transaction == null) {
-            log.debug("commit skipped(conn: {})", id);
-        } else if (readOnly) {
-            log.debug("commit skipped(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-        } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-            log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
+            log.debug("commit skipped on no transaction");
+        } else {
             try {
-                replaceTransaction(transaction, blockingStub.commitTransaction(transaction));
-            } catch (final RuntimeException e) {
-                throw new SQLException(e);
+                if (readOnly) {
+                    log.debug("commit skipped on read-only connection");
+                } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                    try {
+                        blockingStub.commitTransaction(transaction);
+                        log.debug("commited");
+                    } catch (final RuntimeException e) {
+                        throw new SQLException(e);
+                    }
+                }
+            } finally {
+                popTransaction(transaction);
             }
         }
     }
@@ -264,15 +285,21 @@ public class Connection implements java.sql.Connection {
     public void rollback() throws SQLException {
         final Transaction transaction = getTransaction(false);
         if (transaction == null) {
-            log.debug("rollback skipped(conn: {})", id);
-        } else if (readOnly) {
-            log.debug("rollback skipped(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-        } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-            log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
+            log.debug("rollback skipped on no transaction");
+        } else {
             try {
-                replaceTransaction(transaction, blockingStub.rollbackTransaction(transaction));
-            } catch (final RuntimeException e) {
-                throw new SQLException(e);
+                if (readOnly) {
+                    log.debug("rollback skipped on read-only connection");
+                } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                    try {
+                        blockingStub.rollbackTransaction(transaction);
+                        log.debug("rolled back");
+                    } catch (final RuntimeException e) {
+                        throw new SQLException(e);
+                    }
+                }
+            } finally {
+                popTransaction(transaction);
             }
         }
     }
@@ -280,22 +307,26 @@ public class Connection implements java.sql.Connection {
     @Override
     public void close() throws SQLException {
         final Transaction transaction = getTransaction(false);
-        if (transaction != null && transaction.getStatus() == Transaction.Status.JOINED) {
-            log.debug("close skipped (conn: {})", id);
-        } else {
-            try {
+        try {
+            if (transaction == null) {
+                // Do nothing
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                log.debug("close skipped on shared connection");
+            } else {
                 if (autoCommit) {
                     commit();
                 }
-                log.debug("close(conn: {})", id);
-                if (channel != null) {
-                    channel.shutdownNow();
-                    this.channel = null;
-                }
-            } finally {
-                this.closed = true;
-                connectionHolder.popConnection(this);
+                log.debug("closed");
             }
+            if (channel != null) {
+                channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+            }
+        } catch (final InterruptedException e) {
+            throw new SQLException(e);
+        } finally {
+            this.closed = true;
+            this.channel = null;
+            connectionHolder.popConnection(this);
         }
     }
 
@@ -347,6 +378,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void clearWarnings() {
+        // Do nothing
     }
 
     @Override

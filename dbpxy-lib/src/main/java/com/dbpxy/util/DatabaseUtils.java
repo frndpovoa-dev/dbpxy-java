@@ -1,4 +1,4 @@
-package com.dbpxy.logging;
+package com.dbpxy.util;
 
 /*-
  * #%L
@@ -9,9 +9,9 @@ package com.dbpxy.logging;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,27 +20,11 @@ package com.dbpxy.logging;
  * #L%
  */
 
-import com.dbpxy.proto.Transaction;
-import com.dbpxy.util.DatabaseUtils;
+import lombok.experimental.UtilityClass;
 
-public class MDC implements AutoCloseable {
-    private final String key;
-
-    public MDC(
-            final String key,
-            final String value) {
-        this.key = key;
-        org.slf4j.MDC.put(key, value);
-    }
-
-    public MDC(
-            final String key,
-            final Transaction transaction) {
-        this(key, DatabaseUtils.getMaskedId(transaction.getId()) + "@" + transaction.getNode());
-    }
-
-    @Override
-    public void close() {
-        org.slf4j.MDC.remove(key);
+@UtilityClass
+public class DatabaseUtils {
+    public static String getMaskedId(final String id) {
+        return id.substring(0, Math.min(20, id.length()));
     }
 }

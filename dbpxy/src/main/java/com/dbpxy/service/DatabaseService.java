@@ -26,7 +26,7 @@ import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
-import com.dbpxy.util.DatabaseUtil;
+import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.UniqueIdGenerator;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
@@ -72,7 +72,7 @@ import java.util.concurrent.Executors;
         Empty.class
 })
 public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
-    private static final String MDC_TRANSACTION_ID = "transaction.id";
+    private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final String RANDOM_PASSPHRASE = RandomStringUtils.secure().next(30, true, true);
 
     private final DbpxyGrpcProperties dbpxyGrpcProperties;
@@ -200,7 +200,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
-                    .timeoutInMs(DatabaseUtil.sanitizeTimeoutInMs(config.getTimeoutInMs()))
+                    .timeoutInMs(DatabaseUtils.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                     .build();
 
             transactionCache.put(transactionId, ops);

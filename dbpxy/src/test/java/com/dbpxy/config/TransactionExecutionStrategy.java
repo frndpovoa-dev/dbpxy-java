@@ -57,7 +57,7 @@ public class TransactionExecutionStrategy extends AsyncSerialExecutionStrategy {
             try {
                 final Connection connection = connectionHolder.getConnection();
 
-                final Transaction transaction = TransactionUtils.parse(transactionId);
+                final Transaction transaction = TransactionUtils.tryParse(transactionId);
                 connection.joinSharedTransaction(transaction);
 
                 return super.execute(executionContext, parameters)

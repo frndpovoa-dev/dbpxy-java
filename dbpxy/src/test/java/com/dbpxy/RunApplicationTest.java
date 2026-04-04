@@ -23,11 +23,10 @@ package com.dbpxy;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.ConfigurableApplicationContext;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
 
@@ -35,17 +34,21 @@ import static org.awaitility.Awaitility.await;
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
 class RunApplicationTest extends BaseIntTest {
-
-    @Autowired
-    private ConfigurableApplicationContext context;
+    final AtomicBoolean sigtermReceived = new AtomicBoolean(false);
 
     @Test
     void run() {
         log.info("app is running in testing mode");
+
+        final Thread shutdownHook = new Thread(() -> {
+            sigtermReceived.set(true);
+        });
+
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+
         await()
                 .pollInterval(Duration.ofSeconds(1))
                 .atMost(Duration.ofDays(1))
-                .until(() -> !context.isActive());
-
+                .untilTrue(sigtermReceived);
     }
 }

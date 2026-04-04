@@ -9,9 +9,9 @@ package com.dbpxy.config;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,10 +21,11 @@ package com.dbpxy.config;
  */
 
 import lombok.*;
+import org.jspecify.annotations.Nullable;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.List;
 
 @Getter
 @Setter
@@ -35,5 +36,20 @@ import java.util.Map;
 public class DbpxyDatasourceProperties {
     private String url;
     @Builder.Default
-    private Map<String, String> props = new HashMap<>(0);
+    private List<Prop> props = new ArrayList<>(0);
+
+    public static class Prop {
+        @Getter
+        @Setter
+        private String name;
+        private char[] value;
+
+        public void setValue(@Nullable final String value) {
+            this.value = (value == null) ? null : value.toCharArray();
+        }
+
+        public @Nullable String getValue() {
+            return (value == null) ? null : String.valueOf(value);
+        }
+    }
 }
