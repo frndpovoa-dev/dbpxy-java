@@ -266,9 +266,7 @@ public class Connection implements java.sql.Connection {
             log.debug("commit skipped on no transaction");
         } else {
             try {
-                if (readOnly) {
-                    log.debug("commit skipped on read-only connection");
-                } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                     try {
                         blockingStub.commitTransaction(transaction);
                         log.debug("transaction commited");
@@ -289,9 +287,7 @@ public class Connection implements java.sql.Connection {
             log.debug("rollback skipped on no transaction");
         } else {
             try {
-                if (readOnly) {
-                    log.debug("rollback skipped on read-only connection");
-                } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
                     try {
                         blockingStub.rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
