@@ -10,14 +10,6 @@
     </parent>
     <artifactId>dbpxy</artifactId>
     <packaging>jar</packaging>
-    <properties>
-        <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.28.2</com.google.cloud.sql_postgres-socket-factory.version>
-        <org.apache.commons_commons-pool2.version>2.13.1</org.apache.commons_commons-pool2.version>
-        <org.apache.openjpa_openjpa-persistence-jdbc.version>4.1.1</org.apache.openjpa_openjpa-persistence-jdbc.version>
-        <org.postgresql_postgresql.version>42.7.10</org.postgresql_postgresql.version>
-        <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
-    </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -50,16 +42,6 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    <repositories>
-        <repository>
-            <id>google.com</id>
-            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-        </repository>
-        <repository>
-            <id>spring.io</id>
-            <url>https://repo.spring.io/release/</url>
-        </repository>
-    </repositories>
     <dependencies>
         <dependency>
             <groupId>com.dbpxy</groupId>
@@ -121,7 +103,6 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${org.projectlombok_lombok.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -177,32 +158,7 @@
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <version>2.7.1</version>
-                <configuration>
-                    <organizationName>Fernando Lemes Povoa</organizationName>
-                    <licenseName>apache_v2</licenseName>
-                    <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>false</addSvnKeyWords>
-                    <verbose>false</verbose>
-                    <encoding>${file.encoding}</encoding>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>default-cli</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>add-third-party</goal>
-                            <goal>update-file-header</goal>
-                            <goal>update-project-license</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.1</version>
                 <executions>
                     <execution>
                         <phase>generate-sources</phase>
@@ -221,7 +177,6 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
                 <configuration>
                     <protocArtifact>
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
@@ -262,7 +217,6 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
-                        <builder>paketobuildpacks/ubuntu-noble-builder</builder>
                         <env>
                             <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
@@ -286,7 +240,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -303,12 +256,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.4.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.9.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -320,7 +271,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
                 <configuration>
                     <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>

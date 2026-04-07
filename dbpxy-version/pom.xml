@@ -10,9 +10,6 @@
     </parent>
     <artifactId>dbpxy-version</artifactId>
     <packaging>pom</packaging>
-    <properties>
-        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-    </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -26,6 +23,12 @@
                 <artifactId>awaitility</artifactId>
                 <version>${org.awaitility_awaitility.version}</version>
                 <scope>test</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${org.projectlombok_lombok.version}</version>
+                <optional>true</optional>
             </dependency>
         </dependencies>
     </dependencyManagement>
