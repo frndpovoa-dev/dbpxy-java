@@ -39,6 +39,7 @@ import io.grpc.stub.StreamObserver;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObject;
@@ -169,6 +170,15 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
                         log.debug("transaction cache eviction. cause: {}", cause);
                         ops.closeConnection();
+                        if (StringUtils.isNotEmpty(ops.getTransaction().getId())) {
+                            transactionCache.invalidate(ops.getTransaction().getId());
+                        }
+                        if (StringUtils.isNotEmpty(ops.getTransaction().getReadOnlyId())) {
+                            transactionCache.invalidate(ops.getTransaction().getReadOnlyId());
+                        }
+                        if (StringUtils.isNotEmpty(ops.getTransaction().getReadWriteId())) {
+                            transactionCache.invalidate(ops.getTransaction().getReadWriteId());
+                        }
                     }
                 })
                 .build();
@@ -186,9 +196,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final BeginTransactionConfig config,
             final StreamObserver<Transaction> responseObserver) {
         final String transactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
+        final String readOnlyTransactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
+        final String readWriteTransactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
 
         final Transaction transaction = Transaction.newBuilder()
                 .setId(cryptoService.encrypt(transactionId))
+                .setReadOnlyId(cryptoService.encrypt(readOnlyTransactionId))
+                .setReadWriteId(cryptoService.encrypt(readWriteTransactionId))
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
@@ -196,7 +210,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
             log.trace("beginTransaction() -> {}", transaction.getStatus());
 
-            final DatabaseOperation ops = DatabaseOperation.builder()
+            final DatabaseOperation ops = DatabaseOperationImpl.builder()
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
@@ -204,6 +218,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     .build();
 
             transactionCache.put(transactionId, ops);
+            transactionCache.put(readOnlyTransactionId, new DatabaseReadOnlyOperation(ops));
+            transactionCache.put(readWriteTransactionId, new DatabaseReadWriteOperation(ops));
 
             final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
                     connectionStringHash(config.getConnectionString()),

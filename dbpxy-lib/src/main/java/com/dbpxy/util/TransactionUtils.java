@@ -49,7 +49,31 @@ public class TransactionUtils {
     private static final String AMPERSAND_CHAR = "&";
     private static final String EQUAL_CHAR = "=";
 
+    private enum Permission {
+        FULL, READ_ONLY, READ_WRITE;
+    }
+
     public static @NonNull String format(@NonNull final Transaction transaction) throws URISyntaxException {
+        return format(transaction, Permission.FULL);
+    }
+
+    public static @NonNull String formatToReadOnly(@NonNull final Transaction transaction) throws URISyntaxException {
+        return format(transaction, Permission.READ_ONLY);
+    }
+
+    public static @NonNull String formatToReadWrite(@NonNull final Transaction transaction) throws URISyntaxException {
+        return format(transaction, Permission.READ_WRITE);
+    }
+
+    private static @NonNull String format(
+            @NonNull final Transaction transaction,
+            @NonNull final Permission permission) throws URISyntaxException {
+        String id;
+        switch (permission) {
+            case FULL -> id = transaction.getId();
+            case READ_WRITE -> id = transaction.getReadWriteId();
+            default -> id = transaction.getReadOnlyId();
+        }
         final String query = Map.of(
                         CREATION_PARAM, transaction.getCreation(),
                         EXPIRATION_PARAM, transaction.getExpiration()
@@ -58,11 +82,11 @@ public class TransactionUtils {
                 .sorted(Map.Entry.comparingByKey())
                 .map(entry -> URLEncoder.encode(entry.getKey(), UTF_8) + EQUAL_CHAR + URLEncoder.encode(entry.getValue(), UTF_8))
                 .collect(Collectors.joining(AMPERSAND_CHAR));
-        final URI uri = new URI(SCHEME, null, transaction.getNode(), -1, FORWARD_SLASH_CHAR + URLEncoder.encode(transaction.getId(), UTF_8), query, "");
+        final URI uri = new URI(SCHEME, null, transaction.getNode(), -1, FORWARD_SLASH_CHAR + URLEncoder.encode(id, UTF_8), query, "");
         return Base64.getEncoder().encodeToString(uri.toString().getBytes(UTF_8));
     }
 
-    static @Nullable Transaction tryParseBasic(@NonNull final URI transactionUri) {
+    private static @Nullable Transaction tryParseBasic(@NonNull final URI transactionUri) {
         try {
             return Transaction.newBuilder()
                     .setId(URLDecoder.decode(transactionUri.getPath().substring(1), UTF_8))

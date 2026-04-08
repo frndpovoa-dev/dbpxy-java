@@ -40,10 +40,12 @@ message BeginTransactionConfig {
 
 message Transaction {
   string id = 1;
-  Status status = 2;
-  string node = 3;
-  string creation = 4;
-  string expiration = 5;
+  string readOnlyId = 2;
+  string readWriteId = 3;
+  Status status = 4;
+  string node = 5;
+  string creation = 6;
+  string expiration = 7;
 
   enum Status {
     NOT_STARTED = 0;

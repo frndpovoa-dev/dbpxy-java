@@ -42,6 +42,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
@@ -178,27 +179,21 @@ class TestControllerIntTest extends BaseIntTest {
                 .isLessThan(Duration.ofSeconds(10));
     }
 
-    @SuppressWarnings({"removal"})
     private @Nullable <T> T insert(
             final String transactionId,
             final Class<T> clazz,
             final T data) {
-        return restTemplate.exchange(
-                        INSERT_URL,
-                        HttpMethod.POST,
-                        new HttpEntity<>(data, MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))),
+        return restTemplate.exchange(INSERT_URL, HttpMethod.POST,
+                        new HttpEntity<>(data, HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
                         clazz)
                 .getBody();
     }
 
-    @SuppressWarnings({"removal"})
     private @Nullable <T> T listGroupWeb(
             final String transactionId,
             final ParameterizedTypeReference<T> typeReference) {
-        return restTemplate.exchange(
-                        LIST_GROUP_WEB_URL,
-                        HttpMethod.GET,
-                        new HttpEntity<>(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))),
+        return restTemplate.exchange(LIST_GROUP_WEB_URL, HttpMethod.GET,
+                        new HttpEntity<>(HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
                         typeReference)
                 .getBody();
     }

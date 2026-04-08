@@ -98,8 +98,23 @@ public class Connection implements java.sql.Connection {
 
     public String getTransactionId() throws SQLException {
         try {
-            final Transaction transaction = getTransaction(true);
-            return TransactionUtils.format(transaction);
+            return TransactionUtils.format(getTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public String getReadOnlyTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToReadOnly(getTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public String getReadWriteTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToReadWrite(getTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }

@@ -30,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlConfig;
@@ -40,7 +41,6 @@ import org.springframework.web.client.RestTemplate;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -72,6 +72,20 @@ class TestRepositoryIntTest extends BaseIntTest {
             .doubleValue(2.0)
             .bigdecimalValue(new BigDecimal("-20.9999999999999999999999999"))
             .build();
+    public static final TestBo TEST_3 = TestBo.builder()
+            .id(3L)
+            .name("Hello World! 3")
+            .groupName("repo")
+            .doubleValue(3.0)
+            .bigdecimalValue(new BigDecimal("-20.9999999999999999999999999"))
+            .build();
+    public static final TestBo TEST_4 = TestBo.builder()
+            .id(4L)
+            .name("Hello World! 3 from server side")
+            .groupName("repo")
+            .doubleValue(3.0)
+            .bigdecimalValue(new BigDecimal("-20.9999999999999999999999999"))
+            .build();
     public static final TestBo TEST_2_DIFF_1 = TEST_2.toBuilder()
             .bigdecimalValue(new BigDecimal("-20.999999999999999999999999")) // Precision difference
             .build();
@@ -81,52 +95,67 @@ class TestRepositoryIntTest extends BaseIntTest {
     void testJpaUsingSharedTransaction() throws Exception {
         final String transactionId = connectionHolder.getConnection().getTransactionId();
         log.debug("tx transactionId({})", transactionId);
+        final String readOnlyTransactionId = connectionHolder.getConnection().getReadOnlyTransactionId();
+        log.debug("tx readOnlyTransactionId({})", readOnlyTransactionId);
 
         log.debug("read before insert using JPA");
-        final List<TestBo> before = repository.findByGroupName("repo");
-        assertThat(before)
+        assertThat(repository.findByGroupName("repo"))
                 .containsExactly(TEST_1);
 
         log.debug("insert");
-        final TestBo t2 = repository.saveAndFlush(TEST_2);
-        assertThat(t2)
+        assertThat(repository.saveAndFlush(TEST_2))
                 .isEqualTo(TEST_2);
+
+        log.debug("read after insert using API no TX");
+        final TestBo apiResponseNoOpTx = restTemplate.exchange(
+                "http://localhost:9091/api/v1/test/insert", HttpMethod.POST,
+                new HttpEntity<>(TEST_3, HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, readOnlyTransactionId)))),
+                new ParameterizedTypeReference<TestBo>() {
+                }).getBody();
+        assertThat(apiResponseNoOpTx)
+                .isEqualTo(TEST_3);
 
         log.debug("read after insert using JPA");
         final List<TestBo> after = repository.findByGroupName("repo");
         assertThat(after)
                 .isNotEmpty()
-                .containsExactly(TEST_1, TEST_2);
+                .containsExactly(TEST_1, TEST_2, TEST_4);
 
         log.debug("read after insert using API no TX");
-        final List<TestBo> apiResponseNoTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of())), new ParameterizedTypeReference<List<TestBo>>() {
-        }).getBody();
+        final List<TestBo> apiResponseNoTx = restTemplate.exchange(
+                "http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET,
+                new HttpEntity<>(HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of()))),
+                new ParameterizedTypeReference<List<TestBo>>() {
+                }).getBody();
         assertThat(apiResponseNoTx)
-                .isEmpty();
+                .isNotEmpty()
+                .containsExactly(TEST_4);
 
         log.debug("read after insert using API");
-        final List<TestBo> apiResponseTx = restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId))), new ParameterizedTypeReference<List<TestBo>>() {
-        }).getBody();
+        final List<TestBo> apiResponseTx = restTemplate.exchange(
+                "http://localhost:9091/api/v1/test/list?group=repo", HttpMethod.GET,
+                new HttpEntity<>(HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
+                new ParameterizedTypeReference<List<TestBo>>() {
+                }).getBody();
         assertThat(apiResponseTx)
                 .isNotEmpty()
-                .containsExactly(TEST_1, TEST_2)
+                .containsExactly(TEST_1, TEST_2, TEST_4)
                 .doesNotContain(TEST_2_DIFF_1);
 
-        Optional<TestBo> t1Opt = repository.findById(TEST_1.getId());
-        assertThat(t1Opt)
-                .isPresent();
-        assertThat(t1Opt.get())
+        assertThat(repository.findById(TEST_1.getId()))
+                .isPresent()
+                .get()
                 .isNotNull()
                 .isEqualTo(TEST_1);
 
-        Optional<TestBo> t2Opt = repository.findById(TEST_2.getId());
-        assertThat(t2Opt)
-                .isPresent();
-        assertThat(t2Opt.get())
+        assertThat(repository.findById(TEST_2.getId()))
+                .isPresent()
+                .get()
                 .isNotNull()
                 .isEqualTo(TEST_2)
                 .isNotEqualTo(TEST_2_DIFF_1);
+
+        assertThat(repository.findById(TEST_3.getId()))
+                .isEmpty();
     }
 }
