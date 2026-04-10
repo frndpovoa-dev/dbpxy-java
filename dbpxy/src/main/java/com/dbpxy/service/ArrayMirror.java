@@ -28,7 +28,7 @@ import java.util.List;
 @Getter
 @Setter
 class ArrayMirror {
-    private String baseTypeName;
     private int baseType;
+    private String baseTypeName;
     private List<Object> array;
 }

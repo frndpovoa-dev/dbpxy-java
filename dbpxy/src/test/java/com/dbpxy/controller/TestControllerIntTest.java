@@ -9,9 +9,9 @@ package com.dbpxy.controller;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,13 +23,17 @@ package com.dbpxy.controller;
 import com.dbpxy.BaseIntTest;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
+import com.dbpxy.config.Headers;
 import com.dbpxy.dto.TestDto;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.TransactionUtils;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.time.StopWatch;
+import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,16 +42,29 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ForkJoinPool;
+import java.util.stream.IntStream;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@SpringBootTest(
+        webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
+        properties = {"app.dbpxy.ddl-auto=create"}
+)
 class TestControllerIntTest extends BaseIntTest {
+    private static final String LIST_GROUP_WEB_URL = "http://localhost:9091/api/v1/test/list?group=web";
+    private static final String INSERT_URL = "http://localhost:9091/api/v1/test/insert";
+
     @Autowired
     private RestTemplate restTemplate;
     @Autowired
@@ -57,9 +74,11 @@ class TestControllerIntTest extends BaseIntTest {
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub blockingStub;
     private Transaction tx1Transaction;
-    private String tx1TransactionId;
+    private String tx1Id;
     private Transaction tx2Transaction;
-    private String tx2TransactionId;
+    private String tx2Id;
+
+    private final StopWatch stopWatch = new StopWatch();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -76,31 +95,31 @@ class TestControllerIntTest extends BaseIntTest {
 
         final ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dbpxyDatasourceProperties.getUrl())
-                .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
         this.tx1Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
                         .setConnectionString(connectionString)
-                        .setTimeout(60_000 * 10)
+                        .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
                         .build());
         this.tx2Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
                         .setConnectionString(connectionString)
-                        .setTimeout(60_000 * 10)
+                        .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
                         .build());
 
-        this.tx1TransactionId = tx1Transaction.getId() + "@" + tx1Transaction.getNode();
-        log.debug("Tx 1 transactionId({})", tx1TransactionId);
+        this.tx1Id = TransactionUtils.format(tx1Transaction);
+        log.debug("tx 1 {}", tx1Id);
 
-        this.tx2TransactionId = tx2Transaction.getId() + "@" + tx2Transaction.getNode();
-        log.debug("Tx 2 transactionId({})", tx2TransactionId);
+        this.tx2Id = TransactionUtils.format(tx2Transaction);
+        log.debug("tx 2 {}", tx2Id);
     }
 
     @AfterEach
@@ -111,32 +130,71 @@ class TestControllerIntTest extends BaseIntTest {
     }
 
     @Test
-    @SuppressWarnings({"unchecked"})
     void testApiUsingSharedTransaction() {
         final ParameterizedTypeReference<List<TestDto>> listTypeReference = new ParameterizedTypeReference<>() {
         };
 
-        log.debug("Read before insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody());
+        log.debug("read before insert using tx 1");
+        assertThat(listGroupWeb(tx1Id, listTypeReference))
+                .isEmpty();
 
-        log.debug("Read before insert using tx 2");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody());
+        log.debug("read before insert using tx 2");
+        assertThat(listGroupWeb(tx2Id, listTypeReference))
+                .isEmpty();
 
-        log.debug("Insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/insert", HttpMethod.POST, new HttpEntity<>(
-                TestDto.builder().id(2025L).name("Hello World!").groupName("web").build(),
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), TestDto.class).getBody());
+        log.debug("insert using tx 1");
+        final TestDto insertTx1 = TestDto.builder()
+                .id(2025L)
+                .name("Hello World!")
+                .groupName("web")
+                .doubleValue(2.0)
+                .bigdecimalValue(new BigDecimal("20.0000000000000000000000000"))
+                .build();
+        final TestDto insertTx1a = TestDto.builder()
+                .id(2026L)
+                .name("Hello World! from server side")
+                .groupName("web")
+                .doubleValue(2.0)
+                .bigdecimalValue(new BigDecimal("20.0000000000000000000000000"))
+                .build();
+        assertThat(insert(tx1Id, TestDto.class, insertTx1))
+                .isNotNull()
+                .isEqualTo(insertTx1);
 
-        log.debug("Read after insert using tx 1");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx1TransactionId))), listTypeReference).getBody());
+        log.debug("concurrent reads after insert using tx 1 and tx 2");
+        stopWatch.run(() -> {
+            try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+                forkJoinPool.execute(() -> IntStream.range(0, 500).parallel().forEach(ignored -> {
+                    assertThat(listGroupWeb(tx1Id, listTypeReference))
+                            .isNotEmpty()
+                            .containsExactly(insertTx1, insertTx1a);
+                    assertThat(listGroupWeb(tx2Id, listTypeReference))
+                            .isNotEmpty()
+                            .containsExactly(insertTx1a);
+                }));
+            }
+        });
+        log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
+        assertThat(stopWatch.getDuration())
+                .isLessThan(Duration.ofSeconds(10));
+    }
 
-        log.debug("Read after insert using tx 2");
-        log.debug("{}", restTemplate.exchange("http://localhost:9091/api/v1/test/list?group=web", HttpMethod.GET, new HttpEntity<>(
-                MultiValueMap.fromSingleValue(Map.of("X-Transaction-Id", tx2TransactionId))), listTypeReference).getBody());
+    private @Nullable <T> T insert(
+            final String transactionId,
+            final Class<T> clazz,
+            final T data) {
+        return restTemplate.exchange(INSERT_URL, HttpMethod.POST,
+                        new HttpEntity<>(data, HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
+                        clazz)
+                .getBody();
+    }
 
-
+    private @Nullable <T> T listGroupWeb(
+            final String transactionId,
+            final ParameterizedTypeReference<T> typeReference) {
+        return restTemplate.exchange(LIST_GROUP_WEB_URL, HttpMethod.GET,
+                        new HttpEntity<>(HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
+                        typeReference)
+                .getBody();
     }
 }

@@ -23,6 +23,8 @@ package com.dbpxy.dto;
 import jakarta.persistence.Id;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Getter
 @Setter
 @Builder
@@ -38,4 +40,8 @@ public class TestDto {
     private String name;
     @EqualsAndHashCode.Include
     private String groupName;
+    @EqualsAndHashCode.Include
+    private Double doubleValue;
+    @EqualsAndHashCode.Include
+    private BigDecimal bigdecimalValue;
 }

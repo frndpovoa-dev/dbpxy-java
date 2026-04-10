@@ -21,7 +21,7 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.BaseIntTest;
-import com.dbpxy.config.GrpcProperties;
+import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.proto.*;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
@@ -92,11 +92,11 @@ class DatabaseServiceIntTest extends BaseIntTest {
             );
             """;
     public static final String DROP_TABLE_IF_EXISTS_TEST = """
-            drop table if exists test;
+            drop table if exists test cascade;
             """;
 
     @Autowired
-    private GrpcProperties grpcProperties;
+    private DbpxyGrpcProperties dbpxyGrpcProperties;
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub databaseProxyServiceClient;
 
@@ -107,7 +107,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         this.channel = Grpc.newChannelBuilderForAddress(
                         "localhost",
-                        grpcProperties.getPort(),
+                        dbpxyGrpcProperties.getPort(),
                         credentials)
                 .build();
         this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(channel);
@@ -170,7 +170,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
 
     @Test
     void givenCreateTable_thenInsert_thenTransactionTimeout() {
-        Transaction tx1 = beginTransaction(100);
+        Transaction tx1 = beginTransaction(1_000);
         executeTx(tx1, 1, INSERT_INTO_TEST_ID_NAME, Stream.of(
                         new AbstractMap.SimpleEntry<>(ValueInt64.newBuilder().setValue(1).build(), ValueCode.INT64),
                         new AbstractMap.SimpleEntry<>(ValueString.newBuilder().setValue("dummy").build(), ValueCode.STRING)
@@ -181,33 +181,36 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .build())
                 .toList());
 
-        sleepUninterruptibly(Duration.ofMillis(1_000));
+        queryTx(tx1, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
 
-        tx1 = commit(tx1, Transaction.Status.UNKNOWN);
+        sleepUninterruptibly(Duration.ofMillis(2_000));
 
-        Transaction tx1a = tx1;
-        assertThatThrownBy(() -> queryTx(tx1a, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null))
+        assertThatThrownBy(() -> commit(tx1, Transaction.Status.UNKNOWN))
                 .isInstanceOf(io.grpc.StatusRuntimeException.class)
-                .hasMessage("UNKNOWN: Transaction not found");
+                .hasMessage("NOT_FOUND: Transaction not found");
+
+        assertThatThrownBy(() -> queryTx(tx1, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null))
+                .isInstanceOf(io.grpc.StatusRuntimeException.class)
+                .hasMessage("NOT_FOUND: Transaction not found");
 
         query(0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
     }
 
     private Transaction beginTransaction(
-            int timeout
+            int timeoutInMs
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(timeout)
+                .setTimeoutInMs(timeoutInMs)
                 .build());
         assertThat(transaction)
                 .isNotNull()
@@ -221,18 +224,27 @@ class DatabaseServiceIntTest extends BaseIntTest {
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
-        ExecuteResult ddlResult = databaseProxyServiceClient.execute(ExecuteConfig.newBuilder()
+        Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(100)
-                .setQuery(sql)
+                .setTimeoutInMs(5_000)
+                .setAutoCommit(true)
+                .setReadOnly(false)
                 .build());
+        ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
+                .setTransaction(transaction)
+                .setExecuteConfig(ExecuteConfig.newBuilder()
+                        .setTimeoutInMs(2_000)
+                        .setQuery(sql)
+                        .build())
+                .build());
+        transaction = databaseProxyServiceClient.commitTransaction(transaction);
         assertThat(ddlResult)
                 .isNotNull();
     }
@@ -246,7 +258,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         ExecuteResult insertResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setTimeout(100)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -287,7 +299,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setQueryConfig(QueryConfig.newBuilder()
-                        .setTimeout(1_000)
+                        .setTimeoutInMs(1_000)
                         .setQuery(sql)
                         .addAllArgs(args)
                         .build())
@@ -313,19 +325,28 @@ class DatabaseServiceIntTest extends BaseIntTest {
     ) {
         ConnectionString connectionString = ConnectionString.newBuilder()
                 .setUrl(dataSourceProperties.getUrl())
-                .addAllProps(dataSourceProperties.getProps().entrySet().stream()
-                        .map(e -> ConnectionStringProp.newBuilder()
-                                .setName(e.getKey())
-                                .setValue(e.getValue())
+                .addAllProps(dataSourceProperties.getProps().stream()
+                        .map(prop -> ConnectionStringProp.newBuilder()
+                                .setName(prop.getName())
+                                .setValue(prop.getValue())
                                 .build())
                         .toList())
                 .build();
-        QueryResult queryResult = databaseProxyServiceClient.query(QueryConfig.newBuilder()
+        Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
-                .setTimeout(2_000)
-                .setQuery(sql)
-                .addAllArgs(args)
+                .setTimeoutInMs(2_000)
+                .setAutoCommit(true)
+                .setReadOnly(false)
                 .build());
+        QueryResult queryResult = databaseProxyServiceClient.queryTx(QueryTxConfig.newBuilder()
+                .setTransaction(transaction)
+                .setQueryConfig(QueryConfig.newBuilder()
+                        .setTimeoutInMs(1_000)
+                        .setQuery(sql)
+                        .addAllArgs(args)
+                        .build())
+                .build());
+        transaction = databaseProxyServiceClient.commitTransaction(transaction);
         assertThat(queryResult)
                 .isNotNull();
         if (rowsReturned > 0) {

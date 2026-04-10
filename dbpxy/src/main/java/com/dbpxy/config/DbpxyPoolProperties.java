@@ -1,10 +1,10 @@
-package com.dbpxy.service;
+package com.dbpxy.config;
 
 /*-
  * #%L
  * dbpxy
  * %%
- * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
+ * Copyright (C) 2025 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,8 +20,17 @@ package com.dbpxy.service;
  * #L%
  */
 
-class DatabaseUtil {
-    public static String getMaskedId(final String id) {
-        return id.replaceFirst("^(.{32}).*$", "$1");
-    }
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+
+@Getter
+@Setter
+@ConfigurationProperties(prefix = "app.dbpxy-pool")
+public class DbpxyPoolProperties {
+    private int maxTotalSize = 5;
+    private int maxIdleSize = 5;
+    private int minIdleSize = 1;
+    private long maxIdleAgeMs = 60_000;
+    private long maxWaitMs = 60_000;
 }

@@ -22,6 +22,7 @@ package com.dbpxy.controller;
 
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.bo.TestBo;
+import com.dbpxy.config.Headers;
 import com.dbpxy.repository.TestRepository;
 import com.dbpxy.service.TestService;
 import lombok.RequiredArgsConstructor;
@@ -31,36 +32,50 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
+
 @Slf4j
 @RestController
 @RequestMapping(path = "/api/v1/test")
-@Transactional(timeout = 60)
 @RequiredArgsConstructor
 public class TestController {
     private final TestService service;
     private final TestRepository repository;
     private final ConnectionHolder connectionHolder;
 
+    @Transactional(readOnly = true, timeout = 10)
     @GetMapping(path = "/list")
     public List<TestBo> list(
-            @RequestHeader("X-Transaction-Id") final String transactionId,
-            @RequestParam("group") String group
+            @RequestHeader(value = Headers.TRANSACTION, required = false) final String transactionId,
+            @RequestParam("group") String groupName
     ) throws Exception {
-        connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        final List<TestBo> result = repository.findByGroupName(group);
-        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
-        return result;
+        return connectionHolder.doWithSharedTransaction(transactionId,
+                () -> repository.findByGroupName(groupName));
     }
 
+    @Transactional(timeout = 10)
     @PostMapping(path = "/insert")
-    public TestBo step2(
-            @RequestHeader("X-Transaction-Id") final String transactionId,
+    public TestBo insert(
+            @RequestHeader(value = Headers.TRANSACTION, required = false) final String transactionId,
             @RequestBody final TestBo testBo
     ) throws Exception {
-        connectionHolder.getConnection().joinSharedTransaction(transactionId);
-        repository.save(testBo);
+        assertThat(repository.findById(testBo.getId()))
+                .isEmpty();
+
+        connectionHolder.doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    assertThat(repository.findById(testBo.getId()))
+                            .isEmpty();
+                    repository.save(testBo);
+                    assertThat(repository.findById(testBo.getId()))
+                            .isPresent();
+                });
+
+        assertThat(repository.findById(testBo.getId()))
+                .isEmpty();
+
         service.save(testBo);
-        connectionHolder.getConnection().leaveSharedTransaction(transactionId);
         return testBo;
     }
 }

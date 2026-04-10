@@ -11,9 +11,9 @@ package com.dbpxy.config;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -22,8 +22,10 @@ package com.dbpxy.config;
  * #L%
  */
 
+import com.dbpxy.ConnectionHolder;
 import com.dbpxy.jdbc.Connection;
-import com.dbpxy.jdbc.DataSource;
+import com.dbpxy.proto.Transaction;
+import com.dbpxy.util.TransactionUtils;
 import graphql.ExecutionResult;
 import graphql.execution.AsyncSerialExecutionStrategy;
 import graphql.execution.ExecutionContext;
@@ -31,7 +33,6 @@ import graphql.execution.ExecutionStrategyParameters;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -43,41 +44,28 @@ import java.util.concurrent.CompletableFuture;
 @RequiredArgsConstructor
 @Transactional(timeout = 60)
 public class TransactionExecutionStrategy extends AsyncSerialExecutionStrategy {
-    private final DataSource dataSource;
+    private final ConnectionHolder connectionHolder;
 
     @Override
     public CompletableFuture<ExecutionResult> execute(
             final ExecutionContext executionContext,
             final ExecutionStrategyParameters parameters
     ) {
-        Connection connection = null;
         final String transactionId = executionContext.getGraphQLContext().get(Headers.TRANSACTION);
 
         if (StringUtils.isNotEmpty(transactionId)) {
-            boolean autoCommit;
-            boolean readOnly;
             try {
-                connection = (Connection) DataSourceUtils.getConnection(dataSource);
+                final Connection connection = connectionHolder.getConnection();
 
-                autoCommit = connection.getAutoCommit();
-                connection.setAutoCommit(false);
+                final Transaction transaction = TransactionUtils.tryParse(transactionId);
+                connection.joinSharedTransaction(transaction);
 
-                readOnly = connection.isReadOnly();
-                connection.setReadOnly(false);
-
-                connection.joinSharedTransaction(transactionId);
-
-                final Connection connection1 = connection;
                 return super.execute(executionContext, parameters)
                         .whenComplete((executionResult, throwable) -> {
                             try {
-                                connection1.leaveSharedTransaction(transactionId);
-                                connection1.setAutoCommit(autoCommit);
-                                connection1.setReadOnly(readOnly);
+                                connection.leaveSharedTransaction(transaction);
                             } catch (final SQLException e) {
                                 throw new RuntimeException(e);
-                            } finally {
-                                DataSourceUtils.releaseConnection(connection1, dataSource);
                             }
                         });
             } catch (final SQLException e) {

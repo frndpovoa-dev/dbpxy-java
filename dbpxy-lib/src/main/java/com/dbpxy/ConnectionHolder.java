@@ -21,23 +21,93 @@ package com.dbpxy;
  */
 
 import com.dbpxy.jdbc.Connection;
+import com.dbpxy.util.DatabaseUtils;
+import jakarta.persistence.EntityManager;
+import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.MDC;
 
-import java.util.Stack;
+import java.sql.SQLException;
+import java.util.ArrayDeque;
+import java.util.Optional;
+import java.util.concurrent.Callable;
 
 @Slf4j
+@RequiredArgsConstructor
 public class ConnectionHolder {
-    private static final ThreadLocal<Stack<Connection>> connections = ThreadLocal.withInitial(Stack::new);
+    private static final String MDC_CONNECTION_ID = "dbpxy.conn.id";
+    private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
+    private static final ThreadLocal<ArrayDeque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
+    @Setter
+    private EntityManager entityManager;
 
-    public Connection getConnection() {
-        return connections.get().isEmpty() ? null : connections.get().peek();
+    public void doWithSharedTransaction(
+            final String transactionId,
+            final Runnable runnable) throws Exception {
+
+        entityManager.flush();
+        entityManager.clear();
+
+        getConnection().doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    runnable.run();
+
+                    entityManager.flush();
+                    entityManager.clear();
+                });
+    }
+
+    public <T> T doWithSharedTransaction(
+            final String transactionId,
+            final Callable<T> callable) throws Exception {
+
+        entityManager.flush();
+        entityManager.clear();
+
+        return getConnection().doWithSharedTransaction(
+                transactionId,
+                () -> {
+                    final T result = callable.call();
+
+                    entityManager.flush();
+                    entityManager.clear();
+
+                    return result;
+                });
+    }
+
+    public @Nullable Connection getConnection() {
+        return CONNECTIONS.get().peek();
     }
 
     public void pushConnection(final Connection connection) {
-        connections.get().push(connection);
+        CONNECTIONS.get().push(connection);
+        MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(connection.getId()));
     }
 
     public void popConnection(final Connection connection) {
-        connections.get().remove(connection);
+        CONNECTIONS.get().remove(connection);
+        Optional.ofNullable(getConnection())
+                .ifPresentOrElse(it -> MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(it.getId())), () -> MDC.remove(MDC_CONNECTION_ID));
+    }
+
+    public void clear() {
+        CONNECTIONS.get().stream()
+                .filter(connection -> !connection.isClosed())
+                .forEach(connection -> {
+                    try {
+                        MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(connection.getId()));
+                        log.error("dbpxy connection did not finish properly, closing it...");
+                        connection.close();
+                    } catch (final SQLException e) {
+                        log.error(e.getMessage(), e);
+                    }
+                });
+        CONNECTIONS.remove();
+        MDC.remove(MDC_CONNECTION_ID);
+        MDC.remove(MDC_TRANSACTION_ID);
     }
 }

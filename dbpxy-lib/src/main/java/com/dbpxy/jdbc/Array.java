@@ -37,17 +37,17 @@ public class Array implements java.sql.Array {
     private final Object[] array;
 
     @Override
-    public String getBaseTypeName() throws SQLException {
+    public String getBaseTypeName() {
         return baseTypeName;
     }
 
     @Override
-    public int getBaseType() throws SQLException {
+    public int getBaseType() {
         return baseType;
     }
 
     @Override
-    public Object getArray() throws SQLException {
+    public Object getArray() {
         return array;
     }
 
@@ -95,7 +95,7 @@ public class Array implements java.sql.Array {
     }
 
     @Override
-    public void free() throws SQLException {
+    public void free() {
         // No resources to free
     }
 }

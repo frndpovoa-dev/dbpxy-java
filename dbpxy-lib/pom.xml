@@ -2,28 +2,38 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.dbpxy</groupId>
+    <parent>
+        <groupId>com.dbpxy</groupId>
+        <artifactId>dbpxy-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <artifactId>dbpxy-lib</artifactId>
-    <version>${revision}</version>
     <packaging>jar</packaging>
     <properties>
-        <revision>0.1.0-SNAPSHOT</revision>
-        <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
-        <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
-        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
-        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <spring-boot.version>4.0.2</spring-boot.version>
+        <spring-boot.aot.skip>true</spring-boot.aot.skip>
+        <spring-boot.build-image.skip>true</spring-boot.build-image.skip>
     </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
+                <groupId>com.dbpxy</groupId>
+                <artifactId>dbpxy-version</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.grpc</groupId>
+                <artifactId>spring-grpc-dependencies</artifactId>
+                <version>${org.springframework.grpc_spring-grpc-dependencies.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -34,25 +44,8 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-bom</artifactId>
-                <version>${io.grpc_grpc-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
-    <repositories>
-        <repository>
-            <id>google.com</id>
-            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-        </repository>
-        <repository>
-            <id>spring.io</id>
-            <url>https://repo.spring.io/release/</url>
-        </repository>
-    </repositories>
     <dependencies>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -67,37 +60,18 @@
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-services</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-testing</artifactId>
-            <scope>test</scope>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>${org.apache.commons_commons-lang3.version}</version>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${org.projectlombok_lombok.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -107,12 +81,22 @@
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-data-jdbc</artifactId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.zaxxer</groupId>
+                    <artifactId>HikariCP</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.grpc</groupId>
+            <artifactId>spring-grpc-spring-boot-starter</artifactId>
         </dependency>
     </dependencies>
     <build>
@@ -126,34 +110,17 @@
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <version>2.7.1</version>
-                <configuration>
-                    <organizationName>Fernando Lemes Povoa</organizationName>
-                    <licenseName>apache_v2</licenseName>
-                    <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>false</addSvnKeyWords>
-                    <verbose>false</verbose>
-                    <encoding>${file.encoding}</encoding>
-                </configuration>
+                <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>default-cli</id>
-                        <phase>process-sources</phase>
+                        <id>parse-version</id>
+                        <phase>validate</phase>
                         <goals>
-                            <goal>add-third-party</goal>
-                            <goal>update-file-header</goal>
-                            <goal>update-project-license</goal>
+                            <goal>parse-version</goal>
                         </goals>
                     </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
-                <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.1</version>
-                <executions>
                     <execution>
+                        <id>add-source</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>add-source</goal>
@@ -170,7 +137,6 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
                 <configuration>
                     <protocArtifact>
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
@@ -192,7 +158,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
                 <configuration>
                     <excludes>
                         <exclude>
@@ -205,7 +170,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -222,12 +186,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.4.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <goals>

@@ -1,4 +1,4 @@
-package com.dbpxy.config;
+package com.dbpxy;
 
 /*-
  * #%L
@@ -20,20 +20,5 @@ package com.dbpxy.config;
  * #L%
  */
 
-import lombok.*;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-
-import java.util.HashMap;
-import java.util.Map;
-
-@Getter
-@Setter
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-@ConfigurationProperties(prefix = "app.dbpxy-datasource")
-public class DbpxyDatasourceProperties {
-    private String url;
-    @Builder.Default
-    private Map<String, String> props = new HashMap<>();
+public interface Package {
 }

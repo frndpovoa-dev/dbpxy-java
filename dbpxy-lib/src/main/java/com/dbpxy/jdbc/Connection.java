@@ -25,139 +25,208 @@ import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
+import com.dbpxy.util.DatabaseUtils;
+import com.dbpxy.util.TransactionUtils;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
+import lombok.AccessLevel;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.io.ClassPathResource;
+import org.jspecify.annotations.NonNull;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.MDC;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URISyntaxException;
 import java.sql.*;
+import java.time.Duration;
 import java.util.*;
+import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Predicate;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 @Slf4j
-@Getter
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
-    private static final Pattern transactionIdPattern = Pattern.compile("^(.+?)@(.+)$");
-    private static final Integer DEFAULT_QUERY_TIMEOUT = 1_000;
+    private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
+    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
+    private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
+
+    @Getter
     @EqualsAndHashCode.Include
-    private final String id = UUID.randomUUID().toString();
-    private final ChannelCredentials credentials;
-    private final DbpxyProperties dbpxyProperties;
+    private final String id = UUID.randomUUID().toString().replace("-", "");
     private final ConnectionHolder connectionHolder;
-    private final ConnectionString connectionString;
+    private final DbpxyProperties dbpxyProperties;
+    private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
+    private final String dbpxyCertPath;
+    private final Deque<Transaction> transactions = new ArrayDeque<>(5);
+
     private ManagedChannel channel;
+    @Getter(AccessLevel.PACKAGE)
     private DbpxyGrpc.DbpxyBlockingStub blockingStub;
-    private ManagedChannel onHoldChannel;
-    private DbpxyGrpc.DbpxyBlockingStub onHoldBlockingStub;
+    @Setter
+    private long transactionTimeoutInMs = DEFAULT_QUERY_TIMEOUT_IN_MS;
     private boolean autoCommit = true;
-    private boolean closed = false;
     private boolean readOnly = false;
+    private boolean closed = false;
     private String catalog;
 
-    private final Stack<Transaction> transactions = new Stack<>();
-
-    public String getTransactionId() {
-        return Optional.ofNullable(getTransaction(true, DEFAULT_QUERY_TIMEOUT))
-                .map(transaction -> transaction.getId() + "@" + transaction.getNode())
-                .orElse(null);
+    private synchronized void initGrpcChannelIfNeeded() throws SQLException {
+        if (channel != null) {
+            return;
+        }
+        try (final InputStream cert = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(dbpxyCertPath))) {
+            final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
+                    .trustManager(cert)
+                    .build();
+            this.channel = Grpc.newChannelBuilderForAddress(
+                            dbpxyProperties.getHostname(),
+                            dbpxyProperties.getPort(),
+                            credentials)
+                    .build();
+            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+            log.debug("gRPC opened");
+        } catch (final IOException e) {
+            throw new SQLException(e);
+        }
     }
 
-    public synchronized Transaction getTransaction(final boolean create, final Integer timeout) {
+    public String getTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.format(getTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public String getReadOnlyTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToReadOnly(getTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public String getReadWriteTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToReadWrite(getTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public synchronized Transaction getTransaction(final boolean create) throws SQLException {
         if (create) {
-            final List<Transaction.Status> activeTransactionStatuses = List.of(
-                    Transaction.Status.ACTIVE,
-                    Transaction.Status.JOINED);
-            new ArrayList<>(transactions).stream()
-                    .filter(existingTransaction -> !activeTransactionStatuses.contains(existingTransaction.getStatus()))
-                    .forEach(this::popTransaction);
+            initGrpcChannelIfNeeded();
+
+            transactions.removeIf(transaction ->
+                    !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
+
             if (transactions.isEmpty()) {
-                final Transaction transaction = blockingStub
-                        .beginTransaction(BeginTransactionConfig.newBuilder()
-                                .setConnectionString(connectionString)
-                                .setTimeout(timeout)
-                                .setReadOnly(readOnly)
-                                .build());
-                pushTransaction(transaction);
+                final ConnectionString connectionString = ConnectionString.newBuilder()
+                        .setUrl(dbpxyDatasourceProperties.getUrl())
+                        .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                                .map(prop -> ConnectionStringProp.newBuilder()
+                                        .setName(prop.getName())
+                                        .setValue(prop.getValue())
+                                        .build())
+                                .toList())
+                        .build();
+
+                try {
+                    final Transaction transaction = blockingStub
+                            .beginTransaction(BeginTransactionConfig.newBuilder()
+                                    .setConnectionString(connectionString)
+                                    .setTimeoutInMs(transactionTimeoutInMs)
+                                    .setAutoCommit(autoCommit)
+                                    .setReadOnly(readOnly)
+                                    .build());
+                    pushTransaction(transaction);
+                    log.debug("transaction began");
+                } catch (final RuntimeException e) {
+                    throw new SQLException(e);
+                }
             }
         }
-        return Optional.of(transactions)
-                .filter(Predicate.not(Stack::isEmpty))
-                .map(Stack::peek)
-                .orElse(null);
+        return transactions.peek();
     }
 
-    public synchronized void pushTransaction(final Transaction transaction) {
+    private void pushTransaction(@NonNull final Transaction transaction) {
         transactions.push(transaction);
+        MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(transaction.getId()));
     }
 
-    public synchronized void popTransaction(final Transaction transaction) {
-        final Stack<Transaction> temp = new Stack<>();
-        temp.addAll(transactions);
-        transactions.clear();
-        transactions.addAll(temp.stream()
-                .filter(it -> !(Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode())))
-                .toList());
-    }
-
-    public void replaceTransaction(final Transaction out, final Transaction in) {
-        popTransaction(out);
-        pushTransaction(in);
-    }
-
-    public void joinSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("joinSharedTransaction({})", transactionId);
-        final Matcher m = transactionIdPattern.matcher(transactionId);
-        if (!m.matches()) {
-            throw new SQLException("Invalid transaction id format");
-        }
-        final Transaction transaction = Transaction.newBuilder()
-                .setId(m.group(1))
-                .setNode(m.group(2))
-                .setStatus(Transaction.Status.JOINED)
-                .build();
-        this.onHoldChannel = channel;
-        this.onHoldBlockingStub = blockingStub;
-        this.channel = Grpc.newChannelBuilderForAddress(
-                        transaction.getNode(),
-                        dbpxyProperties.getPort(),
-                        credentials)
-                .build();
-        this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-        log.debug("reconnected({} -> {})", id, transaction.getNode());
-        pushTransaction(transaction);
-    }
-
-    public void leaveSharedTransaction(final String transactionId) throws SQLException {
-        log.debug("leaveSharedTransaction({})", transactionId);
-        final Matcher m = transactionIdPattern.matcher(transactionId);
-        if (!m.matches()) {
-            throw new SQLException("Invalid transaction id format");
-        }
-        final Transaction transaction = Transaction.newBuilder()
-                .setId(m.group(1))
-                .setNode(m.group(2))
-                .build();
+    private void popTransaction(@NonNull final Transaction transaction) {
+        transactions.removeIf(it ->
+                Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode()));
         try {
-            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-        } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
-            throw new SQLException(e);
+            Optional.ofNullable(getTransaction(false))
+                    .ifPresentOrElse(it -> MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(it.getId())), () -> MDC.remove(MDC_TRANSACTION_ID));
+        } catch (final SQLException e) {
+            log.error(e.getMessage(), e);
+            MDC.remove(MDC_TRANSACTION_ID);
+        }
+    }
+
+    public void doWithSharedTransaction(
+            final String transactionId,
+            final Runnable runnable) throws Exception {
+        if (transactionId == null) {
+            runnable.run();
+            return;
+        }
+        final Transaction transaction = TransactionUtils.tryParse(transactionId);
+        try {
+            joinSharedTransaction(transaction);
+            runnable.run();
         } finally {
-            this.channel = onHoldChannel;
-            this.blockingStub = onHoldBlockingStub;
+            leaveSharedTransaction(transaction);
+        }
+    }
+
+    public <T> T doWithSharedTransaction(
+            final String transactionId,
+            final Callable<T> callable) throws Exception {
+        if (transactionId == null) {
+            return callable.call();
+        }
+        final Transaction transaction = TransactionUtils.tryParse(transactionId);
+        try {
+            joinSharedTransaction(transaction);
+            return callable.call();
+        } finally {
+            leaveSharedTransaction(transaction);
+        }
+    }
+
+    public synchronized void joinSharedTransaction(@Nullable final Transaction transaction) throws SQLException {
+        if (transaction == null) {
+            throw new SQLException("unable to join shared transaction. invalid value: null");
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("joinSharedTransaction({})", DatabaseUtils.getMaskedId(transaction.getId()));
+        }
+        initGrpcChannelIfNeeded();
+        pushTransaction(transaction.toBuilder()
+                .setStatus(Transaction.Status.JOINED)
+                .build());
+        log.debug("joined transaction");
+    }
+
+    public void leaveSharedTransaction(@Nullable final Transaction transaction) throws SQLException {
+        if (transaction == null) {
+            throw new SQLException("unable to leave shared transaction. invalid value: null");
+        }
+        if (log.isTraceEnabled()) {
+            log.trace("leaveSharedTransaction({})", DatabaseUtils.getMaskedId(transaction.getId()));
         }
         popTransaction(transaction);
+        log.debug("left transaction");
     }
 
     public Connection(
@@ -166,44 +235,22 @@ public class Connection implements java.sql.Connection {
             final DbpxyDatasourceProperties dbpxyDatasourceProperties,
             final String dbpxyCertPath
     ) throws SQLException {
-        try {
-            try (final InputStream cert = new ClassPathResource(dbpxyCertPath).getInputStream()) {
-                this.credentials = TlsChannelCredentials.newBuilder()
-                        .trustManager(cert)
-                        .build();
-            }
-            this.channel = Grpc.newChannelBuilderForAddress(
-                            dbpxyProperties.getHostname(),
-                            dbpxyProperties.getPort(),
-                            credentials)
-                    .build();
-            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            this.dbpxyProperties = dbpxyProperties;
-            this.connectionHolder = connectionHolder;
-            this.connectionString = ConnectionString.newBuilder()
-                    .setUrl(dbpxyDatasourceProperties.getUrl())
-                    .addAllProps(dbpxyDatasourceProperties.getProps().entrySet().stream()
-                            .map(e -> ConnectionStringProp.newBuilder()
-                                    .setName(e.getKey())
-                                    .setValue(e.getValue())
-                                    .build())
-                            .toList())
-                    .build();
-            connectionHolder.pushConnection(this);
-            log.debug("open({})", id);
-        } catch (final IOException e) {
-            throw new SQLException(e);
-        }
+        this.connectionHolder = connectionHolder;
+        this.dbpxyProperties = dbpxyProperties;
+        this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
+        this.dbpxyCertPath = dbpxyCertPath;
+        connectionHolder.pushConnection(this);
+        log.debug("connection lazyly opened");
     }
 
     @Override
-    public Statement createStatement() throws SQLException {
-        return new Statement(this, DEFAULT_QUERY_TIMEOUT);
+    public Statement createStatement() {
+        return new Statement(this, DEFAULT_QUERY_TIMEOUT_IN_MS);
     }
 
     @Override
-    public PreparedStatement prepareStatement(final String sql) throws SQLException {
-        return new PreparedStatement(this, DEFAULT_QUERY_TIMEOUT, sql);
+    public PreparedStatement prepareStatement(final String sql) {
+        return new PreparedStatement(this, DEFAULT_QUERY_TIMEOUT_IN_MS, sql);
     }
 
     @Override
@@ -213,111 +260,117 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public String nativeSQL(final String sql) throws SQLException {
+    public String nativeSQL(final String sql) {
         return sql;
     }
 
     @Override
-    public void setAutoCommit(final boolean autoCommit) throws SQLException {
+    public void setAutoCommit(final boolean autoCommit) {
         this.autoCommit = autoCommit;
     }
 
     @Override
-    public boolean getAutoCommit() throws SQLException {
+    public boolean getAutoCommit() {
         return autoCommit;
-    }
-
-    private String getMaskedId(final String id) {
-        return id.replaceFirst("^(.{32}).*$", "$1");
     }
 
     @Override
     public void commit() throws SQLException {
-        final Transaction transaction = getTransaction(false, 0);
-        if (readOnly || transaction == null) {
-            log.debug("commit skipped (conn: {})", id);
+        final Transaction transaction = getTransaction(false);
+        if (transaction == null) {
+            log.debug("commit skipped on no transaction");
         } else {
-            log.debug("commit(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = blockingStub.commitTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
-            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
-                try {
-                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-                    this.channel = onHoldChannel;
-                    this.blockingStub = onHoldBlockingStub;
-                } catch (final InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new SQLException(e);
+            try {
+                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                    try {
+                        blockingStub.commitTransaction(transaction);
+                        log.debug("transaction commited");
+                    } catch (final RuntimeException e) {
+                        throw new SQLException(e);
+                    }
                 }
+            } finally {
+                popTransaction(transaction);
             }
         }
     }
 
     @Override
     public void rollback() throws SQLException {
-        final Transaction transaction = getTransaction(false, 0);
-        if (readOnly || transaction == null) {
-            log.debug("rollback skipped (conn: {})", id);
+        final Transaction transaction = getTransaction(false);
+        if (transaction == null) {
+            log.debug("rollback skipped on no transaction");
         } else {
-            log.debug("rollback(conn: {}, tx: {})", id, getMaskedId(transaction.getId()));
-            if (transaction.getStatus() == Transaction.Status.ACTIVE) {
-                final Transaction newTransaction = blockingStub.rollbackTransaction(transaction);
-                replaceTransaction(transaction, newTransaction);
-            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
-                try {
-                    channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
-                    this.channel = onHoldChannel;
-                    this.blockingStub = onHoldBlockingStub;
-                } catch (final InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    throw new SQLException(e);
+            try {
+                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                    try {
+                        blockingStub.rollbackTransaction(transaction);
+                        log.debug("transaction rolled back");
+                    } catch (final RuntimeException e) {
+                        throw new SQLException(e);
+                    }
                 }
+            } finally {
+                popTransaction(transaction);
             }
         }
     }
 
     @Override
     public void close() throws SQLException {
-        log.debug("close({})", id);
+        final Transaction transaction = getTransaction(false);
         try {
-            channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS);
+            if (transaction == null) {
+                // Do nothing
+            } else if (transaction.getStatus() == Transaction.Status.JOINED) {
+                log.debug("close skipped on shared transaction");
+            } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (autoCommit) {
+                    commit();
+                }
+                log.debug("closed");
+            }
+            if (channel != null) {
+                if (channel.shutdownNow().awaitTermination(5, TimeUnit.SECONDS)) {
+                    log.debug("gRPC closed");
+                }
+            }
         } catch (final InterruptedException e) {
-            Thread.currentThread().interrupt();
             throw new SQLException(e);
         } finally {
             this.closed = true;
+            this.channel = null;
             connectionHolder.popConnection(this);
         }
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return closed;
     }
 
     @Override
-    public PgDatabaseMetaData getMetaData() throws SQLException {
+    public PgDatabaseMetaData getMetaData() {
         return new PgDatabaseMetaData(this);
     }
 
     @Override
-    public void setReadOnly(final boolean readOnly) throws SQLException {
+    public void setReadOnly(final boolean readOnly) {
         this.readOnly = readOnly;
     }
 
     @Override
-    public boolean isReadOnly() throws SQLException {
+    public boolean isReadOnly() {
         return readOnly;
     }
 
     @Override
-    public void setCatalog(final String catalog) throws SQLException {
+    public void setCatalog(final String catalog) {
         this.catalog = catalog;
     }
 
     @Override
-    public String getCatalog() throws SQLException {
+    public String getCatalog() {
         return catalog;
     }
 
@@ -328,17 +381,18 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getTransactionIsolation() throws SQLException {
+    public int getTransactionIsolation() {
         return java.sql.Connection.TRANSACTION_READ_COMMITTED;
     }
 
     @Override
-    public SQLWarning getWarnings() throws SQLException {
+    public SQLWarning getWarnings() {
         return null;
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    public void clearWarnings() {
+        // Do nothing
     }
 
     @Override
@@ -351,7 +405,7 @@ public class Connection implements java.sql.Connection {
     public PreparedStatement prepareStatement(
             final String sql,
             final int resultSetType,
-            final int resultSetConcurrency) throws SQLException {
+            final int resultSetConcurrency) {
         return prepareStatement(sql);
     }
 
@@ -380,7 +434,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getHoldability() throws SQLException {
+    public int getHoldability() {
         return java.sql.ResultSet.CLOSE_CURSORS_AT_COMMIT;
     }
 
@@ -469,7 +523,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public boolean isValid(final int timeout) throws SQLException {
+    public boolean isValid(final int timeout) {
         return !isClosed();
     }
 
@@ -498,8 +552,10 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public Array createArrayOf(String typeName, Object[] elements) throws SQLException {
-        if (Objects.equals("varchar", typeName)) {
+    public Array createArrayOf(
+            final String typeName,
+            final Object[] elements) throws SQLException {
+        if ("varchar".equalsIgnoreCase(typeName)) {
             return new Array(typeName, Types.VARCHAR, elements);
         }
         log.trace("public Array createArrayOf(String typeName, Object[] elements) throws SQLException {");
@@ -537,7 +593,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public int getNetworkTimeout() throws SQLException {
+    public int getNetworkTimeout() {
         return 0;
     }
 
@@ -550,7 +606,7 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

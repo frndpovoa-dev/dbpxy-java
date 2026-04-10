@@ -20,111 +20,150 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
+import com.dbpxy.exception.PreemptiveTimeoutException;
 import com.dbpxy.proto.*;
-import lombok.Getter;
+import com.dbpxy.util.DatabaseUtils;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.SQLWarning;
-import java.util.Optional;
+import java.time.Duration;
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.regex.Pattern;
 
 @Slf4j
-@Getter
-@Setter
 @RequiredArgsConstructor
 public class Statement implements java.sql.Statement {
+    private static final String MDC_QUERY_ID = "dbpxy.qry.id";
+    private static final Pattern SELECT_QUERY_PATTERN = Pattern.compile("(?i)^\\s*(select)\\s+.+");
+
     private final Connection connection;
-    private final Integer defaultQueryTimeout;
+    private final long defaultQueryTimeoutInMs;
     private Integer queryTimeout;
     private ResultSet resultSet;
     private boolean closed = false;
 
     @Override
     public ResultSet executeQuery(final String sql) throws SQLException {
-        final QueryResult result = connection.getAutoCommit() ?
-                connection.getBlockingStub().query(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(connection.getConnectionString())
-                        .build())
-                : connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true, getQueryTimeout()))
-                .setQueryConfig(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .build())
-                .build());
-        this.resultSet = new ResultSet(
-                connection,
-                this,
-                result
-        );
-        return resultSet;
+        return executeQuery(sql, List.of());
+    }
+
+    protected ResultSet executeQuery(
+            final String sql,
+            final List<Value> params
+    ) throws SQLException {
+        try {
+            final Transaction transaction = connection.getTransaction(true);
+            if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
+                throw new PreemptiveTimeoutException();
+            }
+            final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
+                    .setTransaction(transaction)
+                    .setQueryConfig(QueryConfig.newBuilder()
+                            .setQuery(sql)
+                            .setTimeoutInMs(getQueryTimeoutInMs())
+                            .addAllArgs(params)
+                            .build())
+                    .build());
+            this.resultSet = new ResultSet(
+                    connection,
+                    this,
+                    result
+            );
+            MDC.put(MDC_QUERY_ID, DatabaseUtils.getMaskedId(result.getId()));
+            log.debug("query executed");
+            return resultSet;
+        } catch (final RuntimeException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
     public int executeUpdate(final String sql) throws SQLException {
-        final ExecuteResult result = connection.getAutoCommit() ?
-                connection.getBlockingStub().execute(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(connection.getConnectionString())
-                        .build())
-                : connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                .setTransaction(connection.getTransaction(true, getQueryTimeout()))
-                .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .build())
-                .build());
-        return result.getRowsAffected();
+        return executeUpdate(sql, List.of());
+    }
+
+    protected int executeUpdate(
+            final String sql,
+            final List<Value> params
+    ) throws SQLException {
+        try {
+            final Transaction transaction = connection.getTransaction(true);
+            if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
+                throw new PreemptiveTimeoutException();
+            }
+            final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
+                    .setTransaction(transaction)
+                    .setExecuteConfig(ExecuteConfig.newBuilder()
+                            .setQuery(sql)
+                            .setTimeoutInMs(getQueryTimeoutInMs())
+                            .addAllArgs(params)
+                            .build())
+                    .build());
+            return result.getRowsAffected();
+        } catch (final RuntimeException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
     public void close() throws SQLException {
         try {
             connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
+        } catch (final RuntimeException e) {
+            throw new SQLException(e);
         } finally {
             this.closed = true;
         }
     }
 
     @Override
-    public int getMaxFieldSize() throws SQLException {
+    public int getMaxFieldSize() {
         return 0;
     }
 
     @Override
-    public void setMaxFieldSize(int max) throws SQLException {
+    public void setMaxFieldSize(int max) {
         // Do nothing
     }
 
     @Override
-    public int getMaxRows() throws SQLException {
+    public int getMaxRows() {
         return 0;
     }
 
     @Override
-    public void setMaxRows(int max) throws SQLException {
+    public void setMaxRows(int max) {
         // Do nothing
     }
 
     @Override
-    public void setEscapeProcessing(boolean enable) throws SQLException {
+    public void setEscapeProcessing(boolean enable) {
         // Do nothing
     }
 
     @Override
-    public int getQueryTimeout() throws SQLException {
-        return Optional.ofNullable(queryTimeout).orElse(defaultQueryTimeout);
+    public int getQueryTimeout() {
+        if (queryTimeout != null) {
+            return queryTimeout;
+        }
+        return (int) Duration.ofMillis(defaultQueryTimeoutInMs).toSeconds();
     }
 
     @Override
-    public void setQueryTimeout(final int seconds) throws SQLException {
-        this.queryTimeout = seconds * 1_000;
+    public void setQueryTimeout(final int seconds) {
+        this.queryTimeout = seconds;
+    }
+
+    protected long getQueryTimeoutInMs() {
+        if (queryTimeout != null) {
+            return Duration.ofSeconds(queryTimeout).toMillis();
+        }
+        return defaultQueryTimeoutInMs;
     }
 
     @Override
@@ -134,12 +173,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public SQLWarning getWarnings() throws SQLException {
+    public SQLWarning getWarnings() {
         return null;
     }
 
     @Override
-    public void clearWarnings() throws SQLException {
+    public void clearWarnings() {
     }
 
     @Override
@@ -150,7 +189,7 @@ public class Statement implements java.sql.Statement {
 
     @Override
     public boolean execute(final String sql) throws SQLException {
-        if (sql.matches("(?i)^\\s*(select)\\s+.+")) {
+        if (SELECT_QUERY_PATTERN.matcher(sql).matches()) {
             executeQuery(sql);
             return true;
         } else {
@@ -160,17 +199,17 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public ResultSet getResultSet() throws SQLException {
+    public ResultSet getResultSet() {
         return resultSet;
     }
 
     @Override
-    public int getUpdateCount() throws SQLException {
+    public int getUpdateCount() {
         return -1;
     }
 
     @Override
-    public boolean getMoreResults() throws SQLException {
+    public boolean getMoreResults() {
         return false;
     }
 
@@ -180,7 +219,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getFetchDirection() throws SQLException {
+    public int getFetchDirection() {
         return resultSet.getFetchDirection();
     }
 
@@ -195,12 +234,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getResultSetConcurrency() throws SQLException {
+    public int getResultSetConcurrency() {
         return resultSet.getConcurrency();
     }
 
     @Override
-    public int getResultSetType() throws SQLException {
+    public int getResultSetType() {
         return resultSet.getType();
     }
 
@@ -223,12 +262,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public Connection getConnection() throws SQLException {
+    public Connection getConnection() {
         return connection;
     }
 
     @Override
-    public boolean getMoreResults(int current) throws SQLException {
+    public boolean getMoreResults(int current) {
         return false;
     }
 
@@ -275,12 +314,12 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public int getResultSetHoldability() throws SQLException {
+    public int getResultSetHoldability() {
         return resultSet.getHoldability();
     }
 
     @Override
-    public boolean isClosed() throws SQLException {
+    public boolean isClosed() {
         return closed;
     }
 
@@ -291,7 +330,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isPoolable() throws SQLException {
+    public boolean isPoolable() {
         return false;
     }
 
@@ -302,7 +341,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isCloseOnCompletion() throws SQLException {
+    public boolean isCloseOnCompletion() {
         return false;
     }
 
@@ -315,7 +354,7 @@ public class Statement implements java.sql.Statement {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

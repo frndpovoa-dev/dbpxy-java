@@ -9,9 +9,9 @@ package com.dbpxy.jdbc;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,8 +23,6 @@ package com.dbpxy.jdbc;
 import com.dbpxy.proto.*;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.Getter;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 
 import java.io.InputStream;
@@ -40,215 +38,193 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
-@Getter
-@Setter
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Map<Integer, Object> params = new HashMap<>();
-    private String sql;
+    private final String sql;
 
     public PreparedStatement(
             final Connection connection,
-            final Integer defaultQueryTimeout,
+            final long defaultQueryTimeoutInMs,
             final String sql
     ) {
-        super(connection, defaultQueryTimeout);
+        super(connection, defaultQueryTimeoutInMs);
         this.sql = sql;
     }
 
-    protected Value nullSafeArgToValue(final Object value) {
+    private static Value nullSafeArgToValue(final Object value) {
         return Optional.ofNullable(value)
                 .map(it -> {
-                    if (it instanceof Short v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof Integer v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof Long v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT64)
-                                .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof String v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.STRING)
-                                .setData(ValueString.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof Boolean v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.BOOL)
-                                .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof Double v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(v).build().toByteString())
-                                .build();
-                    } else if (it instanceof BigDecimal v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(v.doubleValue()).build().toByteString())
-                                .build();
-                    } else if (it instanceof Timestamp v) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.TIME)
-                                .setData(ValueTime.newBuilder()
-                                        .setValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneId.systemDefault())
-                                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                        .build()
-                                        .toByteString())
-                                .build();
-                    } else if (it instanceof Array v) {
-                        try {
+                    switch (it) {
+                        case Short v -> {
                             return Value.newBuilder()
-                                    .setCode(ValueCode.ARRAY)
+                                    .setCode(ValueCode.INT32)
+                                    .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
+                                    .build();
+                        }
+                        case Integer v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.INT32)
+                                    .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
+                                    .build();
+                        }
+                        case Long v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.INT64)
+                                    .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
+                                    .build();
+                        }
+                        case String v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.STRING)
+                                    .setData(ValueString.newBuilder().setValue(v).build().toByteString())
+                                    .build();
+                        }
+                        case Boolean v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.BOOL)
+                                    .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
+                                    .build();
+                        }
+                        case Double v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.FLOAT64)
+                                    .setData(ValueFloat64.newBuilder().setValue(Double.toString(v)).build().toByteString())
+                                    .build();
+                        }
+                        case BigDecimal v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.FLOAT64)
+                                    .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
+                                    .build();
+                        }
+                        case Timestamp v -> {
+                            return Value.newBuilder()
+                                    .setCode(ValueCode.TIME)
                                     .setData(ValueTime.newBuilder()
-                                            .setValue(OBJECT_MAPPER.writeValueAsString(Map.of(
-                                                    "baseType", v.getBaseType(),
-                                                    "baseTypeName", v.getBaseTypeName(),
-                                                    "array", v.getArray()
-                                            )))
+                                            .setValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                                             .build()
                                             .toByteString())
                                     .build();
-                        } catch (final SQLException
-                                       | JsonProcessingException e) {
-                            throw new RuntimeException(e);
+                        }
+                        case Array v -> {
+                            try {
+                                return Value.newBuilder()
+                                        .setCode(ValueCode.ARRAY)
+                                        .setData(ValueTime.newBuilder()
+                                                .setValue(OBJECT_MAPPER.writeValueAsString(Map.of(
+                                                        "baseType", v.getBaseType(),
+                                                        "baseTypeName", v.getBaseTypeName(),
+                                                        "array", v.getArray()
+                                                )))
+                                                .build()
+                                                .toByteString())
+                                        .build();
+                            } catch (final JsonProcessingException e) {
+                                throw new RuntimeException(e);
+                            }
+                        }
+                        default -> {
                         }
                     }
                     return null;
                 })
-                .orElse(Value.newBuilder()
-                        .setCode(ValueCode.NULL)
-                        .setData(ValueNull.newBuilder().build().toByteString())
-                        .build());
+                .orElseGet(PreparedStatement::nullValue);
+    }
+
+    private static Value nullValue() {
+        return Value.newBuilder()
+                .setCode(ValueCode.NULL)
+                .setData(ValueNull.newBuilder().build().toByteString())
+                .build();
     }
 
     protected List<Value> paramAsList() {
         return params.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
-                .map(e -> nullSafeArgToValue(e.getValue()))
+                .map(Map.Entry::getValue)
+                .map(PreparedStatement::nullSafeArgToValue)
                 .toList();
     }
 
     @Override
-    public java.sql.ResultSet executeQuery() throws SQLException {
-        final QueryResult result = getConnection().getAutoCommit() ?
-                getConnection().getBlockingStub().query(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(getConnection().getConnectionString())
-                        .addAllArgs(paramAsList())
-                        .build())
-                : getConnection().getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
-                .setQueryConfig(QueryConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .addAllArgs(paramAsList())
-                        .build())
-                .build());
-        final ResultSet resultSet = new ResultSet(
-                getConnection(),
-                this,
-                result
-        );
-        super.setResultSet(resultSet);
-        return resultSet;
+    public ResultSet executeQuery() throws SQLException {
+        return executeQuery(sql, paramAsList());
     }
 
     @Override
     public int executeUpdate() throws SQLException {
-        final ExecuteResult result = getConnection().getAutoCommit() ?
-                getConnection().getBlockingStub().execute(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .setConnectionString(getConnection().getConnectionString())
-                        .addAllArgs(paramAsList())
-                        .build())
-                : getConnection().getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                .setTransaction(getConnection().getTransaction(true, getQueryTimeout()))
-                .setExecuteConfig(ExecuteConfig.newBuilder()
-                        .setQuery(sql)
-                        .setTimeout(getQueryTimeout())
-                        .addAllArgs(paramAsList())
-                        .build())
-                .build());
-        return result.getRowsAffected();
+        return executeUpdate(sql, paramAsList());
     }
 
     @Override
-    public void setNull(int parameterIndex, int sqlType) throws SQLException {
+    public void setNull(int parameterIndex, int sqlType) {
         params.put(parameterIndex, null);
     }
 
     @Override
-    public void setBoolean(int parameterIndex, boolean x) throws SQLException {
+    public void setBoolean(int parameterIndex, boolean x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setByte(int parameterIndex, byte x) throws SQLException {
+    public void setByte(int parameterIndex, byte x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setShort(int parameterIndex, short x) throws SQLException {
+    public void setShort(int parameterIndex, short x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setInt(int parameterIndex, int x) throws SQLException {
+    public void setInt(int parameterIndex, int x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setLong(int parameterIndex, long x) throws SQLException {
+    public void setLong(int parameterIndex, long x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setFloat(int parameterIndex, float x) throws SQLException {
+    public void setFloat(int parameterIndex, float x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setDouble(int parameterIndex, double x) throws SQLException {
+    public void setDouble(int parameterIndex, double x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setBigDecimal(int parameterIndex, BigDecimal x) throws SQLException {
+    public void setBigDecimal(int parameterIndex, BigDecimal x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setString(int parameterIndex, String x) throws SQLException {
+    public void setString(int parameterIndex, String x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setBytes(int parameterIndex, byte[] x) throws SQLException {
+    public void setBytes(int parameterIndex, byte[] x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setDate(int parameterIndex, Date x) throws SQLException {
+    public void setDate(int parameterIndex, Date x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setTime(int parameterIndex, Time x) throws SQLException {
+    public void setTime(int parameterIndex, Time x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp x) {
         params.put(parameterIndex, x);
     }
 
@@ -271,7 +247,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void clearParameters() throws SQLException {
+    public void clearParameters() {
         params.clear();
     }
 
@@ -323,7 +299,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setArray(int parameterIndex, java.sql.Array x) throws SQLException {
+    public void setArray(int parameterIndex, java.sql.Array x) {
         params.put(parameterIndex, x);
     }
 
@@ -345,7 +321,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) throws SQLException {
+    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) {
         params.put(parameterIndex, Optional.ofNullable(x)
                 .map(t -> OffsetDateTime.ofInstant(t.toInstant(), ZoneId.systemDefault()))
                 .map(odt -> Optional.ofNullable(cal)

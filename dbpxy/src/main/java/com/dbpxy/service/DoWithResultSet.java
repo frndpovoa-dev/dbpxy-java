@@ -9,9 +9,9 @@ package com.dbpxy.service;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,13 +20,10 @@ package com.dbpxy.service;
  * #L%
  */
 
-
 import lombok.Builder;
 import lombok.Getter;
 
 import java.sql.ResultSet;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 @FunctionalInterface
 interface DoWithResultSet {
@@ -35,8 +32,17 @@ interface DoWithResultSet {
     @Getter
     @Builder
     class Params {
-        private final ResultSet rs;
-        private final ExecutorService taskExecutor;
-        private final AtomicBoolean shouldContinue;
+        private final ResultSet resultSet;
+
+        @Builder.Default
+        private boolean shouldResultSetContinue = true;
+
+        boolean shouldResultSetContinue() {
+            return shouldResultSetContinue;
+        }
+
+        void stopResultSet() {
+            this.shouldResultSetContinue = false;
+        }
     }
 }

@@ -1,10 +1,10 @@
-package com.dbpxy;
+package com.dbpxy.exception;
 
 /*-
  * #%L
- * dbpxy
+ * dbpxy-lib
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,5 +20,7 @@ package com.dbpxy;
  * #L%
  */
 
-public interface RootPackage {
+import java.sql.SQLException;
+
+public class PreemptiveTimeoutException extends SQLException {
 }

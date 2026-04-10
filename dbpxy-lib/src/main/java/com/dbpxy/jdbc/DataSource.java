@@ -28,7 +28,6 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.PrintWriter;
 import java.sql.SQLException;
-import java.sql.SQLFeatureNotSupportedException;
 import java.util.logging.Logger;
 
 @Slf4j
@@ -57,27 +56,27 @@ public class DataSource implements javax.sql.DataSource {
     }
 
     @Override
-    public PrintWriter getLogWriter() throws SQLException {
+    public PrintWriter getLogWriter() {
         return printWriter;
     }
 
     @Override
-    public void setLogWriter(final PrintWriter out) throws SQLException {
+    public void setLogWriter(final PrintWriter out) {
         this.printWriter = out;
     }
 
     @Override
-    public void setLoginTimeout(final int seconds) throws SQLException {
+    public void setLoginTimeout(final int seconds) {
         this.loginTimeout = seconds;
     }
 
     @Override
-    public int getLoginTimeout() throws SQLException {
+    public int getLoginTimeout() {
         return loginTimeout;
     }
 
     @Override
-    public Logger getParentLogger() throws SQLFeatureNotSupportedException {
+    public Logger getParentLogger() {
         return LOGGER;
     }
 
@@ -90,7 +89,7 @@ public class DataSource implements javax.sql.DataSource {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

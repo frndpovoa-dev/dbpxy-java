@@ -2,33 +2,34 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
-    <groupId>com.dbpxy</groupId>
+    <parent>
+        <groupId>com.dbpxy</groupId>
+        <artifactId>dbpxy-parent</artifactId>
+        <version>${revision}</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
     <artifactId>dbpxy</artifactId>
-    <version>${revision}</version>
     <packaging>jar</packaging>
-    <properties>
-        <revision>0.1.0-SNAPSHOT</revision>
-        <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
-        <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
-        <com.google.cloud_libraries-bom.version>26.74.0</com.google.cloud_libraries-bom.version>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.28.0</com.google.cloud.sql_postgres-socket-factory.version>
-        <com.google.protobuf_protoc.version>4.33.0</com.google.protobuf_protoc.version>
-        <io.grpc_grpc-bom.version>1.78.0</io.grpc_grpc-bom.version>
-        <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
-        <org.apache.openjpa_openjpa.version>4.1.1</org.apache.openjpa_openjpa.version>
-        <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.postgresql_postgresql.version>42.7.9</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.42</org.projectlombok_lombok.version>
-        <org.testcontainers_testcontainers-java.version>1.21.4</org.testcontainers_testcontainers-java.version>
-        <spring-boot.version>4.0.2</spring-boot.version>
-    </properties>
     <dependencyManagement>
         <dependencies>
+            <dependency>
+                <groupId>com.dbpxy</groupId>
+                <artifactId>dbpxy-version</artifactId>
+                <version>${project.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
             <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-dependencies</artifactId>
                 <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>org.springframework.grpc</groupId>
+                <artifactId>spring-grpc-dependencies</artifactId>
+                <version>${org.springframework.grpc_spring-grpc-dependencies.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -39,35 +40,23 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>io.grpc</groupId>
-                <artifactId>grpc-bom</artifactId>
-                <version>${io.grpc_grpc-bom.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
         </dependencies>
     </dependencyManagement>
-    <repositories>
-        <repository>
-            <id>google.com</id>
-            <url>https://maven-central.storage-download.googleapis.com/maven2/</url>
-        </repository>
-        <repository>
-            <id>spring.io</id>
-            <url>https://repo.spring.io/release/</url>
-        </repository>
-    </repositories>
     <dependencies>
         <dependency>
             <groupId>com.dbpxy</groupId>
             <artifactId>dbpxy-lib</artifactId>
-            <version>${revision}</version>
+            <version>${project.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.fasterxml.uuid</groupId>
+            <artifactId>java-uuid-generator</artifactId>
+            <version>${com.fasterxml.uuid_java-uuid-generator.version}</version>
         </dependency>
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
@@ -87,41 +76,23 @@
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-netty-shaded</artifactId>
-            <scope>runtime</scope>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-protobuf</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-services</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-stub</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>io.grpc</groupId>
-            <artifactId>grpc-testing</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
             <version>${org.apache.commons_commons-lang3.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-pool2</artifactId>
+            <version>${org.apache.commons_commons-pool2.version}</version>
+        </dependency>
+        <dependency>
             <groupId>org.apache.openjpa</groupId>
             <artifactId>openjpa-persistence-jdbc</artifactId>
-            <version>${org.apache.openjpa_openjpa.version}</version>
+            <version>${org.apache.openjpa_openjpa-persistence-jdbc.version}</version>
         </dependency>
         <dependency>
             <groupId>org.awaitility</groupId>
             <artifactId>awaitility</artifactId>
-            <version>${org.awaitility_awaitility.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -132,7 +103,6 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>${org.projectlombok_lombok.version}</version>
             <optional>true</optional>
         </dependency>
         <dependency>
@@ -141,12 +111,18 @@
             <optional>true</optional>
         </dependency>
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-actuator</artifactId>
+            <groupId>org.springframework.grpc</groupId>
+            <artifactId>spring-grpc-spring-boot-starter</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.zaxxer</groupId>
+                    <artifactId>HikariCP</artifactId>
+                </exclusion>
+            </exclusions>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -157,6 +133,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -164,16 +141,9 @@
             <scope>test</scope>
         </dependency>
         <dependency>
-            <!--Infinite loop [High Severity][https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296] in org.apache.commons:commons-compress@1.24.0-->
-            <!--introduced by org.testcontainers:junit-jupiter@1.21.3 > org.testcontainers:testcontainers@1.21.3 > org.apache.commons:commons-compress@1.24.0-->
-            <groupId>org.apache.commons</groupId>
-            <artifactId>commons-compress</artifactId>
-            <version>1.28.0</version>
-        </dependency>
-        <dependency>
             <groupId>org.testcontainers</groupId>
             <artifactId>junit-jupiter</artifactId>
-            <version>${org.testcontainers_testcontainers-java.version}</version>
+            <version>${org.testcontainers_junit-jupiter.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -188,34 +158,10 @@
         <plugins>
             <plugin>
                 <groupId>org.codehaus.mojo</groupId>
-                <artifactId>license-maven-plugin</artifactId>
-                <version>2.7.1</version>
-                <configuration>
-                    <organizationName>Fernando Lemes Povoa</organizationName>
-                    <licenseName>apache_v2</licenseName>
-                    <inceptionYear>2025</inceptionYear>
-                    <addSvnKeyWords>false</addSvnKeyWords>
-                    <verbose>false</verbose>
-                    <encoding>${file.encoding}</encoding>
-                </configuration>
-                <executions>
-                    <execution>
-                        <id>default-cli</id>
-                        <phase>process-sources</phase>
-                        <goals>
-                            <goal>add-third-party</goal>
-                            <goal>update-file-header</goal>
-                            <goal>update-project-license</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-            <plugin>
-                <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
-                <version>3.6.1</version>
                 <executions>
                     <execution>
+                        <id>add-source</id>
                         <phase>generate-sources</phase>
                         <goals>
                             <goal>add-source</goal>
@@ -232,7 +178,6 @@
             <plugin>
                 <groupId>org.xolstice.maven.plugins</groupId>
                 <artifactId>protobuf-maven-plugin</artifactId>
-                <version>0.6.1</version>
                 <configuration>
                     <protocArtifact>
                         com.google.protobuf:protoc:${com.google.protobuf_protoc.version}:exe:${os.detected.classifier}
@@ -254,7 +199,6 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>${spring-boot.version}</version>
                 <executions>
                     <execution>
                         <goals>
@@ -272,6 +216,20 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <mainClass>com.dbpxy.Application</mainClass>
+                    <image>
+                        <env>
+                            <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
+                            <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
+                            <BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
+                                -H:+SharedArenaSupport
+                                -H:IncludeResources=certs/.*
+                                --initialize-at-build-time=ch.qos.logback
+                                --initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory
+                                --initialize-at-run-time=io.netty
+                            </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
+                        </env>
+                    </image>
                     <excludes>
                         <exclude>
                             <groupId>org.projectlombok</groupId>
@@ -283,7 +241,6 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.14.1</version>
                 <configuration>
                     <source>${java.version}</source>
                     <target>${java.version}</target>
@@ -300,12 +257,10 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-resources-plugin</artifactId>
-                <version>3.4.0</version>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.9.0</version>
                 <executions>
                     <execution>
                         <goals>
@@ -317,9 +272,9 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.5.4</version>
                 <configuration>
-                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <skipAfterFailureCount>1</skipAfterFailureCount>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
         </plugins>

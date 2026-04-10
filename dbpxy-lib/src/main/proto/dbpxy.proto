@@ -11,9 +11,7 @@ service Dbpxy {
   rpc BeginTransaction (BeginTransactionConfig) returns (Transaction) {}
   rpc CommitTransaction (Transaction) returns (Transaction) {}
   rpc RollbackTransaction (Transaction) returns (Transaction) {}
-  rpc Execute (ExecuteConfig) returns (ExecuteResult) {}
   rpc ExecuteTx (ExecuteTxConfig) returns (ExecuteResult) {}
-  rpc Query (QueryConfig) returns (QueryResult) {}
   rpc QueryTx (QueryTxConfig) returns (QueryResult) {}
   rpc Next (NextConfig) returns (QueryResult) {}
   rpc CloseResultSet (NextConfig) returns (Empty) {}
@@ -34,15 +32,20 @@ message ConnectionStringProp {
 }
 
 message BeginTransactionConfig {
-  int64 timeout = 1;
-  bool readOnly = 2;
-  ConnectionString connectionString = 3;
+  int64 timeoutInMs = 1;
+  bool autoCommit = 2;
+  bool readOnly = 3;
+  ConnectionString connectionString = 4;
 }
 
 message Transaction {
   string id = 1;
-  Status status = 2;
-  string node = 3;
+  string readOnlyId = 2;
+  string readWriteId = 3;
+  Status status = 4;
+  string node = 5;
+  string creation = 6;
+  string expiration = 7;
 
   enum Status {
     NOT_STARTED = 0;
@@ -57,8 +60,7 @@ message Transaction {
 message ExecuteConfig {
   string query = 1;
   repeated Value args = 2;
-  int64 timeout = 3;
-  ConnectionString connectionString = 4;
+  int64 timeoutInMs = 3;
 }
 
 message ExecuteTxConfig {
@@ -69,9 +71,8 @@ message ExecuteTxConfig {
 message QueryConfig {
   string query = 1;
   repeated Value args = 2;
-  int64 timeout = 3;
-  int64 fetchSize = 4;
-  ConnectionString connectionString = 5;
+  int64 fetchSize = 3;
+  int64 timeoutInMs = 4;
 }
 
 message QueryTxConfig {
@@ -91,6 +92,7 @@ message ExecuteResult {
 message QueryResult {
   string id = 1;
   repeated Row rows = 2;
+  bool hasNext = 3;
 }
 
 message Row {
@@ -128,7 +130,7 @@ message ValueInt64 {
 }
 
 message ValueFloat64 {
-  double value = 1;
+  string value = 1;
 }
 
 message ValueBool {

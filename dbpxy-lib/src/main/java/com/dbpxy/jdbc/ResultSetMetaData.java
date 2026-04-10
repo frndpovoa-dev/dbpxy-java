@@ -45,7 +45,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public int getColumnCount() throws SQLException {
+    public int getColumnCount() {
         log.trace("public int getColumnCount() throws SQLException {");
         return getFirstRow()
                 .map(Row::getColsCount)
@@ -77,7 +77,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public int isNullable(final int column) throws SQLException {
+    public int isNullable(final int column) {
         log.trace("public int isNullable(int column) throws SQLException {");
         return columnNullableUnknown;
     }
@@ -152,7 +152,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public int getColumnType(final int column) throws SQLException {
+    public int getColumnType(final int column) {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
@@ -190,7 +190,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public String getColumnTypeName(final int column) throws SQLException {
+    public String getColumnTypeName(final int column) {
         return getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
@@ -260,7 +260,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public boolean isWrapperFor(final Class<?> iface) throws SQLException {
+    public boolean isWrapperFor(final Class<?> iface) {
         return iface.isInstance(this);
     }
 }

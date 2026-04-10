@@ -20,5 +20,5 @@ package com.dbpxy.config;
  * #L%
  */
 
-public interface ConfigPackage {
+public interface Package {
 }

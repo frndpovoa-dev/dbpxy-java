@@ -9,9 +9,9 @@ package com.dbpxy;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -23,26 +23,32 @@ package com.dbpxy;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-@SpringBootTest
-@ExtendWith({PostgresExtension.class})
-@ActiveProfiles({"integration"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
-class RunApplicationTest {
+class RunApplicationTest extends BaseIntTest {
+    final AtomicBoolean sigtermReceived = new AtomicBoolean(false);
+
     @Test
     void run() {
-        log.info("App is running in testing mode");
+        log.info("app is running in testing mode");
+
+        final Thread shutdownHook = new Thread(() -> {
+            sigtermReceived.set(true);
+        });
+
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+
         await()
-                .pollInterval(Duration.ofHours(1))
+                .pollInterval(Duration.ofSeconds(1))
                 .atMost(Duration.ofDays(1))
-                .until(() -> false);
+                .untilTrue(sigtermReceived);
     }
 }

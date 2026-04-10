@@ -1,17 +1,17 @@
-package com.dbpxy.config;
+package com.dbpxy.util;
 
 /*-
  * #%L
  * dbpxy
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,13 +20,13 @@ package com.dbpxy.config;
  * #L%
  */
 
-import lombok.Getter;
-import lombok.Setter;
-import org.springframework.boot.context.properties.ConfigurationProperties;
+import lombok.experimental.UtilityClass;
+import org.jspecify.annotations.NonNull;
 
-@Getter
-@Setter
-@ConfigurationProperties(prefix = "app.grpc")
-public class GrpcProperties {
-    private Integer port;
+@UtilityClass
+public class DatabaseUtils {
+    public static String getMaskedId(@NonNull final String id) {
+        // TODO: Make it configurable
+        return id.substring(0, Math.min(20, id.length()));
+    }
 }

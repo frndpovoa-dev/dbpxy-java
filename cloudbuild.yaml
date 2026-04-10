@@ -1,7 +1,17 @@
 steps:
-  - name: gcr.io/cloud-builders/gcloud
+  - id: 'authenticate-docker-cli'
+    name: gcr.io/cloud-builders/docker
     entrypoint: bash
-    secretEnv: ['GRPC_KEY_PEM', 'GRPC_CERT_PEM']
+    args:
+      - '-c'
+      - |
+        echo "$${DHI_IO_PASSWORD}" | docker login dhi.io --username $${DHI_IO_USERNAME} --password-stdin
+        mkdir -p /workspace/.docker
+        cp ~/.docker/config.json /workspace/.docker/config.json
+    secretEnv: [ 'DHI_IO_USERNAME', 'DHI_IO_PASSWORD' ]
+  - id: 'generate-backend-certs'
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
     args:
       - '-c'
       - |
@@ -11,11 +21,21 @@ steps:
         cat << EOF > dbpxy/src/main/resources/certs/cert.pem
         $${GRPC_CERT_PEM}
         EOF
-  - name: maven:3.9-amazoncorretto-25-debian
+    secretEnv: [ 'GRPC_KEY_PEM', 'GRPC_CERT_PEM' ]
+  - id: 'build-backend-using-maven'
+    name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: ['install', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}']
-  - name: gcr.io/cloud-builders/docker
-    args: ['build', '--rm', '--tag=${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}', '-f', 'dbpxy/Dockerfile', 'dbpxy']
+    args: [ 'clean', 'compile', 'spring-boot:process-aot', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+  - id: 'build-image-using-docker'
+    name: gcr.io/cloud-builders/docker
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        docker build --tag dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} --file dbpxy/Dockerfile dbpxy
+        docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
+    env:
+      - DOCKER_BUILDKIT=1
 artifacts:
   mavenArtifacts:
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
@@ -31,6 +51,10 @@ availableSecrets:
       env: GRPC_KEY_PEM
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_CERT_PEM/versions/1
       env: GRPC_CERT_PEM
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_USERNAME/versions/1
+      env: DHI_IO_USERNAME
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1
+      env: DHI_IO_PASSWORD
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
   logging: CLOUD_LOGGING_ONLY

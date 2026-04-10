@@ -1,28 +1,30 @@
 _pod_name: localhost
 
 app:
-  grpc:
-    cert-path: certs/cert.pem
-    port: 9090
   dbpxy:
     hostname: localhost
     port: 9090
+    show-sql: false
   dbpxy-datasource:
-    url: jdbc:postgresql://localhost:5432/postgres
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT:5432}/postgres
     props:
-      user: postgres
-      password: postgres
+      - name: user
+        value: postgres
+      - name: password
+        value: postgres
 
 server:
   port: 9091
+  shutdown: immediate
   servlet:
     context-path: /
 
-management:
-  server:
-    port: 9051
+spring:
+  main:
+    web-application-type: servlet
+    register-shutdown-hook: false
 
 logging:
   level:
-    root: info
-    com.dbpxy: debug
+    root: INFO
+    com.dbpxy: DEBUG
