@@ -6,7 +6,7 @@ app:
     port: 9090
     show-sql: false
   dbpxy-datasource:
-    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT:5432}/postgres
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT}/postgres
     props:
       - name: user
         value: postgres

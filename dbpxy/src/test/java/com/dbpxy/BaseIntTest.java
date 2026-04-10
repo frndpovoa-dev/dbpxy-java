@@ -40,6 +40,7 @@ public abstract class BaseIntTest {
     @DynamicPropertySource
     static void configureProperties(
             final DynamicPropertyRegistry registry) {
+        log.info("postgresql port: {}", postgresql.getMappedPort());
         registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
     }
     @Autowired
