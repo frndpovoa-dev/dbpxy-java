@@ -23,7 +23,11 @@ package com.dbpxy;
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -31,9 +35,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
+@ActiveProfiles({"integration"})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
-class RunApplicationTest extends BaseIntTest {
+class RunApplicationTest {
+    @RegisterExtension
+    static PostgresExtension postgresql = new PostgresExtension(5432);
+    @DynamicPropertySource
+    static void configureProperties(
+            final DynamicPropertyRegistry registry) {
+        log.info("postgresql port: {}", postgresql.getMappedPort());
+        registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
+    }
+
     final AtomicBoolean sigtermReceived = new AtomicBoolean(false);
 
     @Test

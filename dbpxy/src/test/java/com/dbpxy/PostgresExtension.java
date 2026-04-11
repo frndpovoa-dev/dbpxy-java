@@ -37,9 +37,18 @@ public class PostgresExtension implements BeforeAllCallback, AfterAllCallback {
     private final String password = "postgres";
 
     private GenericContainer<?> postgresql;
+    private int mappedPort;
 
     public String getMappedPort() {
         return "" + postgresql.getMappedPort(port);
+    }
+
+    public PostgresExtension() {
+        // Do nothing
+    }
+
+    public PostgresExtension(final int port) {
+        this.mappedPort = port;
     }
 
     @Override
@@ -62,8 +71,11 @@ public class PostgresExtension implements BeforeAllCallback, AfterAllCallback {
                 .withEnv("POSTGRES_USER", username)
                 .withEnv("POSTGRES_PASSWORD", password)
         ;
-
-        postgresql.setExposedPorts(List.of(port));
+        if (mappedPort > 0) {
+            postgresql.setPortBindings(List.of(String.format("%s:%s", mappedPort, port)));
+        } else {
+            postgresql.setExposedPorts(List.of(port));
+        }
         postgresql.start();
 
         System.setProperty("POSTGRESQL_HOSTNAME", postgresql.getHost());
