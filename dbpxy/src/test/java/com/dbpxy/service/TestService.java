@@ -21,12 +21,11 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.ConnectionHolder;
+import com.dbpxy.annotation.ShareableTransaction;
 import com.dbpxy.bo.TestBo;
 import com.dbpxy.repository.TestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -39,17 +38,17 @@ public class TestService {
     private final TestRepository repository;
     private final ConnectionHolder connectionHolder;
 
-    @Transactional(readOnly = true, timeout = 10)
+    @ShareableTransaction(readOnly = true, timeout = 10)
     public Optional<TestBo> findById(final Long id) {
         return repository.findById(id);
     }
 
-    @Transactional(timeout = 10)
+    @ShareableTransaction(timeout = 10)
     public TestBo save(final TestBo testBo) {
         return repository.save(testBo);
     }
 
-    @Transactional(readOnly = true, timeout = 10, propagation = Propagation.REQUIRES_NEW)
+    @ShareableTransaction(readOnly = true, timeout = 10)
     public List<TestBo> list(
             final String transactionId,
             final String groupName) throws Exception {
@@ -57,7 +56,7 @@ public class TestService {
                 () -> repository.findByGroupName(groupName));
     }
 
-    @Transactional(timeout = 10, propagation = Propagation.REQUIRES_NEW)
+    @ShareableTransaction(timeout = 10)
     public TestBo save(
             final String transactionId,
             final TestBo testBo) throws Exception {
@@ -73,7 +72,7 @@ public class TestService {
                 });
     }
 
-    @Transactional(timeout = 10, propagation = Propagation.REQUIRES_NEW)
+    @ShareableTransaction(timeout = 10)
     public Optional<TestBo> findById(
             final String transactionId,
             final Long id) throws Exception {
