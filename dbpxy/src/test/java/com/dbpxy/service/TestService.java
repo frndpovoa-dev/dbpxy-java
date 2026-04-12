@@ -26,6 +26,7 @@ import com.dbpxy.bo.TestBo;
 import com.dbpxy.repository.TestRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -38,12 +39,12 @@ public class TestService {
     private final TestRepository repository;
     private final ConnectionHolder connectionHolder;
 
-    @ShareableTransaction(readOnly = true, timeout = 10)
+    @Transactional(readOnly = true, timeout = 10)
     public Optional<TestBo> findById(final Long id) {
         return repository.findById(id);
     }
 
-    @ShareableTransaction(timeout = 10)
+    @Transactional(timeout = 10)
     public TestBo save(final TestBo testBo) {
         return repository.save(testBo);
     }
