@@ -106,13 +106,13 @@ class TestRepositoryIntTest extends BaseIntTest {
         assertThat(repository.saveAndFlush(TEST_2))
                 .isEqualTo(TEST_2);
 
-        log.debug("read after insert using API no TX");
-        final TestBo apiResponseNoOpTx = restTemplate.exchange(
-                "http://localhost:9091/api/v1/test/insert", HttpMethod.POST,
+        log.debug("read after insert using API read-only TX");
+        final TestBo apiResponseRoTx = restTemplate.exchange(
+                "http://localhost:9091/api/v1/test/try-insert", HttpMethod.POST,
                 new HttpEntity<>(TEST_3, HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, readOnlyTransactionId)))),
                 new ParameterizedTypeReference<TestBo>() {
                 }).getBody();
-        assertThat(apiResponseNoOpTx)
+        assertThat(apiResponseRoTx)
                 .isEqualTo(TEST_3);
 
         log.debug("read after insert using JPA");

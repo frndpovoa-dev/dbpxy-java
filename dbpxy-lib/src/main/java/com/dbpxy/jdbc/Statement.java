@@ -21,8 +21,11 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.exception.PreemptiveTimeoutException;
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -57,7 +60,7 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
-            final Transaction transaction = connection.getTransaction(true);
+            final Transaction transaction = connection.getOrCreateTransaction(true);
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
@@ -92,7 +95,7 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
-            final Transaction transaction = connection.getTransaction(true);
+            final Transaction transaction = connection.getOrCreateTransaction(true);
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
@@ -106,6 +109,11 @@ public class Statement implements java.sql.Statement {
                     .build());
             return result.getRowsAffected();
         } catch (final RuntimeException e) {
+            if (e instanceof StatusRuntimeException r
+                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && r.getStatus().getDescription().equals("READ_ONLY_MODE")) {
+                throw new UnsupportedInReadOnlyModeException();
+            }
             throw new SQLException(e);
         }
     }

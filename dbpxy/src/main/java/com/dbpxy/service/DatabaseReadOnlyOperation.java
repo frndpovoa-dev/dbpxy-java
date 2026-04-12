@@ -20,6 +20,7 @@ package com.dbpxy.service;
  * #L%
  */
 
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.BeginTransactionConfig;
 import com.dbpxy.proto.ExecuteConfig;
@@ -56,10 +57,8 @@ public class DatabaseReadOnlyOperation implements DatabaseOperation {
 
     @Override
     public ExecuteResult execute(
-            final ExecuteConfig config) {
-        return ExecuteResult.newBuilder()
-                .setRowsAffected(1)
-                .build();
+            final ExecuteConfig config) throws UnsupportedInReadOnlyModeException {
+        throw new UnsupportedInReadOnlyModeException();
     }
 
     @Override

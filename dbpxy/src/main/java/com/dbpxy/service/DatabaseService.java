@@ -22,6 +22,7 @@ package com.dbpxy.service;
 
 import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.config.DbpxyPoolProperties;
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
@@ -278,12 +279,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             responseObserver.onNext(transaction.toBuilder()
                     .setCreation(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime))
-                    .setExpiration(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime.plus(Duration.ofMillis(config.getTimeoutInMs()))))
+                    .setExpiration(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime.plus(Duration.ofMillis(ops.getTimeoutInMs()))))
                     .build());
             responseObserver.onCompleted();
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -326,19 +326,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final IllegalArgumentException e) {
             responseObserver.onError(Status.NOT_FOUND
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final IllegalStateException e) {
             responseObserver.onError(Status.FAILED_PRECONDITION
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -383,19 +380,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final IllegalArgumentException e) {
             responseObserver.onError(Status.NOT_FOUND
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final IllegalStateException e) {
             responseObserver.onError(Status.FAILED_PRECONDITION
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -424,15 +418,18 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final UnsupportedInReadOnlyModeException e) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("READ_ONLY_MODE")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final IllegalArgumentException e) {
             responseObserver.onError(Status.NOT_FOUND
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -468,13 +465,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final IllegalArgumentException e) {
             responseObserver.onError(Status.NOT_FOUND
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -503,7 +498,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());
@@ -540,7 +534,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             responseObserver.onCompleted();
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
-                    .augmentDescription(node)
                     .withDescription(e.getMessage())
                     .withCause(e)
                     .asRuntimeException());

@@ -108,7 +108,7 @@ public class ResultSet implements java.sql.ResultSet {
             }
 
             if (queryResult.getHasNext()) {
-                final Transaction transaction = connection.getTransaction(false);
+                final Transaction transaction = connection.getOrCreateTransaction(false);
                 if (transaction != null) {
                     this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
                             .setQueryResultId(queryResult.getId())
@@ -134,7 +134,7 @@ public class ResultSet implements java.sql.ResultSet {
     public void close() throws SQLException {
         log.trace("public void close() throws SQLException {");
         try {
-            final Transaction transaction = connection.getTransaction(false);
+            final Transaction transaction = connection.getOrCreateTransaction(false);
             if (transaction != null) {
                 connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
                         .setQueryResultId(queryResult.getId())

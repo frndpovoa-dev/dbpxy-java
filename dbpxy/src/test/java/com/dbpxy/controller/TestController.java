@@ -9,9 +9,9 @@ package com.dbpxy.controller;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,14 +20,12 @@ package com.dbpxy.controller;
  * #L%
  */
 
-import com.dbpxy.ConnectionHolder;
 import com.dbpxy.bo.TestBo;
 import com.dbpxy.config.Headers;
-import com.dbpxy.repository.TestRepository;
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.service.TestService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -40,42 +38,76 @@ import static org.assertj.core.api.Assertions.assertThat;
 @RequiredArgsConstructor
 public class TestController {
     private final TestService service;
-    private final TestRepository repository;
-    private final ConnectionHolder connectionHolder;
 
-    @Transactional(readOnly = true, timeout = 10)
     @GetMapping(path = "/list")
     public List<TestBo> list(
             @RequestHeader(value = Headers.TRANSACTION, required = false) final String transactionId,
             @RequestParam("group") String groupName
     ) throws Exception {
-        return connectionHolder.doWithSharedTransaction(transactionId,
-                () -> repository.findByGroupName(groupName));
+        return service.list(transactionId, groupName);
     }
 
-    @Transactional(timeout = 10)
     @PostMapping(path = "/insert")
     public TestBo insert(
             @RequestHeader(value = Headers.TRANSACTION, required = false) final String transactionId,
             @RequestBody final TestBo testBo
     ) throws Exception {
-        assertThat(repository.findById(testBo.getId()))
+        assertThat(service.findById(testBo.getId() + 1))
                 .isEmpty();
 
-        connectionHolder.doWithSharedTransaction(
-                transactionId,
-                () -> {
-                    assertThat(repository.findById(testBo.getId()))
-                            .isEmpty();
-                    repository.save(testBo);
-                    assertThat(repository.findById(testBo.getId()))
-                            .isPresent();
-                });
-
-        assertThat(repository.findById(testBo.getId()))
+        assertThat(service.findById(testBo.getId()))
                 .isEmpty();
 
-        service.save(testBo);
+        service.save(transactionId, testBo);
+
+        assertThat(service.findById(testBo.getId()))
+                .isEmpty();
+
+        service.save(testBo.toBuilder()
+                .id(testBo.getId() + 1)
+                .name(testBo.getName() + " from server side")
+                .build());
+
+        assertThat(service.findById(testBo.getId() + 1))
+                .isPresent();
+
+        return testBo;
+    }
+
+    @PostMapping(path = "/try-insert")
+    public TestBo safeInsert(
+            @RequestHeader(value = Headers.TRANSACTION, required = false) final String transactionId,
+            @RequestBody final TestBo testBo
+    ) throws Exception {
+        assertThat(service.findById(testBo.getId() + 1))
+                .isEmpty();
+
+        assertThat(service.findById(testBo.getId()))
+                .isEmpty();
+
+        assertThat(service.findById(transactionId, testBo.getId()))
+                .isEmpty();
+
+        try {
+            service.save(transactionId, testBo);
+        } catch (final UnsupportedInReadOnlyModeException e) {
+            log.warn(e.getMessage(), e);
+        }
+
+        assertThat(service.findById(transactionId, testBo.getId()))
+                .isEmpty();
+
+        assertThat(service.findById(testBo.getId()))
+                .isEmpty();
+
+        service.save(testBo.toBuilder()
+                .id(testBo.getId() + 1)
+                .name(testBo.getName() + " from server side")
+                .build());
+
+        assertThat(service.findById(testBo.getId() + 1))
+                .isPresent();
+
         return testBo;
     }
 }

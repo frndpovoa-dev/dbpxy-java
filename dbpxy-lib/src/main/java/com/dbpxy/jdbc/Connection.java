@@ -98,7 +98,7 @@ public class Connection implements java.sql.Connection {
 
     public String getTransactionId() throws SQLException {
         try {
-            return TransactionUtils.format(getTransaction(true));
+            return TransactionUtils.format(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
@@ -106,7 +106,7 @@ public class Connection implements java.sql.Connection {
 
     public String getReadOnlyTransactionId() throws SQLException {
         try {
-            return TransactionUtils.formatToReadOnly(getTransaction(true));
+            return TransactionUtils.formatToReadOnly(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
@@ -114,13 +114,13 @@ public class Connection implements java.sql.Connection {
 
     public String getReadWriteTransactionId() throws SQLException {
         try {
-            return TransactionUtils.formatToReadWrite(getTransaction(true));
+            return TransactionUtils.formatToReadWrite(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
     }
 
-    public synchronized Transaction getTransaction(final boolean create) throws SQLException {
+    public synchronized Transaction getOrCreateTransaction(final boolean create) throws SQLException {
         if (create) {
             initGrpcChannelIfNeeded();
 
@@ -165,27 +165,11 @@ public class Connection implements java.sql.Connection {
         transactions.removeIf(it ->
                 Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode()));
         try {
-            Optional.ofNullable(getTransaction(false))
+            Optional.ofNullable(getOrCreateTransaction(false))
                     .ifPresentOrElse(it -> MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(it.getId())), () -> MDC.remove(MDC_TRANSACTION_ID));
         } catch (final SQLException e) {
             log.error(e.getMessage(), e);
             MDC.remove(MDC_TRANSACTION_ID);
-        }
-    }
-
-    public void doWithSharedTransaction(
-            final String transactionId,
-            final Runnable runnable) throws Exception {
-        if (transactionId == null) {
-            runnable.run();
-            return;
-        }
-        final Transaction transaction = TransactionUtils.tryParse(transactionId);
-        try {
-            joinSharedTransaction(transaction);
-            runnable.run();
-        } finally {
-            leaveSharedTransaction(transaction);
         }
     }
 
@@ -276,7 +260,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void commit() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
             log.debug("commit skipped on no transaction");
         } else {
@@ -297,7 +281,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void rollback() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
             log.debug("rollback skipped on no transaction");
         } else {
@@ -318,7 +302,7 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void close() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         try {
             if (transaction == null) {
                 // Do nothing

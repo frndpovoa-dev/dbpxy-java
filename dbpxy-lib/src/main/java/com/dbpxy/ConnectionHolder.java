@@ -20,6 +20,7 @@ package com.dbpxy;
  * #L%
  */
 
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.jdbc.Connection;
 import com.dbpxy.util.DatabaseUtils;
 import jakarta.persistence.EntityManager;
@@ -43,23 +44,7 @@ public class ConnectionHolder {
     @Setter
     private EntityManager entityManager;
 
-    public void doWithSharedTransaction(
-            final String transactionId,
-            final Runnable runnable) throws Exception {
-
-        entityManager.flush();
-        entityManager.clear();
-
-        getConnection().doWithSharedTransaction(
-                transactionId,
-                () -> {
-                    runnable.run();
-
-                    entityManager.flush();
-                    entityManager.clear();
-                });
-    }
-
+    @SuppressWarnings({"java:S1143", "java:S1163"})
     public <T> T doWithSharedTransaction(
             final String transactionId,
             final Callable<T> callable) throws Exception {
@@ -70,12 +55,22 @@ public class ConnectionHolder {
         return getConnection().doWithSharedTransaction(
                 transactionId,
                 () -> {
-                    final T result = callable.call();
-
-                    entityManager.flush();
-                    entityManager.clear();
-
-                    return result;
+                    try {
+                        return callable.call();
+                    } finally {
+                        try {
+                            entityManager.flush();
+                        } catch (final Exception e) {
+                            if (e instanceof UnsupportedInReadOnlyModeException r) {
+                                throw r;
+                            } if (e.getCause() instanceof UnsupportedInReadOnlyModeException r) {
+                                throw r;
+                            }
+                            throw e;
+                        } finally {
+                            entityManager.clear();
+                        }
+                    }
                 });
     }
 
