@@ -120,6 +120,14 @@ public class Connection implements java.sql.Connection {
         }
     }
 
+    public String getWriteOnlyTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToWriteOnly(getOrCreateTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
     public synchronized Transaction getOrCreateTransaction(final boolean create) throws SQLException {
         if (create) {
             initGrpcChannelIfNeeded();

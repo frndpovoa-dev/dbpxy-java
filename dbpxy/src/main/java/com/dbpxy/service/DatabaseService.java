@@ -23,6 +23,7 @@ package com.dbpxy.service;
 import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.config.DbpxyPoolProperties;
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.grpc.DbpxyClient;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
@@ -60,6 +61,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Stream;
 
 @Slf4j
 @GrpcService
@@ -171,15 +173,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
                         log.debug("transaction cache eviction. cause: {}", cause);
                         ops.closeConnection();
-                        if (StringUtils.isNotEmpty(ops.getTransaction().getId())) {
-                            transactionCache.invalidate(ops.getTransaction().getId());
-                        }
-                        if (StringUtils.isNotEmpty(ops.getTransaction().getReadOnlyId())) {
-                            transactionCache.invalidate(ops.getTransaction().getReadOnlyId());
-                        }
-                        if (StringUtils.isNotEmpty(ops.getTransaction().getReadWriteId())) {
-                            transactionCache.invalidate(ops.getTransaction().getReadWriteId());
-                        }
+                        Stream.of(
+                                        ops.getTransaction().getId(),
+                                        ops.getTransaction().getReadOnlyId(),
+                                        ops.getTransaction().getReadWriteId(),
+                                        ops.getTransaction().getWriteOnlyId()
+                                )
+                                .filter(StringUtils::isNotEmpty)
+                                .forEach(transactionCache::invalidate);
                     }
                 })
                 .build();
@@ -199,11 +200,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         final String transactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
         final String readOnlyTransactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
         final String readWriteTransactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
+        final String writeOnlyTransactionId = uniqueIdGenerator.globalUUID(Transaction.class.getName());
 
         final Transaction transaction = Transaction.newBuilder()
                 .setId(cryptoService.encrypt(transactionId))
                 .setReadOnlyId(cryptoService.encrypt(readOnlyTransactionId))
                 .setReadWriteId(cryptoService.encrypt(readWriteTransactionId))
+                .setWriteOnlyId(cryptoService.encrypt(writeOnlyTransactionId))
                 .setStatus(Transaction.Status.ACTIVE)
                 .setNode(node)
                 .build();
@@ -221,6 +224,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             transactionCache.put(transactionId, ops);
             transactionCache.put(readOnlyTransactionId, new DatabaseReadOnlyOperation(ops));
             transactionCache.put(readWriteTransactionId, new DatabaseReadWriteOperation(ops));
+            transactionCache.put(writeOnlyTransactionId, new DatabaseWriteOnlyOperation(ops));
 
             final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
                     connectionStringHash(config.getConnectionString()),
@@ -463,6 +467,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             }
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final UnsupportedInWriteOnlyModeException e) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("WRITE_ONLY_MODE")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final IllegalArgumentException e) {
             responseObserver.onError(Status.NOT_FOUND
                     .withDescription(e.getMessage())
@@ -496,6 +505,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final QueryResult result = ops.next(config);
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final UnsupportedInWriteOnlyModeException e) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("WRITE_ONLY_MODE")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .withDescription(e.getMessage())
@@ -527,11 +541,18 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            getDatabaseOperationByTransaction(config.getTransaction())
-                    .ifPresent(ops -> ops.closeResultSet(config));
+            final Optional<DatabaseOperation> maybeOps = getDatabaseOperationByTransaction(config.getTransaction());
+            if (maybeOps.isPresent()) {
+                maybeOps.get().closeResultSet(config);
+            }
 
             responseObserver.onNext(Empty.newBuilder().build());
             responseObserver.onCompleted();
+        } catch (final UnsupportedInWriteOnlyModeException e) {
+            responseObserver.onError(Status.PERMISSION_DENIED
+                    .withDescription("WRITE_ONLY_MODE")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN
                     .withDescription(e.getMessage())

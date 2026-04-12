@@ -21,6 +21,7 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.*;
 import org.apache.commons.pool2.ObjectPool;
@@ -46,11 +47,11 @@ public interface DatabaseOperation {
 
     ExecuteResult execute(ExecuteConfig config) throws UnsupportedInReadOnlyModeException;
 
-    QueryResult query(QueryConfig config);
+    QueryResult query(QueryConfig config) throws UnsupportedInWriteOnlyModeException;
 
-    QueryResult next(NextConfig config);
+    QueryResult next(NextConfig config) throws UnsupportedInWriteOnlyModeException;
 
-    void closeResultSet(NextConfig config);
+    void closeResultSet(NextConfig config) throws UnsupportedInWriteOnlyModeException;
 
     boolean commitTransaction();
 

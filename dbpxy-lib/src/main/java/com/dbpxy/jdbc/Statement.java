@@ -22,6 +22,7 @@ package com.dbpxy.jdbc;
 
 import com.dbpxy.exception.PreemptiveTimeoutException;
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
 import io.grpc.Status;
@@ -36,6 +37,7 @@ import java.sql.SQLWarning;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -81,6 +83,11 @@ public class Statement implements java.sql.Statement {
             log.debug("query executed");
             return resultSet;
         } catch (final RuntimeException e) {
+            if (e instanceof StatusRuntimeException r
+                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
             throw new SQLException(e);
         }
     }
@@ -111,7 +118,7 @@ public class Statement implements java.sql.Statement {
         } catch (final RuntimeException e) {
             if (e instanceof StatusRuntimeException r
                     && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
-                    && r.getStatus().getDescription().equals("READ_ONLY_MODE")) {
+                    && Objects.equals(r.getStatus().getDescription(), "READ_ONLY_MODE")) {
                 throw new UnsupportedInReadOnlyModeException();
             }
             throw new SQLException(e);

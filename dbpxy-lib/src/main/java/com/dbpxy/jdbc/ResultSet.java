@@ -20,8 +20,11 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 
@@ -36,6 +39,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -126,6 +130,11 @@ public class ResultSet implements java.sql.ResultSet {
             last = true;
             return false;
         } catch (final RuntimeException e) {
+            if (e instanceof StatusRuntimeException r
+                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
             throw new SQLException(e);
         }
     }
@@ -143,6 +152,11 @@ public class ResultSet implements java.sql.ResultSet {
             }
             log.debug("query closed");
         } catch (final RuntimeException e) {
+            if (e instanceof StatusRuntimeException r
+                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
             throw new SQLException(e);
         } finally {
             this.closed = true;

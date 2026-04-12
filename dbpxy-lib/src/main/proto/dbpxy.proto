@@ -42,10 +42,11 @@ message Transaction {
   string id = 1;
   string readOnlyId = 2;
   string readWriteId = 3;
-  Status status = 4;
-  string node = 5;
-  string creation = 6;
-  string expiration = 7;
+  string writeOnlyId = 4;
+  Status status = 5;
+  string node = 6;
+  string creation = 7;
+  string expiration = 8;
 
   enum Status {
     NOT_STARTED = 0;
