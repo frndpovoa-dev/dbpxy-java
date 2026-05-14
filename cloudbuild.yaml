@@ -15,10 +15,10 @@ steps:
     args:
       - '-c'
       - |
-        cat << EOF > dbpxy/src/main/resources/certs/key.pem
+        cat << EOF > dbpxy-server/src/main/resources/certs/key.pem
         $${GRPC_KEY_PEM}
         EOF
-        cat << EOF > dbpxy/src/main/resources/certs/cert.pem
+        cat << EOF > dbpxy-server/src/main/resources/certs/cert.pem
         $${GRPC_CERT_PEM}
         EOF
     secretEnv: [ 'GRPC_KEY_PEM', 'GRPC_CERT_PEM' ]
@@ -32,7 +32,7 @@ steps:
     args:
       - '-c'
       - |
-        docker build --tag dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} --file dbpxy/Dockerfile dbpxy
+        docker build --tag dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} --file dbpxy-server/Dockerfile dbpxy-server
         docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
     env:
       - DOCKER_BUILDKIT=1
