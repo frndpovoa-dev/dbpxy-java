@@ -49,6 +49,7 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
@@ -143,7 +144,7 @@ public class Connection implements java.sql.Connection {
                                         .setName(prop.getName())
                                         .setValue(prop.getValue())
                                         .build())
-                                .toList())
+                                .collect(Collectors.toList()))
                         .build();
 
                 try {

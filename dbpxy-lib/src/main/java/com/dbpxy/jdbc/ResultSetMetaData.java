@@ -157,31 +157,31 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
                     switch (col.getCode()) {
-                        case INT32 -> {
+                        case INT32: {
                             return Types.INTEGER;
                         }
-                        case INT64 -> {
+                        case INT64: {
                             return Types.BIGINT;
                         }
-                        case FLOAT64 -> {
+                        case FLOAT64: {
                             return Types.FLOAT;
                         }
-                        case BOOL -> {
+                        case BOOL: {
                             return Types.BOOLEAN;
                         }
-                        case BYTES -> {
+                        case BYTES: {
                             return Types.VARBINARY;
                         }
-                        case STRING -> {
+                        case STRING: {
                             return Types.VARCHAR;
                         }
-                        case TIME -> {
+                        case TIME: {
                             return Types.TIMESTAMP;
                         }
-                        case NULL -> {
+                        case NULL: {
                             return Types.NULL;
                         }
-                        default -> {
+                        default: {
                             return null;
                         }
                     }
@@ -195,31 +195,31 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
                     switch (col.getCode()) {
-                        case INT32 -> {
+                        case INT32: {
                             return "INTEGER";
                         }
-                        case INT64 -> {
+                        case INT64: {
                             return "BIGINT";
                         }
-                        case FLOAT64 -> {
+                        case FLOAT64: {
                             return "FLOAT";
                         }
-                        case BOOL -> {
+                        case BOOL: {
                             return "BOOLEAN";
                         }
-                        case BYTES -> {
+                        case BYTES: {
                             return "VARBINARY";
                         }
-                        case STRING -> {
+                        case STRING: {
                             return "VARCHAR";
                         }
-                        case TIME -> {
+                        case TIME: {
                             return "TIMESTAMP";
                         }
-                        case NULL -> {
+                        case NULL: {
                             return "NULL";
                         }
-                        default -> {
+                        default: {
                             return null;
                         }
                     }

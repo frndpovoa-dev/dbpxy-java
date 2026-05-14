@@ -1,0 +1,22 @@
+app:
+  dbpxy:
+    hostname: localhost
+    port: 9090
+    show-sql: false
+  dbpxy-datasource:
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT}/postgres
+    props:
+      - name: user
+        value: postgres
+      - name: password
+        value: postgres
+
+spring:
+  main:
+    web-application-type: none
+    register-shutdown-hook: false
+
+logging:
+  level:
+    root: INFO
+    com.dbpxy: DEBUG

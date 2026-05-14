@@ -37,6 +37,7 @@ import java.time.Duration;
 import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
@@ -72,28 +73,24 @@ class DatabaseServiceIntTest extends BaseIntTest {
                     .build()
             )
             .build());
-    private static final String SELECT_NAME_FROM_TEST_WHERE_ID = """
-            select name from test
-            where id = ?;
-            """;
-    private static final String INSERT_INTO_TEST_ID_NAME = """
-            insert into test (
-              id,
-              name
-            ) values (
-              ?,
-              ?
-            );
-            """;
-    private static final String CREATE_TABLE_TEST = """
-            create table test (
-              id bigint primary key,
-              name varchar
-            );
-            """;
-    public static final String DROP_TABLE_IF_EXISTS_TEST = """
-            drop table if exists test cascade;
-            """;
+    private static final String SELECT_NAME_FROM_TEST_WHERE_ID =
+            " select name from test"+
+            " where id = ?;";
+    private static final String INSERT_INTO_TEST_ID_NAME =
+            " insert into test ("+
+              " id,"+
+              " name"+
+            " ) values ("+
+              " ?,"+
+              " ?"+
+            " );";
+    private static final String CREATE_TABLE_TEST =
+            " create table test ("+
+              " id bigint primary key,"+
+              " name varchar"+
+            " );";
+    public static final String DROP_TABLE_IF_EXISTS_TEST =
+            "drop table if exists test cascade;";
 
     @Autowired
     private DbpxyGrpcProperties dbpxyGrpcProperties;
@@ -139,7 +136,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .setCode(entry.getValue())
                         .setData(entry.getKey().toByteString())
                         .build())
-                .toList());
+                .collect(Collectors.toList()));
         queryTx(tx1, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
         queryTx(tx2, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
         query(0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
@@ -154,7 +151,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .setCode(entry.getValue())
                         .setData(entry.getKey().toByteString())
                         .build())
-                .toList());
+                .collect(Collectors.toList()));
         queryTx(tx2, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_2, RESULTS_NAME_FOOBAR);
         queryTx(tx2, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
         query(1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
@@ -179,7 +176,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .setCode(entry.getValue())
                         .setData(entry.getKey().toByteString())
                         .build())
-                .toList());
+                .collect(Collectors.toList()));
 
         queryTx(tx1, 1, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, RESULTS_NAME_DUMMY);
 
@@ -206,7 +203,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                                 .setName(prop.getName())
                                 .setValue(prop.getValue())
                                 .build())
-                        .toList())
+                        .collect(Collectors.toList()))
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
@@ -229,7 +226,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                                 .setName(prop.getName())
                                 .setValue(prop.getValue())
                                 .build())
-                        .toList())
+                        .collect(Collectors.toList()))
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)
@@ -330,7 +327,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                                 .setName(prop.getName())
                                 .setValue(prop.getValue())
                                 .build())
-                        .toList())
+                        .collect(Collectors.toList()))
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
                 .setConnectionString(connectionString)

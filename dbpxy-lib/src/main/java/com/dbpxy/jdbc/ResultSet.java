@@ -74,25 +74,25 @@ public class ResultSet implements java.sql.ResultSet {
         final Value value = getCurrentRowColValue(col);
         try {
             switch (value.getCode()) {
-                case INT32 -> {
+                case INT32: {
                     return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
                 }
-                case INT64 -> {
+                case INT64: {
                     return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
                 }
-                case FLOAT64 -> {
+                case FLOAT64: {
                     return ValueFloat64.parseFrom(value.getData()).getValue();
                 }
-                case BOOL -> {
+                case BOOL: {
                     return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
                 }
-                case STRING -> {
+                case STRING: {
                     return ValueString.parseFrom(value.getData()).getValue();
                 }
-                case TIME -> {
+                case TIME: {
                     return ValueTime.parseFrom(value.getData()).getValue();
                 }
-                default -> {
+                default: {
                     return null;
                 }
             }
@@ -129,12 +129,13 @@ public class ResultSet implements java.sql.ResultSet {
 
             last = true;
             return false;
-        } catch (final RuntimeException e) {
-            if (e instanceof StatusRuntimeException r
-                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
-                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
                 throw new UnsupportedInWriteOnlyModeException();
             }
+            throw new SQLException(e);
+        } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
     }
@@ -151,12 +152,13 @@ public class ResultSet implements java.sql.ResultSet {
                         .build());
             }
             log.debug("query closed");
-        } catch (final RuntimeException e) {
-            if (e instanceof StatusRuntimeException r
-                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
-                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
                 throw new UnsupportedInWriteOnlyModeException();
             }
+            throw new SQLException(e);
+        } catch (final RuntimeException e) {
             throw new SQLException(e);
         } finally {
             this.closed = true;

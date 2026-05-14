@@ -61,10 +61,11 @@ public class ConnectionHolder {
                         try {
                             entityManager.flush();
                         } catch (final Exception e) {
-                            if (e instanceof UnsupportedInReadOnlyModeException r) {
-                                throw r;
-                            } if (e.getCause() instanceof UnsupportedInReadOnlyModeException r) {
-                                throw r;
+                            if (e instanceof UnsupportedInReadOnlyModeException) {
+                                throw (UnsupportedInReadOnlyModeException) e;
+                            }
+                            if (e.getCause() instanceof UnsupportedInReadOnlyModeException) {
+                                throw (UnsupportedInReadOnlyModeException) e.getCause();
                             }
                             throw e;
                         } finally {

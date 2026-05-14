@@ -519,31 +519,41 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final int i) {
         try {
             switch (metadata.getColumnType(i)) {
-                case Types.BIGINT -> {
+                case Types.BIGINT: {
                     return int64Value(metadata, rs, i);
                 }
-                case Types.BOOLEAN, Types.BIT -> {
+                case Types.BOOLEAN: {
                     return booleanValue(metadata, rs, i);
                 }
-                case Types.DATE -> {
+                case Types.BIT: {
+                    return booleanValue(metadata, rs, i);
+                }
+                case Types.DATE: {
                     return timeValue(metadata, rs, i);
                 }
-                case Types.NUMERIC, Types.DOUBLE -> {
+                case Types.NUMERIC: {
                     return float64Value(metadata, rs, i);
                 }
-                case Types.SMALLINT, Types.INTEGER -> {
+                case Types.DOUBLE: {
+                    return float64Value(metadata, rs, i);
+                }
+                case Types.SMALLINT: {
                     return int32Value(metadata, rs, i);
                 }
-                case Types.TIMESTAMP -> {
+                case Types.INTEGER: {
+                    return int32Value(metadata, rs, i);
+                }
+                case Types.TIMESTAMP: {
                     return timestampValue(metadata, rs, i);
                 }
-                case Types.VARCHAR -> {
+                case Types.VARCHAR: {
                     return varcharValue(metadata, rs, i);
                 }
-                case Types.NULL -> {
+                case Types.NULL: {
                     return nullValue();
                 }
-                default -> throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
+                default:
+                    throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
             }
         } catch (final SQLException e) {
             throw new RuntimeException(e);
@@ -660,16 +670,25 @@ class DatabaseOperationImpl implements DatabaseOperation {
     private static void setSqlArg(final PreparedStatement stmt, final int i, final Value value) {
         try {
             switch (value.getCode()) {
-                case INT64 -> stmt.setLong(i, ValueInt64.parseFrom(value.getData()).getValue());
-                case FLOAT64 -> stmt.setBigDecimal(i, new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()));
-                case BOOL -> stmt.setBoolean(i, ValueBool.parseFrom(value.getData()).getValue());
-                case STRING -> stmt.setString(i, ValueString.parseFrom(value.getData()).getValue());
-                case TIME -> {
+                case INT64:
+                    stmt.setLong(i, ValueInt64.parseFrom(value.getData()).getValue());
+                    break;
+                case FLOAT64:
+                    stmt.setBigDecimal(i, new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()));
+                    break;
+                case BOOL:
+                    stmt.setBoolean(i, ValueBool.parseFrom(value.getData()).getValue());
+                    break;
+                case STRING:
+                    stmt.setString(i, ValueString.parseFrom(value.getData()).getValue());
+                    break;
+                case TIME: {
                     final String s = ValueTime.parseFrom(value.getData()).getValue();
                     final OffsetDateTime odt = OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
                     stmt.setTimestamp(i, new Timestamp(odt.toInstant().toEpochMilli()));
+                    break;
                 }
-                case ARRAY -> {
+                case ARRAY: {
                     final ArrayMirror mirror = OBJECT_MAPPER.readValue(
                             ValueString.parseFrom(value.getData()).getValue(),
                             new TypeReference<>() {
@@ -678,8 +697,10 @@ class DatabaseOperationImpl implements DatabaseOperation {
                             mirror.getBaseTypeName(),
                             mirror.getBaseType(),
                             mirror.getArray().toArray()));
+                    break;
                 }
-                default -> stmt.setNull(i, Types.NULL);
+                default:
+                    stmt.setNull(i, Types.NULL);
             }
         } catch (final InvalidProtocolBufferException
                        | SQLException

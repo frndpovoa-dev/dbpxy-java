@@ -82,12 +82,13 @@ public class Statement implements java.sql.Statement {
             MDC.put(MDC_QUERY_ID, DatabaseUtils.getMaskedId(result.getId()));
             log.debug("query executed");
             return resultSet;
-        } catch (final RuntimeException e) {
-            if (e instanceof StatusRuntimeException r
-                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
-                    && Objects.equals(r.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
                 throw new UnsupportedInWriteOnlyModeException();
             }
+            throw new SQLException(e);
+        } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
     }
@@ -115,12 +116,13 @@ public class Statement implements java.sql.Statement {
                             .build())
                     .build());
             return result.getRowsAffected();
-        } catch (final RuntimeException e) {
-            if (e instanceof StatusRuntimeException r
-                    && r.getStatus().getCode() == Status.Code.PERMISSION_DENIED
-                    && Objects.equals(r.getStatus().getDescription(), "READ_ONLY_MODE")) {
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "READ_ONLY_MODE")) {
                 throw new UnsupportedInReadOnlyModeException();
             }
+            throw new SQLException(e);
+        } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
     }

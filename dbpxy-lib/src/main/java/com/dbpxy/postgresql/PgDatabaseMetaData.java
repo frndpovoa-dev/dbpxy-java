@@ -32,6 +32,7 @@ import java.sql.ResultSet;
 import java.sql.RowIdLifetime;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
@@ -710,14 +711,13 @@ public class PgDatabaseMetaData implements java.sql.DatabaseMetaData {
     }
 
     @Override
-    public boolean supportsTransactionIsolationLevel(int level) {
-        return switch (level) {
-            case java.sql.Connection.TRANSACTION_READ_UNCOMMITTED,
-                 java.sql.Connection.TRANSACTION_READ_COMMITTED,
-                 java.sql.Connection.TRANSACTION_REPEATABLE_READ,
-                 java.sql.Connection.TRANSACTION_SERIALIZABLE -> true;
-            default -> false;
-        };
+    public boolean supportsTransactionIsolationLevel(final int level) {
+        return Map.of(
+                java.sql.Connection.TRANSACTION_READ_UNCOMMITTED, true,
+                java.sql.Connection.TRANSACTION_READ_COMMITTED, true,
+                java.sql.Connection.TRANSACTION_REPEATABLE_READ, true,
+                java.sql.Connection.TRANSACTION_SERIALIZABLE, true)
+                .getOrDefault(level, false);
     }
 
     @Override

@@ -52,6 +52,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ForkJoinPool;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -100,7 +101,7 @@ class TestControllerIntTest extends BaseIntTest {
                                 .setName(prop.getName())
                                 .setValue(prop.getValue())
                                 .build())
-                        .toList())
+                        .collect(Collectors.toList()))
                 .build();
         this.tx1Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()

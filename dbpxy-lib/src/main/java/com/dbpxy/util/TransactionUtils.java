@@ -74,10 +74,17 @@ public class TransactionUtils {
             @NonNull final Permission permission) throws URISyntaxException {
         String id;
         switch (permission) {
-            case FULL -> id = transaction.getId();
-            case READ_WRITE -> id = transaction.getReadWriteId();
-            case WRITE_ONLY -> id = transaction.getWriteOnlyId();
-            default -> id = transaction.getReadOnlyId();
+            case FULL:
+                id = transaction.getId();
+                break;
+            case READ_WRITE:
+                id = transaction.getReadWriteId();
+                break;
+            case WRITE_ONLY:
+                id = transaction.getWriteOnlyId();
+                break;
+            default:
+                id = transaction.getReadOnlyId();
         }
         final String query = Map.of(
                         CREATION_PARAM, transaction.getCreation(),
