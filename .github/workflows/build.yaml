@@ -76,7 +76,7 @@ jobs:
             -out $CERTS_DIR/cert.pem \
             -config $CERTS_DIR/localhost.cnf-template
         env:
-          CERTS_DIR: dbpxy/src/main/resources/certs
+          CERTS_DIR: dbpxy-server/src/main/resources/certs
       - name: Test
         run: mvn test -Dmaven.test.skip=false -Drevision=$APP_VERSION
       # end
