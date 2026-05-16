@@ -64,6 +64,8 @@ jobs:
       # end
 
       # begin compilation
+      - name: Compile using Java 11
+        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION -Djava.version=11
       - name: Compile
         run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
       # end
