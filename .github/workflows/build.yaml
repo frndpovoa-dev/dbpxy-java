@@ -63,14 +63,7 @@ jobs:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
       # end
 
-      # begin compilation
-      - name: Compile using Java 11
-        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION -Djava.version=11
-      - name: Compile
-        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
-      # end
-
-      # begin testing
+      # preparing certificates
       - name: Generate testing SSL key/cert files
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
@@ -79,12 +72,21 @@ jobs:
             -config $CERTS_DIR/localhost.cnf-template
         env:
           CERTS_DIR: dbpxy-server/src/main/resources/certs
-      - name: Test
-        run: mvn test -Dmaven.test.skip=false -Drevision=$APP_VERSION
+
+      # begin testing
+      - name: Compile client libraries using JDK 11
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dclient.java.version=11
+      - name: Compile all using default JDK
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION
       # end
 
       - name: Clean up
-        run: mvn clean
+        run: |
+          mvn clean
+          rm $CERTS_DIR/key.pem
+          rm $CERTS_DIR/cert.pem
+        env:
+          CERTS_DIR: dbpxy-server/src/main/resources/certs
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v3

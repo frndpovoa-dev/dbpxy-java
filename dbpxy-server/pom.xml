@@ -219,7 +219,7 @@
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
                         <env>
-                            <BP_JVM_VERSION>${java.version}</BP_JVM_VERSION>
+                            <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
                             <BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
                                 -H:+SharedArenaSupport
@@ -242,8 +242,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
                 <configuration>
-                    <source>${java.version}</source>
-                    <target>${java.version}</target>
+                    <source>${server.java.version}</source>
+                    <target>${server.java.version}</target>
+                    <release>${server.java.version}</release>
                     <verbose>false</verbose>
                     <annotationProcessorPaths>
                         <path>

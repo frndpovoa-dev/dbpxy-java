@@ -9,7 +9,8 @@
     <properties>
         <revision>0.1.0-SNAPSHOT</revision>
         <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
+        <client.java.version>25</client.java.version>
+        <server.java.version>25</server.java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
         <com.google.cloud_libraries-bom.version>26.79.0</com.google.cloud_libraries-bom.version>

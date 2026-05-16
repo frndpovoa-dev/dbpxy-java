@@ -26,6 +26,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.google.common.hash.Hashing;
+import com.google.common.io.BaseEncoding;
 import org.jspecify.annotations.NonNull;
 import org.springframework.stereotype.Service;
 
@@ -36,7 +37,6 @@ import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeFormatterBuilder;
 import java.time.format.SignStyle;
-import java.util.HexFormat;
 import java.util.UUID;
 
 import static java.time.temporal.ChronoField.*;
@@ -74,6 +74,6 @@ public class UniqueIdGenerator {
 
     public String compactUUID() {
         final UUID uuid = Generators.randomBasedGenerator().generate();
-        return HexFormat.of().formatHex(UUIDUtil.asByteArray(uuid));
+        return BaseEncoding.base16().lowerCase().encode(UUIDUtil.asByteArray(uuid));
     }
 }
