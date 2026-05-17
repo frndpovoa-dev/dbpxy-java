@@ -86,11 +86,6 @@ public class DbpxyEmbeddingStore implements EmbeddingStore<TextSegment> {
     private final String tableName;
 
     /**
-     * Flag to do not execute the {@code CREATE VECTOR EXTENSION} when retrieving a DBPXY connection
-     */
-    private final boolean skipCreateVectorExtension;
-
-    /**
      * Metadata handler
      */
     private final MetadataHandler metadataHandler;
@@ -113,7 +108,7 @@ public class DbpxyEmbeddingStore implements EmbeddingStore<TextSegment> {
 
     /**
      * New constructor that takes the DatasourceBuilder.
-     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK and skipCreateVectorExtension).
+     * This is the entry point for enhanced configuration (searchMode, textSearchConfig, rrfK).
      *
      * @param builder The builder containing all configuration
      */
@@ -124,7 +119,6 @@ public class DbpxyEmbeddingStore implements EmbeddingStore<TextSegment> {
         this.tableName = ensureNotBlank(builder.tableName, "ragcontent");
         MetadataStorageConfig config = getOrDefault(builder.metadataStorageConfig, DefaultMetadataStorageConfig.defaultConfig());
         this.metadataHandler = MetadataHandlerFactory.get(config);
-        this.skipCreateVectorExtension = getOrDefault(builder.skipCreateVectorExtension, false);
         this.searchMode = getOrDefault(builder.searchMode, SearchMode.VECTOR);
         this.textSearchConfig = getOrDefault(builder.textSearchConfig, DEFAULT_TEXT_SEARCH_CONFIG);
         this.rrfK = ensureGreaterThanZero(getOrDefault(builder.rrfK, DEFAULT_RRF_K), "rrfK");
@@ -478,11 +472,6 @@ public class DbpxyEmbeddingStore implements EmbeddingStore<TextSegment> {
         // Find a way to do the following code in connection initialization.
         // Here we assume the datasource could handle a connection pool
         // and we should add the vector type on each connection
-        if (!skipCreateVectorExtension) {
-            try (final Statement statement = connection.createStatement()) {
-                statement.executeUpdate("CREATE EXTENSION IF NOT EXISTS vector");
-            }
-        }
         PGvector.addVectorType(connection);
         return connection;
     }
@@ -504,7 +493,6 @@ public class DbpxyEmbeddingStore implements EmbeddingStore<TextSegment> {
         private final UniqueIdGenerator uniqueIdGenerator;
         private final ConnectionHolder connectionHolder;
         private final String tableName;
-        private final Boolean skipCreateVectorExtension;
         private final MetadataStorageConfig metadataStorageConfig;
         private final SearchMode searchMode;
         private final String textSearchConfig;
