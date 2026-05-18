@@ -28,6 +28,7 @@ import lombok.extern.slf4j.Slf4j;
 
 import java.io.PrintWriter;
 import java.sql.SQLException;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 @Slf4j
@@ -35,7 +36,7 @@ import java.util.logging.Logger;
 public class DataSource implements javax.sql.DataSource {
     private static final Logger LOGGER = Logger.getLogger(DataSource.class.getName());
     private final ConnectionHolder connectionHolder;
-    private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
+    private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
     private final DbpxyProperties dbpxyProperties;
     private final String dbpxyCertPath;
     private PrintWriter printWriter;
@@ -46,7 +47,7 @@ public class DataSource implements javax.sql.DataSource {
         return new Connection(
                 connectionHolder,
                 dbpxyProperties,
-                dbpxyDatasourceProperties,
+                maybeDbpxyDatasourceProperties,
                 dbpxyCertPath);
     }
 

@@ -24,7 +24,9 @@ package com.dbpxy.config;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.jdbc.DataSource;
 import com.dbpxy.springframework.TransactionExecutionListener;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.cfg.SchemaToolingSettings;
 import org.springframework.beans.factory.annotation.Value;
@@ -50,7 +52,9 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+@Slf4j
 @AutoConfiguration(
         before = {
                 DataSourceAutoConfiguration.class,
@@ -68,7 +72,6 @@ import java.util.Map;
 })
 @EnableConfigurationProperties({
         DbpxyProperties.class,
-        DbpxyDatasourceProperties.class
 })
 public class DbpxyAutoConfiguration {
     @Bean
@@ -80,12 +83,12 @@ public class DbpxyAutoConfiguration {
     public DataSource dataSource(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
-            final DbpxyDatasourceProperties dbpxyDatasourceProperties,
+            final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String dbpxyCertPath
     ) {
         return new DataSource(
                 connectionHolder,
-                dbpxyDatasourceProperties,
+                maybeDbpxyDatasourceProperties,
                 dbpxyProperties,
                 dbpxyCertPath);
     }
@@ -138,6 +141,15 @@ public class DbpxyAutoConfiguration {
                         .build()));
         transactionManager.afterPropertiesSet();
         return transactionManager;
+    }
+
+    @Bean
+    public boolean dbpxyLazyConfiguration(
+            final ConnectionHolder connectionHolder,
+            final EntityManager entityManager) {
+        connectionHolder.setEntityManager(entityManager);
+        log.info("dbpxy lazy initialization complete");
+        return true;
     }
 }
 

@@ -52,7 +52,6 @@ public abstract class AbstractRagTool {
         this.embeddingStore = DbpxyEmbeddingStore.DatasourceArgs.builder()
                 .connectionHolder(connectionHolder)
                 .tableName(tableName)
-                .skipCreateVectorExtension(false)
                 .searchMode(DbpxyEmbeddingStore.SearchMode.HYBRID)
                 .metadataStorageConfig(DefaultMetadataStorageConfig.builder()
                         .storageMode(MetadataStorageMode.COMBINED_JSON)

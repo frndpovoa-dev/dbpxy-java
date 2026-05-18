@@ -63,7 +63,7 @@ public class Connection implements java.sql.Connection {
     private final String id = UUID.randomUUID().toString().replace("-", "");
     private final ConnectionHolder connectionHolder;
     private final DbpxyProperties dbpxyProperties;
-    private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
+    private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
     private final String dbpxyCertPath;
     private final Deque<Transaction> transactions = new ArrayDeque<>(5);
 
@@ -136,10 +136,10 @@ public class Connection implements java.sql.Connection {
             transactions.removeIf(transaction ->
                     !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
 
-            if (transactions.isEmpty()) {
+            if (transactions.isEmpty() && maybeDbpxyDatasourceProperties.isPresent()) {
                 final ConnectionString connectionString = ConnectionString.newBuilder()
-                        .setUrl(dbpxyDatasourceProperties.getUrl())
-                        .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                        .setUrl(maybeDbpxyDatasourceProperties.get().getUrl())
+                        .addAllProps(maybeDbpxyDatasourceProperties.get().getProps().stream()
                                 .map(prop -> ConnectionStringProp.newBuilder()
                                         .setName(prop.getName())
                                         .setValue(prop.getValue())
@@ -225,12 +225,12 @@ public class Connection implements java.sql.Connection {
     public Connection(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
-            final DbpxyDatasourceProperties dbpxyDatasourceProperties,
+            final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             final String dbpxyCertPath
     ) throws SQLException {
         this.connectionHolder = connectionHolder;
         this.dbpxyProperties = dbpxyProperties;
-        this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
+        this.maybeDbpxyDatasourceProperties = maybeDbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
         connectionHolder.pushConnection(this);
         log.debug("connection lazyly opened");
