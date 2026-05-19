@@ -145,13 +145,15 @@ public class ResultSet implements java.sql.ResultSet {
         log.trace("public void close() throws SQLException {");
         try {
             final Transaction transaction = connection.getOrCreateTransaction(false);
-            if (transaction != null) {
-                connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
-                        .setQueryResultId(queryResult.getId())
-                        .setTransaction(transaction)
-                        .build());
+            if (transaction == null) {
+                log.debug("close resultset skipped: no transaction");
+                return;
             }
-            log.debug("query closed");
+            connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
+                    .setQueryResultId(queryResult.getId())
+                    .setTransaction(transaction)
+                    .build());
+            log.debug("resultset closed");
         } catch (final StatusRuntimeException e) {
             if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
                     && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {

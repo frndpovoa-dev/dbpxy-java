@@ -130,6 +130,11 @@ public class Statement implements java.sql.Statement {
     @Override
     public void close() throws SQLException {
         try {
+            final Transaction transaction = connection.getOrCreateTransaction(false);
+            if (transaction == null) {
+                log.debug("close statement skipped: no transaction");
+                return;
+            }
             connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
         } catch (final RuntimeException e) {
             throw new SQLException(e);

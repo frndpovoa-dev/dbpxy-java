@@ -271,7 +271,7 @@ public class Connection implements java.sql.Connection {
     public void commit() throws SQLException {
         final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
-            log.debug("commit skipped on no transaction");
+            log.debug("commit skipped: no transaction");
         } else {
             try {
                 if (transaction.getStatus() == Transaction.Status.ACTIVE) {
@@ -292,7 +292,7 @@ public class Connection implements java.sql.Connection {
     public void rollback() throws SQLException {
         final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
-            log.debug("rollback skipped on no transaction");
+            log.debug("rollback skipped: no transaction");
         } else {
             try {
                 if (transaction.getStatus() == Transaction.Status.ACTIVE) {

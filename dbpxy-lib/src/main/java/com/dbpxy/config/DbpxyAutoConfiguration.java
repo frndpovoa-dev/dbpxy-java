@@ -43,6 +43,7 @@ import org.springframework.boot.transaction.autoconfigure.TransactionAutoConfigu
 import org.springframework.boot.transaction.autoconfigure.TransactionManagerCustomizationAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -69,9 +70,6 @@ import java.util.Optional;
 @ConditionalOnProperties({
         @ConditionalOnProperty(prefix = "app.dbpxy", name = "hostname"),
         @ConditionalOnProperty(prefix = "app.dbpxy", name = "port")
-})
-@EnableConfigurationProperties({
-        DbpxyProperties.class,
 })
 public class DbpxyAutoConfiguration {
     @Bean
@@ -150,6 +148,23 @@ public class DbpxyAutoConfiguration {
         connectionHolder.setEntityManager(entityManager);
         log.info("dbpxy lazy initialization complete");
         return true;
+    }
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.dbpxy-datasource", name = "url")
+    @EnableConfigurationProperties({
+            DbpxyProperties.class,
+            DbpxyDatasourceProperties.class,
+    })
+    public static class DbpxyServerAndDatasourceConfiguration {
+    }
+
+    @Configuration
+    @ConditionalOnMissingBean(DbpxyServerAndDatasourceConfiguration.class)
+    @EnableConfigurationProperties({
+            DbpxyProperties.class,
+    })
+    public static class DbpxyServerOnlyConfiguration {
     }
 }
 
