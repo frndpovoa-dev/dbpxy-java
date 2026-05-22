@@ -55,7 +55,7 @@ import java.util.stream.Collectors;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
-    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
+    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
 
     @Getter
@@ -274,7 +274,7 @@ public class Connection implements java.sql.Connection {
             log.debug("commit skipped: no transaction");
         } else {
             try {
-                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub.commitTransaction(transaction);
                         log.debug("transaction commited");
@@ -295,7 +295,7 @@ public class Connection implements java.sql.Connection {
             log.debug("rollback skipped: no transaction");
         } else {
             try {
-                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub.rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
@@ -317,7 +317,7 @@ public class Connection implements java.sql.Connection {
                 // Do nothing
             } else if (transaction.getStatus() == Transaction.Status.JOINED) {
                 log.debug("close skipped on shared transaction");
-            } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+            } else if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                 if (autoCommit) {
                     commit();
                 }

@@ -212,7 +212,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
         assertThat(transaction)
                 .isNotNull()
                 .hasFieldOrProperty("id")
-                .hasFieldOrPropertyWithValue("status", Transaction.Status.ACTIVE);
+                .hasFieldOrPropertyWithValue("status", Transaction.Status.NOT_STARTED);
         return transaction;
     }
 

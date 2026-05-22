@@ -31,7 +31,11 @@ import java.util.concurrent.ExecutorService;
 
 public interface DatabaseOperation {
 
+    DatabaseOperation getDelegate();
+
     long getTimeoutInMs();
+
+    BeginTransactionConfig getBeginTransactionConfig();
 
     Transaction getTransaction();
 

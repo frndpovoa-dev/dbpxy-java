@@ -75,6 +75,8 @@ class DatabaseOperationImpl implements DatabaseOperation {
         SQL_FORMATTER.setWrapIndent("");
     }
 
+    @Getter
+    private final BeginTransactionConfig beginTransactionConfig;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     @Getter
@@ -86,6 +88,11 @@ class DatabaseOperationImpl implements DatabaseOperation {
     @Builder.Default
     private final ConcurrentHashMap<String, LinkedBlockingQueue<DoWithResultSet>> queryTaskMap = new ConcurrentHashMap<>();
 
+    @Override
+    public DatabaseOperation getDelegate() {
+        return this;
+    }
+
     public void openConnection(
             final ObjectPool<ConnectionProxy> connectionPool,
             final ExecutorService taskExecutor) {
@@ -94,7 +101,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
 
             ConnectionProxy connection = null;
 
-            try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction);
+            try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction);
                  final ScheduledExecutorService rollbackExecutor = Executors.newSingleThreadScheduledExecutor(ThreadFactory.builder().prefix(Thread.currentThread().getName() + "-rollback-").build())) {
                 connection = connectionPool.borrowObject();
 
@@ -306,7 +313,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
         final CompletableFuture<QueryResult> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
-            try (final MDC queryIdMDC = new MDC(MDC_QUERY_ID, DatabaseUtils.getMaskedId(queryResultId));
+            try (final MDC _ = new MDC(MDC_QUERY_ID, DatabaseUtils.getMaskedId(queryResultId));
                  final PreparedStatement stmt = params.getConnection().prepareStatement(config.getQuery())) {
                 stmt.setFetchSize(DatabaseUtils.sanitizeFetchSize(config.getFetchSize()));
                 stmt.setQueryTimeout(DatabaseUtils.sanitizeTimeout(config.getTimeoutInMs()));

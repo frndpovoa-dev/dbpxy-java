@@ -148,7 +148,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                             final String transactionId,
                             final DatabaseOperation ops,
                             final long currentTime) {
-                        return Duration.ofMillis(ops.getTimeoutInMs()).plus(Duration.ofSeconds(1)).toNanos();
+                        return Duration.ofMillis(ops.getTimeoutInMs()).toNanos();
                     }
 
                     @Override
@@ -170,7 +170,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                     }
                 })
                 .removalListener((final String ignored, final DatabaseOperation ops, final RemovalCause cause) -> {
-                    try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
+                    try (final MDC _ = new MDC(MDC_TRANSACTION_ID, ops.getTransaction())) {
                         log.debug("transaction cache eviction. cause: {}", cause);
                         ops.closeConnection();
                         Stream.of(
@@ -207,14 +207,15 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .setReadOnlyId(cryptoService.encrypt(readOnlyTransactionId))
                 .setReadWriteId(cryptoService.encrypt(readWriteTransactionId))
                 .setWriteOnlyId(cryptoService.encrypt(writeOnlyTransactionId))
-                .setStatus(Transaction.Status.ACTIVE)
+                .setStatus(Transaction.Status.NOT_STARTED)
                 .setNode(node)
                 .build();
 
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction)) {
             log.trace("beginTransaction() -> {}", transaction.getStatus());
 
             final DatabaseOperation ops = DatabaseOperationImpl.builder()
+                    .beginTransactionConfig(config)
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
@@ -226,60 +227,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             transactionCache.put(readWriteTransactionId, new DatabaseReadWriteOperation(ops));
             transactionCache.put(writeOnlyTransactionId, new DatabaseWriteOnlyOperation(ops));
 
-            final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
-                    connectionStringHash(config.getConnectionString()),
-                    ignored -> {
-                        final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
-                        poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs()));
-                        poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs() / 2));
-                        poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
-                        poolConfig.setBlockWhenExhausted(true);
-                        poolConfig.setMaxWait(Duration.ofMillis(dbpxyPoolProperties.getMaxWaitMs()));
-                        poolConfig.setMaxTotal(dbpxyPoolProperties.getMaxTotalSize());
-                        poolConfig.setMaxIdle(dbpxyPoolProperties.getMaxIdleSize());
-                        poolConfig.setMinIdle(dbpxyPoolProperties.getMinIdleSize());
-                        poolConfig.setTestOnCreate(true);
-                        poolConfig.setTestOnBorrow(true);
-                        poolConfig.setTestOnReturn(true);
-                        poolConfig.setTestWhileIdle(true);
-
-                        final Properties props = new Properties();
-                        config.getConnectionString().getPropsList()
-                                .forEach(prop -> props.put(prop.getName(), prop.getValue()));
-
-                        final BasePooledObjectFactory<ConnectionProxy> poolFactory = new BasePooledObjectFactory<>() {
-
-                            @Override
-                            public ConnectionProxy create() throws Exception {
-                                return new ConnectionProxy(DriverManager.getConnection(config.getConnectionString().getUrl(), props));
-                            }
-
-                            @Override
-                            public void destroyObject(final PooledObject<ConnectionProxy> p) throws Exception {
-                                p.getObject().getConnection().close();
-                            }
-
-                            @Override
-                            public boolean validateObject(final PooledObject<ConnectionProxy> p) {
-                                try {
-                                    return p.getObject().isValid(1);
-                                } catch (final SQLException e) {
-                                    return false;
-                                }
-                            }
-
-                            @Override
-                            public PooledObject<ConnectionProxy> wrap(final ConnectionProxy connection) {
-                                return new DefaultPooledObject<>(connection);
-                            }
-                        };
-
-                        return new GenericObjectPool<>(poolFactory, poolConfig);
-                    });
-
-            ops.openConnection(connectionPool, taskExecutor);
-
-            final OffsetDateTime creationTime = ops.beginTransaction(config);
+            final OffsetDateTime creationTime = OffsetDateTime.now();
 
             responseObserver.onNext(transaction.toBuilder()
                     .setCreation(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime))
@@ -298,7 +246,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void commitTransaction(
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction)) {
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -309,14 +257,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
+            final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction, false)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
-            if (ops.getTransaction().getStatus() != Transaction.Status.ACTIVE) {
+            if (!List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(ops.getTransaction().getStatus())) {
                 throw new IllegalStateException("Transaction is not active");
             }
 
-            final boolean committed = ops.commitTransaction();
+            final boolean committed = (ops.getTransaction().getStatus() == Transaction.Status.ACTIVE) && ops.commitTransaction();
 
             final Transaction result = ops.getTransaction().toBuilder()
                     .setStatus(committed ? Transaction.Status.COMMITTED : Transaction.Status.UNKNOWN)
@@ -352,7 +300,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void rollbackTransaction(
             final Transaction transaction,
             final StreamObserver<Transaction> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, transaction)) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction)) {
 
             if (shouldNotExecuteOnThisNode(transaction)) {
                 dbpxyClient.invoke(transaction.getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -363,14 +311,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction)
+            final DatabaseOperation ops = getDatabaseOperationByTransaction(transaction, false)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
 
-            if (ops.getTransaction().getStatus() != Transaction.Status.ACTIVE) {
+            if (!List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(ops.getTransaction().getStatus())) {
                 throw new IllegalStateException("Transaction is not active");
             }
 
-            final boolean rolledBack = ops.rollbackTransaction();
+            final boolean rolledBack = (ops.getTransaction().getStatus() == Transaction.Status.ACTIVE) && ops.rollbackTransaction();
 
             final Transaction result = ops.getTransaction().toBuilder()
                     .setStatus(rolledBack ? Transaction.Status.ROLLED_BACK : Transaction.Status.UNKNOWN)
@@ -406,7 +354,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void executeTx(
             final ExecuteTxConfig config,
             final StreamObserver<ExecuteResult> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -417,7 +365,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
+            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction(), true)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
             responseObserver.onNext(result);
@@ -444,7 +392,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void queryTx(
             final QueryTxConfig config,
             final StreamObserver<QueryResult> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -455,7 +403,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
+            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction(), true)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             QueryResult result = ops.query(config.getQueryConfig());
             // Pre-fetches the first page and allows for more pages to be fetched later.
@@ -489,7 +437,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void next(
             final NextConfig config,
             final StreamObserver<QueryResult> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -500,7 +448,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction())
+            final DatabaseOperation ops = getDatabaseOperationByTransaction(config.getTransaction(), false)
                     .orElseThrow(() -> new IllegalArgumentException("Transaction not found"));
             final QueryResult result = ops.next(config);
             responseObserver.onNext(result);
@@ -530,7 +478,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     public void closeResultSet(
             final NextConfig config,
             final StreamObserver<Empty> responseObserver) {
-        try (final MDC transactionIdMDC = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
+        try (final MDC _ = new MDC(MDC_TRANSACTION_ID, config.getTransaction())) {
 
             if (shouldNotExecuteOnThisNode(config.getTransaction())) {
                 dbpxyClient.invoke(config.getTransaction().getNode(), dbpxyGrpcProperties.getPort(), blockingStub -> {
@@ -541,7 +489,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 return;
             }
 
-            final Optional<DatabaseOperation> maybeOps = getDatabaseOperationByTransaction(config.getTransaction());
+            final Optional<DatabaseOperation> maybeOps = getDatabaseOperationByTransaction(config.getTransaction(), false);
             if (maybeOps.isPresent()) {
                 maybeOps.get().closeResultSet(config);
             }
@@ -561,6 +509,88 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         }
     }
 
+    @SuppressWarnings("java:S2445")
+    private DatabaseOperation activateTransaction(final DatabaseOperation ops) {
+        final DatabaseOperation delegate = ops.getDelegate();
+
+        if (delegate.getTransaction().getStatus() == Transaction.Status.NOT_STARTED) {
+            synchronized (delegate) {
+                if (delegate.getTransaction().getStatus() == Transaction.Status.NOT_STARTED) {
+
+                    try (final MDC _ = new MDC(MDC_TRANSACTION_ID, delegate.getTransaction())) {
+                        log.trace("activateTransaction() -> {}", delegate.getTransaction().getStatus());
+
+                        final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
+                                connectionStringHash(delegate.getBeginTransactionConfig().getConnectionString()),
+                                ignored -> {
+                                    final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
+                                    poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs()));
+                                    poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs() / 2));
+                                    poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
+                                    poolConfig.setBlockWhenExhausted(true);
+                                    poolConfig.setMaxWait(Duration.ofMillis(dbpxyPoolProperties.getMaxWaitMs()));
+                                    poolConfig.setMaxTotal(dbpxyPoolProperties.getMaxTotalSize());
+                                    poolConfig.setMaxIdle(dbpxyPoolProperties.getMaxIdleSize());
+                                    poolConfig.setMinIdle(dbpxyPoolProperties.getMinIdleSize());
+                                    poolConfig.setTestOnCreate(true);
+                                    poolConfig.setTestOnBorrow(true);
+                                    poolConfig.setTestOnReturn(true);
+                                    poolConfig.setTestWhileIdle(true);
+
+                                    final Properties props = new Properties();
+                                    delegate.getBeginTransactionConfig().getConnectionString().getPropsList()
+                                            .forEach(prop -> props.put(prop.getName(), prop.getValue()));
+
+                                    final BasePooledObjectFactory<ConnectionProxy> poolFactory = new BasePooledObjectFactory<>() {
+
+                                        @Override
+                                        public ConnectionProxy create() throws Exception {
+                                            return new ConnectionProxy(DriverManager.getConnection(delegate.getBeginTransactionConfig().getConnectionString().getUrl(), props));
+                                        }
+
+                                        @Override
+                                        public void destroyObject(final PooledObject<ConnectionProxy> p) throws Exception {
+                                            p.getObject().getConnection().close();
+                                        }
+
+                                        @Override
+                                        public boolean validateObject(final PooledObject<ConnectionProxy> p) {
+                                            try {
+                                                return p.getObject().isValid(1);
+                                            } catch (final SQLException e) {
+                                                return false;
+                                            }
+                                        }
+
+                                        @Override
+                                        public PooledObject<ConnectionProxy> wrap(final ConnectionProxy connection) {
+                                            return new DefaultPooledObject<>(connection);
+                                        }
+                                    };
+
+                                    return new GenericObjectPool<>(poolFactory, poolConfig);
+                                });
+
+                        delegate.openConnection(connectionPool, taskExecutor);
+                        delegate.beginTransaction(delegate.getBeginTransactionConfig().toBuilder()
+                                .setTimeoutInMs(transactionCache.policy().expireVariably()
+                                        .flatMap(policy -> policy.getExpiresAfter(cryptoService.decrypt(delegate.getTransaction().getId())))
+                                        .map(Duration::toMillis)
+                                        .orElseThrow()
+                                )
+                                .build());
+                        delegate.setTransaction(delegate.getTransaction().toBuilder()
+                                .setStatus(Transaction.Status.ACTIVE)
+                                .build());
+
+                        log.trace("activateTransaction() -> {}", delegate.getTransaction().getStatus());
+                    }
+                }
+            }
+        }
+        return ops;
+    }
+
     private boolean shouldNotExecuteOnThisNode(final Transaction transaction) {
         final boolean matches = Objects.equals(transaction.getNode(), node);
         if (!matches) {
@@ -569,10 +599,13 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         return !matches;
     }
 
-    private Optional<DatabaseOperation> getDatabaseOperationByTransaction(final Transaction transaction) {
+    private Optional<DatabaseOperation> getDatabaseOperationByTransaction(
+            final Transaction transaction,
+            final boolean shouldActivate) {
         return Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionCache::getIfPresent);
+                .map(transactionCache::getIfPresent)
+                .map(ops -> shouldActivate ? activateTransaction(ops) : ops);
     }
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {

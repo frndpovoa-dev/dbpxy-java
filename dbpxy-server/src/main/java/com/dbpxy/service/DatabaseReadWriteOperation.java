@@ -22,6 +22,7 @@ package com.dbpxy.service;
 
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.proto.BeginTransactionConfig;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Delegate;
 import org.apache.commons.pool2.ObjectPool;
@@ -31,8 +32,9 @@ import java.util.concurrent.ExecutorService;
 
 @RequiredArgsConstructor
 public class DatabaseReadWriteOperation implements DatabaseOperation {
+    @Getter
     @Delegate(types = DatabaseOperation.class)
-    private final DatabaseOperation ops;
+    private final DatabaseOperation delegate;
 
     @Override
     public void openConnection(
