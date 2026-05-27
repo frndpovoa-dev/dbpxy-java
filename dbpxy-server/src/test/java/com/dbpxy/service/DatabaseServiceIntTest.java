@@ -9,9 +9,9 @@ package com.dbpxy.service;
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -21,6 +21,7 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.BaseIntTest;
+import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.proto.*;
 import io.grpc.ChannelCredentials;
@@ -38,6 +39,7 @@ import java.util.AbstractMap;
 import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 import static com.google.common.util.concurrent.Uninterruptibles.sleepUninterruptibly;
@@ -57,7 +59,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
             .addCols(Value.newBuilder()
                     .setCode(ValueCode.STRING)
                     .setData(ValueString.newBuilder().setValue("dummy").build().toByteString())
-                    .setSize(2147483647)
+                    .setSize(255)
                     .setName("name")
                     .setLabel("name")
                     .build()
@@ -67,33 +69,37 @@ class DatabaseServiceIntTest extends BaseIntTest {
             .addCols(Value.newBuilder()
                     .setCode(ValueCode.STRING)
                     .setData(ValueString.newBuilder().setValue("foobar").build().toByteString())
-                    .setSize(2147483647)
+                    .setSize(255)
                     .setName("name")
                     .setLabel("name")
                     .build()
             )
             .build());
     private static final String SELECT_NAME_FROM_TEST_WHERE_ID =
-            " select name from test"+
-            " where id = ?;";
+            " select name from test" +
+                    " where id = ?;";
     private static final String INSERT_INTO_TEST_ID_NAME =
-            " insert into test ("+
-              " id,"+
-              " name"+
-            " ) values ("+
-              " ?,"+
-              " ?"+
-            " );";
+            " insert into test (" +
+                    " id," +
+                    " name" +
+                    " ) values (" +
+                    " ?," +
+                    " ?" +
+                    " );";
     private static final String CREATE_TABLE_TEST =
-            " create table test ("+
-              " id bigint primary key,"+
-              " name varchar"+
-            " );";
-    public static final String DROP_TABLE_IF_EXISTS_TEST =
+            " create table test (" +
+                    " id numeric(19,0) primary key," +
+                    " name varchar(255)" +
+                    " );";
+    public static final String DROP_TABLE_IF_EXISTS_TEST_ORACLE =
+            "drop table if exists test cascade constraints;";
+    public static final String DROP_TABLE_IF_EXISTS_TEST_POSTGRESQL =
             "drop table if exists test cascade;";
 
     @Autowired
     private DbpxyGrpcProperties dbpxyGrpcProperties;
+    @Autowired
+    private DbpxyDatasourceProperties dbpxyDatasourceProperties;
     private ManagedChannel channel;
     private DbpxyGrpc.DbpxyBlockingStub databaseProxyServiceClient;
 
@@ -109,13 +115,30 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(channel);
 
-        ddl(DROP_TABLE_IF_EXISTS_TEST);
+        ddl(dbpxyDatasourceProperties.getDatabase() == DbpxyDatasourceProperties.Database.ORACLE ? DROP_TABLE_IF_EXISTS_TEST_ORACLE : DROP_TABLE_IF_EXISTS_TEST_POSTGRESQL);
         ddl(CREATE_TABLE_TEST);
     }
 
     @AfterEach
     void tearDown() throws Exception {
         this.channel.shutdownNow();
+    }
+
+    @Test
+    void unlimitedLazyTransactions_thenSelect_thenRollback() {
+        List<Transaction> transactions = IntStream.range(0, 10_000).parallel()
+                .mapToObj(_ -> beginTransaction(100_000))
+                .collect(Collectors.toList());
+        assertThat(transactions)
+                .isNotNull()
+                .hasSize(10_000);
+        transactions.forEach(tx -> assertThat(tx)
+                .isNotNull()
+                .hasFieldOrPropertyWithValue("status", Transaction.Status.NOT_STARTED));
+        transactions.forEach(tx -> {
+            queryTx(tx, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
+            rollback(tx);
+        });
     }
 
     @Test
@@ -167,7 +190,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
 
     @Test
     void givenCreateTable_thenInsert_thenTransactionTimeout() {
-        Transaction tx1 = beginTransaction(1_000);
+        Transaction tx1 = beginTransaction(1_500);
         executeTx(tx1, 1, INSERT_INTO_TEST_ID_NAME, Stream.of(
                         new AbstractMap.SimpleEntry<>(ValueInt64.newBuilder().setValue(1).build(), ValueCode.INT64),
                         new AbstractMap.SimpleEntry<>(ValueString.newBuilder().setValue("dummy").build(), ValueCode.STRING)
@@ -206,6 +229,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .collect(Collectors.toList()))
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
+                .setActivation(BeginTransactionConfig.Activation.LAZY)
                 .setConnectionString(connectionString)
                 .setTimeoutInMs(timeoutInMs)
                 .build());
@@ -229,11 +253,16 @@ class DatabaseServiceIntTest extends BaseIntTest {
                         .collect(Collectors.toList()))
                 .build();
         Transaction transaction = databaseProxyServiceClient.beginTransaction(BeginTransactionConfig.newBuilder()
+                .setActivation(BeginTransactionConfig.Activation.EAGER)
                 .setConnectionString(connectionString)
                 .setTimeoutInMs(5_000)
                 .setAutoCommit(true)
                 .setReadOnly(false)
                 .build());
+        assertThat(transaction)
+                .isNotNull()
+                .hasFieldOrProperty("id")
+                .hasFieldOrPropertyWithValue("status", Transaction.Status.ACTIVE);
         ExecuteResult ddlResult = databaseProxyServiceClient.executeTx(ExecuteTxConfig.newBuilder()
                 .setTransaction(transaction)
                 .setExecuteConfig(ExecuteConfig.newBuilder()

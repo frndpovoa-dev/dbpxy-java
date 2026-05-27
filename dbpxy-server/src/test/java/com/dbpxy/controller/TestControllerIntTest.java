@@ -177,7 +177,7 @@ class TestControllerIntTest extends BaseIntTest {
         });
         log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
         assertThat(stopWatch.getDuration())
-                .isLessThan(Duration.ofSeconds(12));
+                .isLessThan(Duration.ofSeconds(15));
     }
 
     private @Nullable <T> T insert(

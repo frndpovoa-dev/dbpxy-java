@@ -94,8 +94,8 @@ public class ConnectionHolder {
         CONNECTIONS.get().stream()
                 .filter(connection -> !connection.isClosed())
                 .forEach(connection -> {
+                    MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(connection.getId()));
                     try {
-                        MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(connection.getId()));
                         log.error("dbpxy connection did not finish properly, closing it...");
                         connection.close();
                     } catch (final SQLException e) {

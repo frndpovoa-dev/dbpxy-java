@@ -23,7 +23,6 @@ package com.dbpxy.jdbc;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
-import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.TransactionUtils;
@@ -136,7 +135,7 @@ public class Connection implements java.sql.Connection {
             transactions.removeIf(transaction ->
                     !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
 
-            if (transactions.isEmpty() && maybeDbpxyDatasourceProperties.isPresent()) {
+            if (transactions.isEmpty() && maybeDbpxyDatasourceProperties.map(DbpxyDatasourceProperties::getUrl).isPresent()) {
                 final ConnectionString connectionString = ConnectionString.newBuilder()
                         .setUrl(maybeDbpxyDatasourceProperties.get().getUrl())
                         .addAllProps(maybeDbpxyDatasourceProperties.get().getProps().stream()
@@ -150,6 +149,9 @@ public class Connection implements java.sql.Connection {
                 try {
                     final Transaction transaction = blockingStub
                             .beginTransaction(BeginTransactionConfig.newBuilder()
+                                    .setActivation((maybeDbpxyDatasourceProperties.get().getActivation() == DbpxyDatasourceProperties.Activation.EAGER)
+                                            ? BeginTransactionConfig.Activation.EAGER
+                                            : BeginTransactionConfig.Activation.LAZY)
                                     .setConnectionString(connectionString)
                                     .setTimeoutInMs(transactionTimeoutInMs)
                                     .setAutoCommit(autoCommit)
@@ -343,8 +345,25 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public PgDatabaseMetaData getMetaData() {
-        return new PgDatabaseMetaData(this);
+    public DatabaseMetaData getMetaData() throws SQLException {
+        switch (maybeDbpxyDatasourceProperties
+                .map(DbpxyDatasourceProperties::getDatabase)
+                .orElse(DbpxyDatasourceProperties.Database.H2)) {
+            case H2:
+                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb", "sa", "")) {
+                    return conn.getMetaData();
+                }
+            case ORACLE:
+                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb;MODE=Oracle", "sa", "")) {
+                    return conn.getMetaData();
+                }
+            case POSTGRESQL:
+                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb;MODE=PostgreSQL", "sa", "")) {
+                    return conn.getMetaData();
+                }
+            default:
+                throw new SQLFeatureNotSupportedException();
+        }
     }
 
     @Override

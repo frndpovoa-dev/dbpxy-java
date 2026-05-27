@@ -36,7 +36,24 @@ import java.util.List;
 public class DbpxyDatasourceProperties {
     private String url;
     @Builder.Default
+    private Activation activation = Activation.LAZY;
+    @Builder.Default
+    private Database database = Database.H2;
+    @Builder.Default
     private List<Prop> props = new ArrayList<>(0);
+
+    public enum Activation {
+        EAGER,
+        LAZY,
+        ;
+    }
+
+    public enum Database {
+        H2,
+        ORACLE,
+        POSTGRESQL,
+        ;
+    }
 
     public static class Prop {
         @Getter

@@ -35,16 +35,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import static org.awaitility.Awaitility.await;
 
 @Slf4j
-@ActiveProfiles({"integration"})
+@ActiveProfiles({"integration", "postgresql"})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 @EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
-class RunApplicationTest {
+class RunPostgresqlTest {
     @RegisterExtension
     static PostgresExtension postgresql = new PostgresExtension(5432);
     @DynamicPropertySource
     static void configureProperties(
             final DynamicPropertyRegistry registry) {
         log.info("postgresql port: {}", postgresql.getMappedPort());
+        registry.add("POSTGRESQL_USER", postgresql::getUser);
+        registry.add("POSTGRESQL_PASSWORD", postgresql::getPassword);
+        registry.add("POSTGRESQL_DATABASE", postgresql::getDatabase);
         registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
     }
 

@@ -48,6 +48,6 @@ public class TestBo {
     @EqualsAndHashCode.Include
     private Double doubleValue;
     @EqualsAndHashCode.Include
-    @Column(name = "bigdecimalValue", columnDefinition = "numeric(53,25)")
+    @Column(name = "bigdecimalValue", columnDefinition = "numeric(38,25)")
     private BigDecimal bigdecimalValue;
 }

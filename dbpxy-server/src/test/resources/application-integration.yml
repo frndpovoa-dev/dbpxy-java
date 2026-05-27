@@ -5,13 +5,6 @@ app:
     hostname: localhost
     port: 9090
     show-sql: false
-  dbpxy-datasource:
-    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT}/postgres
-    props:
-      - name: user
-        value: postgres
-      - name: password
-        value: postgres
 
 server:
   port: 9091
@@ -27,4 +20,4 @@ spring:
 logging:
   level:
     root: INFO
-    com.dbpxy: DEBUG
+    com.dbpxy: INFO

@@ -1,0 +1,10 @@
+app:
+  dbpxy-datasource:
+    activation: LAZY
+    database: POSTGRESQL
+    url: jdbc:postgresql://localhost:${POSTGRESQL_PORT}/${POSTGRESQL_DATABASE}
+    props:
+      - name: user
+        value: ${POSTGRESQL_USER}
+      - name: password
+        value: ${POSTGRESQL_PASSWORD}

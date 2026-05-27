@@ -212,7 +212,6 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                 .build();
 
         try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction)) {
-            log.trace("beginTransaction() -> {}", transaction.getStatus());
 
             final DatabaseOperation ops = DatabaseOperationImpl.builder()
                     .beginTransactionConfig(config)
@@ -229,10 +228,18 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             final OffsetDateTime creationTime = OffsetDateTime.now();
 
-            responseObserver.onNext(transaction.toBuilder()
+            ops.setTransaction(ops.getTransaction().toBuilder()
                     .setCreation(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime))
                     .setExpiration(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(creationTime.plus(Duration.ofMillis(ops.getTimeoutInMs()))))
                     .build());
+
+            if (config.getActivation() == BeginTransactionConfig.Activation.EAGER) {
+                activateTransaction(ops);
+            }
+
+            log.trace("beginTransaction() -> {}", ops.getTransaction().getStatus());
+
+            responseObserver.onNext(ops.getTransaction());
             responseObserver.onCompleted();
         } catch (final Exception e) {
             responseObserver.onError(Status.UNKNOWN

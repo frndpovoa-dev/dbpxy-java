@@ -2,16 +2,16 @@ package com.dbpxy;
 
 /*-
  * #%L
- * dbpxy
+ * dbpxy-server
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- *
+ * 
  *      http://www.apache.org/licenses/LICENSE-2.0
- *
+ * 
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,26 +20,27 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.DbpxyDatasourceProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import java.time.Duration;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static org.awaitility.Awaitility.await;
+
 @Slf4j
-//@ActiveProfiles({"integration", "oracle"})
-@ActiveProfiles({"integration", "postgresql"})
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
-public abstract class BaseIntTest {
+@ActiveProfiles({"integration", "oracle"})
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@EnabledIfEnvironmentVariable(named = "running.from.local.environment", matches = ".+")
+class RunOracleTest {
     @RegisterExtension
-    static OracleExtension oracle = new OracleExtension();
-    @RegisterExtension
-    static PostgresExtension postgresql = new PostgresExtension();
+    static OracleExtension oracle = new OracleExtension(1521);
     @DynamicPropertySource
     static void configureProperties(
             final DynamicPropertyRegistry registry) {
@@ -48,13 +49,23 @@ public abstract class BaseIntTest {
         registry.add("ORACLE_PASSWORD", oracle::getPassword);
         registry.add("ORACLE_DATABASE", oracle::getDatabase);
         registry.add("ORACLE_PORT", oracle::getMappedPort);
-
-        log.info("postgresql port: {}", postgresql.getMappedPort());
-        registry.add("POSTGRESQL_USER", postgresql::getUser);
-        registry.add("POSTGRESQL_PASSWORD", postgresql::getPassword);
-        registry.add("POSTGRESQL_DATABASE", postgresql::getDatabase);
-        registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
     }
-    @Autowired
-    protected DbpxyDatasourceProperties dataSourceProperties;
+
+    final AtomicBoolean sigtermReceived = new AtomicBoolean(false);
+
+    @Test
+    void run() {
+        log.info("app is running in testing mode");
+
+        final Thread shutdownHook = new Thread(() -> {
+            sigtermReceived.set(true);
+        });
+
+        Runtime.getRuntime().addShutdownHook(shutdownHook);
+
+        await()
+                .pollInterval(Duration.ofSeconds(1))
+                .atMost(Duration.ofDays(1))
+                .untilTrue(sigtermReceived);
+    }
 }

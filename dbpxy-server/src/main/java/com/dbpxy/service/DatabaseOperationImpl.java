@@ -541,6 +541,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.NUMERIC: {
                     return float64Value(metadata, rs, i);
                 }
+                case 101: // BINARY_DOUBLE
                 case Types.DOUBLE: {
                     return float64Value(metadata, rs, i);
                 }
@@ -572,8 +573,8 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final int i) throws SQLException {
         return Value.newBuilder()
                 .setSize(metadata.getColumnDisplaySize(i))
-                .setName(metadata.getColumnName(i))
-                .setLabel(metadata.getColumnLabel(i));
+                .setName(metadata.getColumnName(i).toLowerCase())
+                .setLabel(metadata.getColumnLabel(i).toLowerCase());
     }
 
     private static @NonNull Value int64Value(

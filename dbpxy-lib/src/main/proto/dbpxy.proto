@@ -36,6 +36,12 @@ message BeginTransactionConfig {
   bool autoCommit = 2;
   bool readOnly = 3;
   ConnectionString connectionString = 4;
+  Activation activation = 5;
+
+  enum Activation {
+    EAGER = 0;
+    LAZY = 1;
+  }
 }
 
 message Transaction {

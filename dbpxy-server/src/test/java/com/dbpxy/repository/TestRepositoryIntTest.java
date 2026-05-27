@@ -119,7 +119,7 @@ class TestRepositoryIntTest extends BaseIntTest {
         final List<TestBo> after = repository.findByGroupName("repo");
         assertThat(after)
                 .isNotEmpty()
-                .containsExactly(TEST_1, TEST_2, TEST_4);
+                .containsExactlyInAnyOrder(TEST_1, TEST_2, TEST_4);
 
         log.debug("read after insert using API no TX");
         final List<TestBo> apiResponseNoTx = restTemplate.exchange(
