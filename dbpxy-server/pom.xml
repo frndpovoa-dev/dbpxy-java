@@ -76,11 +76,6 @@
             <artifactId>protobuf-java-util</artifactId>
         </dependency>
         <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <version>${com.h2database_h2.version}</version>
-        </dependency>
-        <dependency>
             <groupId>com.oracle.database.jdbc</groupId>
             <artifactId>ojdbc11</artifactId>
             <version>${com.oracle.database.jdbc_ojdbc11.version}</version>
@@ -236,14 +231,7 @@
                     <image>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
-                            <BP_NATIVE_IMAGE>true</BP_NATIVE_IMAGE>
-                            <BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
-                                -H:+SharedArenaSupport
-                                -H:IncludeResources=certs/.*
-                                --initialize-at-build-time=ch.qos.logback
-                                --initialize-at-build-time=org.slf4j.helpers.SubstituteLoggerFactory
-                                --initialize-at-run-time=io.netty
-                            </BP_NATIVE_IMAGE_BUILD_ARGUMENTS>
+                            <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
                         </env>
                     </image>
                     <excludes>

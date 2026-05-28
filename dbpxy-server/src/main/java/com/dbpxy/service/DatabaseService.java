@@ -42,6 +42,7 @@ import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.lang3.Strings;
 import org.apache.commons.pool2.BasePooledObjectFactory;
 import org.apache.commons.pool2.ObjectPool;
 import org.apache.commons.pool2.PooledObject;
@@ -106,15 +107,15 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         this.node = node;
     }
 
-    static String connectionStringHash(final ConnectionString connectionString) {
-        final List<ConnectionStringProp> sortedPropList = new ArrayList<>(connectionString.getPropsList());
-        sortedPropList.sort(Comparator.comparing(ConnectionStringProp::getName));
+    static String connectionStringHash(final DatabaseOperationProp.ConnectionString connectionString) {
+        final List<DatabaseOperationProp.ConnectionStringProp> sortedPropList = new ArrayList<>(connectionString.getProps());
+        sortedPropList.sort(Comparator.comparing(DatabaseOperationProp.ConnectionStringProp::getName));
 
         final Hasher hasher = Hashing.sha256().newHasher()
                 .putString(RANDOM_PASSPHRASE, StandardCharsets.UTF_8)
                 .putChar('&');
 
-        for (final ConnectionStringProp prop : sortedPropList) {
+        for (final DatabaseOperationProp.ConnectionStringProp prop : sortedPropList) {
             hasher.putString(prop.getName(), StandardCharsets.UTF_8)
                     .putChar('=')
                     .putString(prop.getValue(), StandardCharsets.UTF_8)
@@ -214,7 +215,24 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
         try (final MDC _ = new MDC(MDC_TRANSACTION_ID, transaction)) {
 
             final DatabaseOperation ops = DatabaseOperationImpl.builder()
-                    .beginTransactionConfig(config)
+                    .databaseOperationProp(DatabaseOperationProp.builder()
+                            .timeoutInMs(config.getTimeoutInMs())
+                            .autoCommit(config.getAutoCommit())
+                            .readOnly(config.getReadOnly())
+                            .connectionString(DatabaseOperationProp.ConnectionString.builder()
+                                    .url(config.getConnectionString().getUrl().toCharArray())
+                                    .props(config.getConnectionString().getPropsList().stream()
+                                            .map(prop -> DatabaseOperationProp.ConnectionStringProp.builder()
+                                                    .name(prop.getName().toCharArray())
+                                                    .value(prop.getValue().toCharArray())
+                                                    .build())
+                                            .toList())
+                                    .build())
+                            .activation(Stream.of(DatabaseOperationProp.Activation.values())
+                                    .filter(e -> Strings.CS.equals(e.name(), config.getActivation().name()))
+                                    .findFirst()
+                                    .orElse(DatabaseOperationProp.Activation.EAGER))
+                            .build())
                     .cryptoService(cryptoService)
                     .uniqueIdGenerator(uniqueIdGenerator)
                     .transaction(transaction)
@@ -528,7 +546,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                         log.trace("activateTransaction() -> {}", delegate.getTransaction().getStatus());
 
                         final ObjectPool<ConnectionProxy> connectionPool = connectionPoolCache.get(
-                                connectionStringHash(delegate.getBeginTransactionConfig().getConnectionString()),
+                                connectionStringHash(delegate.getDatabaseOperationProp().getConnectionString()),
                                 ignored -> {
                                     final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
                                     poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs()));
@@ -545,14 +563,14 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                                     poolConfig.setTestWhileIdle(true);
 
                                     final Properties props = new Properties();
-                                    delegate.getBeginTransactionConfig().getConnectionString().getPropsList()
+                                    delegate.getDatabaseOperationProp().getConnectionString().getProps()
                                             .forEach(prop -> props.put(prop.getName(), prop.getValue()));
 
                                     final BasePooledObjectFactory<ConnectionProxy> poolFactory = new BasePooledObjectFactory<>() {
 
                                         @Override
                                         public ConnectionProxy create() throws Exception {
-                                            return new ConnectionProxy(DriverManager.getConnection(delegate.getBeginTransactionConfig().getConnectionString().getUrl(), props));
+                                            return new ConnectionProxy(DriverManager.getConnection(delegate.getDatabaseOperationProp().getConnectionString().getUrl(), props));
                                         }
 
                                         @Override
@@ -579,8 +597,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                                 });
 
                         delegate.openConnection(connectionPool, taskExecutor);
-                        delegate.beginTransaction(delegate.getBeginTransactionConfig().toBuilder()
-                                .setTimeoutInMs(transactionCache.policy().expireVariably()
+                        delegate.beginTransaction(delegate.getDatabaseOperationProp().toBuilder()
+                                .timeoutInMs(transactionCache.policy().expireVariably()
                                         .flatMap(policy -> policy.getExpiresAfter(cryptoService.decrypt(delegate.getTransaction().getId())))
                                         .map(Duration::toMillis)
                                         .orElseThrow()

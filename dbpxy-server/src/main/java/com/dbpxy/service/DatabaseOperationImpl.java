@@ -76,7 +76,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
     }
 
     @Getter
-    private final BeginTransactionConfig beginTransactionConfig;
+    private final DatabaseOperationProp databaseOperationProp;
     private final CryptoService cryptoService;
     private final UniqueIdGenerator uniqueIdGenerator;
     @Getter
@@ -169,20 +169,21 @@ class DatabaseOperationImpl implements DatabaseOperation {
         }
     }
 
-    public OffsetDateTime beginTransaction(final BeginTransactionConfig config) {
+    @Override
+    public OffsetDateTime beginTransaction(final DatabaseOperationProp databaseOperationProp) {
         final CompletableFuture<OffsetDateTime> future = new CompletableFuture<>();
 
         final boolean accepted = taskQueue.add(params -> {
             try {
                 log.debug("beginTransaction() -> autoCommit: {}, readOnly: {}, transactionTimeout: {}ms",
-                        config.getAutoCommit(),
-                        config.getReadOnly(),
-                        config.getTimeoutInMs());
+                        databaseOperationProp.isAutoCommit(),
+                        databaseOperationProp.isReadOnly(),
+                        databaseOperationProp.getTimeoutInMs());
 
-                params.getConnection().setAutoCommit(config.getAutoCommit());
-                params.getConnection().setReadOnly(config.getReadOnly());
+                params.getConnection().setAutoCommit(databaseOperationProp.isAutoCommit());
+                params.getConnection().setReadOnly(databaseOperationProp.isReadOnly());
 
-                final OffsetDateTime rollbackTaskStartTime = params.setRollbackTask(config.getTimeoutInMs(), () -> {
+                final OffsetDateTime rollbackTaskStartTime = params.setRollbackTask(databaseOperationProp.getTimeoutInMs(), () -> {
                     if (params.shouldConnectionContinue()) {
                         taskQueue.add(rollbackParams -> {
                             try {

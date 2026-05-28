@@ -21,7 +21,6 @@ package com.dbpxy.service;
  */
 
 import com.dbpxy.jdbc.ConnectionProxy;
-import com.dbpxy.proto.BeginTransactionConfig;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.Delegate;
@@ -50,7 +49,7 @@ public class DatabaseReadWriteOperation implements DatabaseOperation {
 
     @Override
     public OffsetDateTime beginTransaction(
-            final BeginTransactionConfig config) {
+            final DatabaseOperationProp databaseOperationProp) {
         return OffsetDateTime.now();
     }
 

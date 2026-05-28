@@ -22,7 +22,6 @@ package com.dbpxy.service;
 
 import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.jdbc.ConnectionProxy;
-import com.dbpxy.proto.BeginTransactionConfig;
 import com.dbpxy.proto.NextConfig;
 import com.dbpxy.proto.QueryConfig;
 import com.dbpxy.proto.QueryResult;
@@ -54,7 +53,7 @@ public class DatabaseWriteOnlyOperation implements DatabaseOperation {
 
     @Override
     public OffsetDateTime beginTransaction(
-            final BeginTransactionConfig config) {
+            final DatabaseOperationProp databaseOperationProp) {
         return OffsetDateTime.now();
     }
 

@@ -25,7 +25,7 @@ steps:
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: [ 'clean', 'compile', 'spring-boot:process-aot', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+    args: [ 'clean', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
   - id: 'build-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash

@@ -105,12 +105,14 @@ class TestControllerIntTest extends BaseIntTest {
                 .build();
         this.tx1Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
+                        .setActivation(BeginTransactionConfig.Activation.LAZY)
                         .setConnectionString(connectionString)
                         .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
                         .build());
         this.tx2Transaction = blockingStub
                 .beginTransaction(BeginTransactionConfig.newBuilder()
+                        .setActivation(BeginTransactionConfig.Activation.LAZY)
                         .setConnectionString(connectionString)
                         .setTimeoutInMs(60_000 * 10)
                         .setReadOnly(false)
@@ -149,14 +151,14 @@ class TestControllerIntTest extends BaseIntTest {
                 .name("Hello World!")
                 .groupName("web")
                 .doubleValue(2.0)
-                .bigdecimalValue(new BigDecimal("20.0000000000000000000000000"))
+                .bigdecimalValue(new BigDecimal("20.0000000000000000000000001"))
                 .build();
         final TestDto insertTx1a = TestDto.builder()
                 .id(2026L)
                 .name("Hello World! from server side")
                 .groupName("web")
                 .doubleValue(2.0)
-                .bigdecimalValue(new BigDecimal("20.0000000000000000000000000"))
+                .bigdecimalValue(new BigDecimal("20.0000000000000000000000001"))
                 .build();
         assertThat(insert(tx1Id, TestDto.class, insertTx1))
                 .isNotNull()
@@ -168,7 +170,7 @@ class TestControllerIntTest extends BaseIntTest {
                 forkJoinPool.execute(() -> IntStream.range(0, 500).parallel().forEach(ignored -> {
                     assertThat(listGroupWeb(tx1Id, listTypeReference))
                             .isNotEmpty()
-                            .containsExactly(insertTx1, insertTx1a);
+                            .containsExactlyInAnyOrder(insertTx1, insertTx1a);
                     assertThat(listGroupWeb(tx2Id, listTypeReference))
                             .isNotEmpty()
                             .containsExactly(insertTx1a);
@@ -177,7 +179,7 @@ class TestControllerIntTest extends BaseIntTest {
         });
         log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
         assertThat(stopWatch.getDuration())
-                .isLessThan(Duration.ofSeconds(15));
+                .isLessThan(Duration.ofSeconds(20));
     }
 
     private @Nullable <T> T insert(

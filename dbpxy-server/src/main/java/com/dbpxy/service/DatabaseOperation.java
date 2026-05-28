@@ -35,7 +35,7 @@ public interface DatabaseOperation {
 
     long getTimeoutInMs();
 
-    BeginTransactionConfig getBeginTransactionConfig();
+    DatabaseOperationProp getDatabaseOperationProp();
 
     Transaction getTransaction();
 
@@ -47,7 +47,7 @@ public interface DatabaseOperation {
 
     void closeConnection();
 
-    OffsetDateTime beginTransaction(BeginTransactionConfig config);
+    OffsetDateTime beginTransaction(final DatabaseOperationProp databaseOperationProp);
 
     ExecuteResult execute(ExecuteConfig config) throws UnsupportedInReadOnlyModeException;
 

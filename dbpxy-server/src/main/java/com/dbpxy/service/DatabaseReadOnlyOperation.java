@@ -22,7 +22,6 @@ package com.dbpxy.service;
 
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.jdbc.ConnectionProxy;
-import com.dbpxy.proto.BeginTransactionConfig;
 import com.dbpxy.proto.ExecuteConfig;
 import com.dbpxy.proto.ExecuteResult;
 import lombok.Getter;
@@ -53,7 +52,7 @@ public class DatabaseReadOnlyOperation implements DatabaseOperation {
 
     @Override
     public OffsetDateTime beginTransaction(
-            final BeginTransactionConfig config) {
+            final DatabaseOperationProp databaseOperationProp) {
         return OffsetDateTime.now();
     }
 

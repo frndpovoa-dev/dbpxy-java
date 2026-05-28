@@ -34,13 +34,21 @@ import java.util.List;
 @AllArgsConstructor
 @ConfigurationProperties(prefix = "app.dbpxy-datasource")
 public class DbpxyDatasourceProperties {
-    private String url;
+    private char[] url;
     @Builder.Default
     private Activation activation = Activation.LAZY;
     @Builder.Default
     private Database database = Database.H2;
     @Builder.Default
     private List<Prop> props = new ArrayList<>(0);
+
+    public void setUrl(@Nullable final String url) {
+        this.url = (url == null) ? null : url.toCharArray();
+    }
+
+    public @Nullable String getUrl() {
+        return (url == null) ? null : String.valueOf(url);
+    }
 
     public enum Activation {
         EAGER,
@@ -56,10 +64,16 @@ public class DbpxyDatasourceProperties {
     }
 
     public static class Prop {
-        @Getter
-        @Setter
-        private String name;
+        private char[] name;
         private char[] value;
+
+        public void setName(@Nullable final String name) {
+            this.name = (name == null) ? null : name.toCharArray();
+        }
+
+        public @Nullable String getName() {
+            return (name == null) ? null : String.valueOf(name);
+        }
 
         public void setValue(@Nullable final String value) {
             this.value = (value == null) ? null : value.toCharArray();

@@ -56,6 +56,27 @@ public class Connection implements java.sql.Connection {
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
+    private static final java.sql.DatabaseMetaData H2_METADATA;
+    private static final java.sql.DatabaseMetaData ORACLE_METADATA;
+    private static final java.sql.DatabaseMetaData POSTGRESQL_METADATA;
+
+    static {
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:h2", "sa", "")) {
+            H2_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:oracle;MODE=Oracle", "sa", "")) {
+            ORACLE_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:postgresql;MODE=PostgreSQL", "sa", "")) {
+            POSTGRESQL_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Getter
     @EqualsAndHashCode.Include
@@ -350,17 +371,11 @@ public class Connection implements java.sql.Connection {
                 .map(DbpxyDatasourceProperties::getDatabase)
                 .orElse(DbpxyDatasourceProperties.Database.H2)) {
             case H2:
-                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb", "sa", "")) {
-                    return conn.getMetaData();
-                }
+                return H2_METADATA;
             case ORACLE:
-                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb;MODE=Oracle", "sa", "")) {
-                    return conn.getMetaData();
-                }
+                return ORACLE_METADATA;
             case POSTGRESQL:
-                try (java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:testdb;MODE=PostgreSQL", "sa", "")) {
-                    return conn.getMetaData();
-                }
+                return POSTGRESQL_METADATA;
             default:
                 throw new SQLFeatureNotSupportedException();
         }
