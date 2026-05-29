@@ -13,8 +13,8 @@
         <server.java.version>25</server.java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.google.cloud_libraries-bom.version>26.80.0</com.google.cloud_libraries-bom.version>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.28.3</com.google.cloud.sql_postgres-socket-factory.version>
+        <com.google.cloud_libraries-bom.version>26.83.0</com.google.cloud_libraries-bom.version>
+        <com.google.cloud.sql_postgres-socket-factory.version>1.28.4</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.4</com.google.protobuf_protoc.version>
         <com.h2database_h2.version>2.4.240</com.h2database_h2.version>
         <com.oracle.database.jdbc_ojdbc11.version>23.26.2.0.0</com.oracle.database.jdbc_ojdbc11.version>
