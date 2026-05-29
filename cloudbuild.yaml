@@ -26,6 +26,16 @@ steps:
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
     args: [ 'clean', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+  - id: 'prepare-to-deploy-maven-artifacts'
+    name: gcr.io/cloud-builders/mvn
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        mkdir -pv dbpxy-lib/target/gcp-deploy
+        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}.jar
+        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}-sources.jar
+        cp dbpxy-lib/.flattened-pom.xml dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}.pom
   - id: 'build-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -39,12 +49,7 @@ steps:
 artifacts:
   mavenArtifacts:
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
-      path: dbpxy-lib/.flattened-pom.xml
-      groupId: com.dbpxy
-      artifactId: dbpxy-lib
-      version: ${_VERSION}
-    - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
-      path: dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar
+      deployFolder: dbpxy-lib/target/gcp-deploy
       groupId: com.dbpxy
       artifactId: dbpxy-lib
       version: ${_VERSION}
