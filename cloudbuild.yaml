@@ -39,12 +39,12 @@ steps:
 artifacts:
   mavenArtifacts:
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
-      path: dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar
+      path: dbpxy-lib/.flattened-pom.xml
       groupId: com.dbpxy
       artifactId: dbpxy-lib
       version: ${_VERSION}
     - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
-      path: dbpxy-lib/.flattened-pom.xml
+      path: dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar
       groupId: com.dbpxy
       artifactId: dbpxy-lib
       version: ${_VERSION}
