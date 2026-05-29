@@ -32,10 +32,12 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -pv dbpxy-lib/target/gcp-deploy
-        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}.jar
-        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}-sources.jar
-        cp dbpxy-lib/.flattened-pom.xml dbpxy-lib/target/gcp-deploy/dbpxy-lib-${_VERSION}.pom
+        mkdir -pv $${DBPXY_LIB_DIR}
+        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.jar
+        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar
+        cp dbpxy-lib/.flattened-pom.xml $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom
+    env:
+      - DBPXY_LIB_DIR=dbpxy-lib/target/gcp-deploy/com/dbpxy/dbpxy-lib/${_VERSION}
   - id: 'build-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
