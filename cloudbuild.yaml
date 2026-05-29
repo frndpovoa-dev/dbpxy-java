@@ -43,6 +43,11 @@ artifacts:
       groupId: com.dbpxy
       artifactId: dbpxy-lib
       version: ${_VERSION}
+    - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
+      path: dbpxy-lib/.flattened-pom.xml
+      groupId: com.dbpxy
+      artifactId: dbpxy-lib
+      version: ${_VERSION}
 images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
