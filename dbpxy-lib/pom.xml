@@ -11,9 +11,7 @@
     <artifactId>dbpxy-lib</artifactId>
     <packaging>jar</packaging>
     <properties>
-        <spring-boot.aot.skip>true</spring-boot.aot.skip>
         <spring-boot.build-image.skip>true</spring-boot.build-image.skip>
-        <spring-boot.repackage.skip>true</spring-boot.repackage.skip>
     </properties>
     <dependencyManagement>
         <dependencies>
