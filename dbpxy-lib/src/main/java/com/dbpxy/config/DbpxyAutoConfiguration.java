@@ -24,7 +24,9 @@ package com.dbpxy.config;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.jdbc.DataSource;
 import com.dbpxy.springframework.TransactionExecutionListener;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.cfg.SchemaToolingSettings;
 import org.springframework.beans.factory.annotation.Value;
@@ -41,6 +43,7 @@ import org.springframework.boot.transaction.autoconfigure.TransactionAutoConfigu
 import org.springframework.boot.transaction.autoconfigure.TransactionManagerCustomizationAutoConfiguration;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
@@ -50,7 +53,9 @@ import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
+@Slf4j
 @AutoConfiguration(
         before = {
                 DataSourceAutoConfiguration.class,
@@ -66,10 +71,6 @@ import java.util.Map;
         @ConditionalOnProperty(prefix = "app.dbpxy", name = "hostname"),
         @ConditionalOnProperty(prefix = "app.dbpxy", name = "port")
 })
-@EnableConfigurationProperties({
-        DbpxyProperties.class,
-        DbpxyDatasourceProperties.class
-})
 public class DbpxyAutoConfiguration {
     @Bean
     public ConnectionHolder connectionHolder() {
@@ -80,12 +81,12 @@ public class DbpxyAutoConfiguration {
     public DataSource dataSource(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
-            final DbpxyDatasourceProperties dbpxyDatasourceProperties,
+            final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String dbpxyCertPath
     ) {
         return new DataSource(
                 connectionHolder,
-                dbpxyDatasourceProperties,
+                maybeDbpxyDatasourceProperties,
                 dbpxyProperties,
                 dbpxyCertPath);
     }
@@ -101,12 +102,16 @@ public class DbpxyAutoConfiguration {
     public LocalContainerEntityManagerFactoryBean entityManagerFactory(
             final DataSource dataSource,
             final ApplicationContext context,
+            final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             @Value("${app.dbpxy.ddl-auto:none}") final String ddlAuto,
             @Value("${app.dbpxy.show-sql:false}") final boolean showSql,
             @Value("${app.dbpxy.format-sql:false}") final boolean formatSql
     ) {
         final HibernateJpaVendorAdapter vendorAdapter = new HibernateJpaVendorAdapter();
-        vendorAdapter.setDatabase(Database.POSTGRESQL);
+        vendorAdapter.setDatabase(Database.valueOf(maybeDbpxyDatasourceProperties
+                .map(DbpxyDatasourceProperties::getDatabase)
+                .orElse(DbpxyDatasourceProperties.Database.H2)
+                .name()));
 
         final Map<String, Object> jpaProperties = new HashMap<>();
         jpaProperties.put(SchemaToolingSettings.HBM2DDL_AUTO, ddlAuto);
@@ -138,6 +143,32 @@ public class DbpxyAutoConfiguration {
                         .build()));
         transactionManager.afterPropertiesSet();
         return transactionManager;
+    }
+
+    @Bean
+    public boolean dbpxyLazyConfiguration(
+            final ConnectionHolder connectionHolder,
+            final EntityManager entityManager) {
+        connectionHolder.setEntityManager(entityManager);
+        log.info("dbpxy lazy initialization complete");
+        return true;
+    }
+
+    @Configuration
+    @ConditionalOnProperty(prefix = "app.dbpxy-datasource", name = "url")
+    @EnableConfigurationProperties({
+            DbpxyProperties.class,
+            DbpxyDatasourceProperties.class,
+    })
+    public static class DbpxyServerAndDatasourceConfiguration {
+    }
+
+    @Configuration
+    @ConditionalOnMissingBean(DbpxyServerAndDatasourceConfiguration.class)
+    @EnableConfigurationProperties({
+            DbpxyProperties.class,
+    })
+    public static class DbpxyServerOnlyConfiguration {
     }
 }
 

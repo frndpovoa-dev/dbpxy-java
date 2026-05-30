@@ -21,8 +21,12 @@ package com.dbpxy.jdbc;
  */
 
 import com.dbpxy.exception.PreemptiveTimeoutException;
+import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
@@ -33,6 +37,7 @@ import java.sql.SQLWarning;
 import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -57,7 +62,7 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
-            final Transaction transaction = connection.getTransaction(true);
+            final Transaction transaction = connection.getOrCreateTransaction(true);
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
@@ -77,6 +82,12 @@ public class Statement implements java.sql.Statement {
             MDC.put(MDC_QUERY_ID, DatabaseUtils.getMaskedId(result.getId()));
             log.debug("query executed");
             return resultSet;
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
+            throw new SQLException(e);
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
@@ -92,7 +103,7 @@ public class Statement implements java.sql.Statement {
             final List<Value> params
     ) throws SQLException {
         try {
-            final Transaction transaction = connection.getTransaction(true);
+            final Transaction transaction = connection.getOrCreateTransaction(true);
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
@@ -105,6 +116,12 @@ public class Statement implements java.sql.Statement {
                             .build())
                     .build());
             return result.getRowsAffected();
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "READ_ONLY_MODE")) {
+                throw new UnsupportedInReadOnlyModeException();
+            }
+            throw new SQLException(e);
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
@@ -113,6 +130,11 @@ public class Statement implements java.sql.Statement {
     @Override
     public void close() throws SQLException {
         try {
+            final Transaction transaction = connection.getOrCreateTransaction(false);
+            if (transaction == null) {
+                log.debug("close statement skipped: no transaction");
+                return;
+            }
             connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
         } catch (final RuntimeException e) {
             throw new SQLException(e);

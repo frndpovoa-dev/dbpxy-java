@@ -20,8 +20,11 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
 import com.google.protobuf.InvalidProtocolBufferException;
+import io.grpc.Status;
+import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import org.slf4j.MDC;
 
@@ -36,6 +39,7 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -70,25 +74,25 @@ public class ResultSet implements java.sql.ResultSet {
         final Value value = getCurrentRowColValue(col);
         try {
             switch (value.getCode()) {
-                case INT32 -> {
+                case INT32: {
                     return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
                 }
-                case INT64 -> {
+                case INT64: {
                     return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
                 }
-                case FLOAT64 -> {
+                case FLOAT64: {
                     return ValueFloat64.parseFrom(value.getData()).getValue();
                 }
-                case BOOL -> {
+                case BOOL: {
                     return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
                 }
-                case STRING -> {
+                case STRING: {
                     return ValueString.parseFrom(value.getData()).getValue();
                 }
-                case TIME -> {
+                case TIME: {
                     return ValueTime.parseFrom(value.getData()).getValue();
                 }
-                default -> {
+                default: {
                     return null;
                 }
             }
@@ -108,7 +112,7 @@ public class ResultSet implements java.sql.ResultSet {
             }
 
             if (queryResult.getHasNext()) {
-                final Transaction transaction = connection.getTransaction(false);
+                final Transaction transaction = connection.getOrCreateTransaction(false);
                 if (transaction != null) {
                     this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
                             .setQueryResultId(queryResult.getId())
@@ -125,6 +129,12 @@ public class ResultSet implements java.sql.ResultSet {
 
             last = true;
             return false;
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
+            throw new SQLException(e);
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         }
@@ -134,14 +144,22 @@ public class ResultSet implements java.sql.ResultSet {
     public void close() throws SQLException {
         log.trace("public void close() throws SQLException {");
         try {
-            final Transaction transaction = connection.getTransaction(false);
-            if (transaction != null) {
-                connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
-                        .setQueryResultId(queryResult.getId())
-                        .setTransaction(transaction)
-                        .build());
+            final Transaction transaction = connection.getOrCreateTransaction(false);
+            if (transaction == null) {
+                log.debug("close resultset skipped: no transaction");
+                return;
             }
-            log.debug("query closed");
+            connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
+                    .setQueryResultId(queryResult.getId())
+                    .setTransaction(transaction)
+                    .build());
+            log.debug("resultset closed");
+        } catch (final StatusRuntimeException e) {
+            if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
+                    && Objects.equals(e.getStatus().getDescription(), "WRITE_ONLY_MODE")) {
+                throw new UnsupportedInWriteOnlyModeException();
+            }
+            throw new SQLException(e);
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         } finally {

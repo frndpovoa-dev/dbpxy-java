@@ -50,7 +50,7 @@ public class TransactionUtils {
     private static final String EQUAL_CHAR = "=";
 
     private enum Permission {
-        FULL, READ_ONLY, READ_WRITE;
+        FULL, READ_ONLY, READ_WRITE, WRITE_ONLY;
     }
 
     public static @NonNull String format(@NonNull final Transaction transaction) throws URISyntaxException {
@@ -65,14 +65,26 @@ public class TransactionUtils {
         return format(transaction, Permission.READ_WRITE);
     }
 
+    public static @NonNull String formatToWriteOnly(@NonNull final Transaction transaction) throws URISyntaxException {
+        return format(transaction, Permission.WRITE_ONLY);
+    }
+
     private static @NonNull String format(
             @NonNull final Transaction transaction,
             @NonNull final Permission permission) throws URISyntaxException {
         String id;
         switch (permission) {
-            case FULL -> id = transaction.getId();
-            case READ_WRITE -> id = transaction.getReadWriteId();
-            default -> id = transaction.getReadOnlyId();
+            case FULL:
+                id = transaction.getId();
+                break;
+            case READ_WRITE:
+                id = transaction.getReadWriteId();
+                break;
+            case WRITE_ONLY:
+                id = transaction.getWriteOnlyId();
+                break;
+            default:
+                id = transaction.getReadOnlyId();
         }
         final String query = Map.of(
                         CREATION_PARAM, transaction.getCreation(),

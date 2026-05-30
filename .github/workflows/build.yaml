@@ -49,7 +49,7 @@ jobs:
             snyk-token:projects/${{secrets.GCP_PROJECT_ID}}/locations/${{secrets.GCP_REGION}}/secrets/SNYK_TOKEN
 
       - name: Set app version
-        run: echo "APP_VERSION=$(cat version.txt | tr -d \"[:space:]\")" >> $GITHUB_ENV
+        run: echo "APP_VERSION=$(cat version.txt | tr -d \"[:space:]\" | sed 's/#.*//')" >> $GITHUB_ENV
 
       # begin scanning for vulnerabilities
       - name: List dependencies
@@ -63,12 +63,7 @@ jobs:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
       # end
 
-      # begin compilation
-      - name: Compile
-        run: mvn clean install -q -Dmaven.test.skip=true -Drevision=$APP_VERSION
-      # end
-
-      # begin testing
+      # preparing certificates
       - name: Generate testing SSL key/cert files
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
@@ -76,13 +71,22 @@ jobs:
             -out $CERTS_DIR/cert.pem \
             -config $CERTS_DIR/localhost.cnf-template
         env:
-          CERTS_DIR: dbpxy/src/main/resources/certs
-      - name: Test
-        run: mvn test -Dmaven.test.skip=false -Drevision=$APP_VERSION
+          CERTS_DIR: dbpxy-server/src/main/resources/certs
+
+      # begin testing
+      - name: Compile client libraries using JDK 11
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dclient.java.version=11
+      - name: Compile all using default JDK
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION
       # end
 
       - name: Clean up
-        run: mvn clean
+        run: |
+          mvn clean
+          rm $CERTS_DIR/key.pem
+          rm $CERTS_DIR/cert.pem
+        env:
+          CERTS_DIR: dbpxy-server/src/main/resources/certs
 
       - name: Setup gcloud
         uses: google-github-actions/setup-gcloud@v3

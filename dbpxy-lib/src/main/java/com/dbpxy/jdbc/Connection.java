@@ -23,7 +23,6 @@ package com.dbpxy.jdbc;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
-import com.dbpxy.postgresql.PgDatabaseMetaData;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.TransactionUtils;
@@ -49,20 +48,42 @@ import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.Executor;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
-    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.ACTIVE, Transaction.Status.JOINED);
+    private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
+    private static final java.sql.DatabaseMetaData H2_METADATA;
+    private static final java.sql.DatabaseMetaData ORACLE_METADATA;
+    private static final java.sql.DatabaseMetaData POSTGRESQL_METADATA;
+
+    static {
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:h2", "sa", "")) {
+            H2_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:oracle;MODE=Oracle", "sa", "")) {
+            ORACLE_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:postgresql;MODE=PostgreSQL", "sa", "")) {
+            POSTGRESQL_METADATA = conn.getMetaData();
+        } catch (final SQLException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     @Getter
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString().replace("-", "");
     private final ConnectionHolder connectionHolder;
     private final DbpxyProperties dbpxyProperties;
-    private final DbpxyDatasourceProperties dbpxyDatasourceProperties;
+    private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
     private final String dbpxyCertPath;
     private final Deque<Transaction> transactions = new ArrayDeque<>(5);
 
@@ -98,7 +119,7 @@ public class Connection implements java.sql.Connection {
 
     public String getTransactionId() throws SQLException {
         try {
-            return TransactionUtils.format(getTransaction(true));
+            return TransactionUtils.format(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
@@ -106,7 +127,7 @@ public class Connection implements java.sql.Connection {
 
     public String getReadOnlyTransactionId() throws SQLException {
         try {
-            return TransactionUtils.formatToReadOnly(getTransaction(true));
+            return TransactionUtils.formatToReadOnly(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
@@ -114,33 +135,44 @@ public class Connection implements java.sql.Connection {
 
     public String getReadWriteTransactionId() throws SQLException {
         try {
-            return TransactionUtils.formatToReadWrite(getTransaction(true));
+            return TransactionUtils.formatToReadWrite(getOrCreateTransaction(true));
         } catch (final URISyntaxException e) {
             throw new SQLException(e);
         }
     }
 
-    public synchronized Transaction getTransaction(final boolean create) throws SQLException {
+    public String getWriteOnlyTransactionId() throws SQLException {
+        try {
+            return TransactionUtils.formatToWriteOnly(getOrCreateTransaction(true));
+        } catch (final URISyntaxException e) {
+            throw new SQLException(e);
+        }
+    }
+
+    public synchronized Transaction getOrCreateTransaction(final boolean create) throws SQLException {
         if (create) {
             initGrpcChannelIfNeeded();
 
             transactions.removeIf(transaction ->
                     !ACTIVE_TRANSACTION_STATUSES.contains(transaction.getStatus()));
 
-            if (transactions.isEmpty()) {
+            if (transactions.isEmpty() && maybeDbpxyDatasourceProperties.map(DbpxyDatasourceProperties::getUrl).isPresent()) {
                 final ConnectionString connectionString = ConnectionString.newBuilder()
-                        .setUrl(dbpxyDatasourceProperties.getUrl())
-                        .addAllProps(dbpxyDatasourceProperties.getProps().stream()
+                        .setUrl(maybeDbpxyDatasourceProperties.get().getUrl())
+                        .addAllProps(maybeDbpxyDatasourceProperties.get().getProps().stream()
                                 .map(prop -> ConnectionStringProp.newBuilder()
                                         .setName(prop.getName())
                                         .setValue(prop.getValue())
                                         .build())
-                                .toList())
+                                .collect(Collectors.toList()))
                         .build();
 
                 try {
                     final Transaction transaction = blockingStub
                             .beginTransaction(BeginTransactionConfig.newBuilder()
+                                    .setActivation((maybeDbpxyDatasourceProperties.get().getActivation() == DbpxyDatasourceProperties.Activation.EAGER)
+                                            ? BeginTransactionConfig.Activation.EAGER
+                                            : BeginTransactionConfig.Activation.LAZY)
                                     .setConnectionString(connectionString)
                                     .setTimeoutInMs(transactionTimeoutInMs)
                                     .setAutoCommit(autoCommit)
@@ -165,27 +197,11 @@ public class Connection implements java.sql.Connection {
         transactions.removeIf(it ->
                 Objects.equals(it.getId(), transaction.getId()) && Objects.equals(it.getNode(), transaction.getNode()));
         try {
-            Optional.ofNullable(getTransaction(false))
+            Optional.ofNullable(getOrCreateTransaction(false))
                     .ifPresentOrElse(it -> MDC.put(MDC_TRANSACTION_ID, DatabaseUtils.getMaskedId(it.getId())), () -> MDC.remove(MDC_TRANSACTION_ID));
         } catch (final SQLException e) {
             log.error(e.getMessage(), e);
             MDC.remove(MDC_TRANSACTION_ID);
-        }
-    }
-
-    public void doWithSharedTransaction(
-            final String transactionId,
-            final Runnable runnable) throws Exception {
-        if (transactionId == null) {
-            runnable.run();
-            return;
-        }
-        final Transaction transaction = TransactionUtils.tryParse(transactionId);
-        try {
-            joinSharedTransaction(transaction);
-            runnable.run();
-        } finally {
-            leaveSharedTransaction(transaction);
         }
     }
 
@@ -232,12 +248,12 @@ public class Connection implements java.sql.Connection {
     public Connection(
             final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
-            final DbpxyDatasourceProperties dbpxyDatasourceProperties,
+            final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             final String dbpxyCertPath
     ) throws SQLException {
         this.connectionHolder = connectionHolder;
         this.dbpxyProperties = dbpxyProperties;
-        this.dbpxyDatasourceProperties = dbpxyDatasourceProperties;
+        this.maybeDbpxyDatasourceProperties = maybeDbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
         connectionHolder.pushConnection(this);
         log.debug("connection lazyly opened");
@@ -276,12 +292,12 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void commit() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
-            log.debug("commit skipped on no transaction");
+            log.debug("commit skipped: no transaction");
         } else {
             try {
-                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub.commitTransaction(transaction);
                         log.debug("transaction commited");
@@ -297,12 +313,12 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void rollback() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         if (transaction == null) {
-            log.debug("rollback skipped on no transaction");
+            log.debug("rollback skipped: no transaction");
         } else {
             try {
-                if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+                if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub.rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
@@ -318,13 +334,13 @@ public class Connection implements java.sql.Connection {
 
     @Override
     public void close() throws SQLException {
-        final Transaction transaction = getTransaction(false);
+        final Transaction transaction = getOrCreateTransaction(false);
         try {
             if (transaction == null) {
                 // Do nothing
             } else if (transaction.getStatus() == Transaction.Status.JOINED) {
                 log.debug("close skipped on shared transaction");
-            } else if (transaction.getStatus() == Transaction.Status.ACTIVE) {
+            } else if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                 if (autoCommit) {
                     commit();
                 }
@@ -350,8 +366,19 @@ public class Connection implements java.sql.Connection {
     }
 
     @Override
-    public PgDatabaseMetaData getMetaData() {
-        return new PgDatabaseMetaData(this);
+    public DatabaseMetaData getMetaData() throws SQLException {
+        switch (maybeDbpxyDatasourceProperties
+                .map(DbpxyDatasourceProperties::getDatabase)
+                .orElse(DbpxyDatasourceProperties.Database.H2)) {
+            case H2:
+                return H2_METADATA;
+            case ORACLE:
+                return ORACLE_METADATA;
+            case POSTGRESQL:
+                return POSTGRESQL_METADATA;
+            default:
+                throw new SQLFeatureNotSupportedException();
+        }
     }
 
     @Override

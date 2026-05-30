@@ -13,7 +13,13 @@
     <dependencyManagement>
         <dependencies>
             <dependency>
-                <!--[https://security.snyk.io/vuln/SNYK-JAVA-ORGAPACHECOMMONS-6254296]-->
+                <groupId>io.netty</groupId>
+                <artifactId>netty-bom</artifactId>
+                <version>4.2.14.Final</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>1.28.0</version>

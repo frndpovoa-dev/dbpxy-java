@@ -36,6 +36,7 @@ import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
@@ -55,77 +56,74 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     private static Value nullSafeArgToValue(final Object value) {
         return Optional.ofNullable(value)
                 .map(it -> {
-                    switch (it) {
-                        case Short v -> {
+                    if (it instanceof Short) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.INT32)
+                                .setData(ValueInt32.newBuilder().setValue((Short) it).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof Integer) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.INT32)
+                                .setData(ValueInt32.newBuilder().setValue((Integer) it).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof Long) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.INT64)
+                                .setData(ValueInt64.newBuilder().setValue((Long) it).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof String) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.STRING)
+                                .setData(ValueString.newBuilder().setValue((String) it).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof Boolean) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.BOOL)
+                                .setData(ValueBool.newBuilder().setValue((Boolean) it).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof Double) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.FLOAT64)
+                                .setData(ValueFloat64.newBuilder().setValue(Double.toString((Double) it)).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof BigDecimal) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.FLOAT64)
+                                .setData(ValueFloat64.newBuilder().setValue(((BigDecimal) it).toString()).build().toByteString())
+                                .build();
+                    }
+                    if (it instanceof Timestamp) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.TIME)
+                                .setData(ValueTime.newBuilder()
+                                        .setValue(OffsetDateTime.ofInstant(((Timestamp) it).toInstant(), ZoneId.systemDefault())
+                                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                        .build()
+                                        .toByteString())
+                                .build();
+                    }
+                    if (it instanceof Array) {
+                        final Array v = (Array) it;
+                        try {
                             return Value.newBuilder()
-                                    .setCode(ValueCode.INT32)
-                                    .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
-                                    .build();
-                        }
-                        case Integer v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.INT32)
-                                    .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
-                                    .build();
-                        }
-                        case Long v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.INT64)
-                                    .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
-                                    .build();
-                        }
-                        case String v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.STRING)
-                                    .setData(ValueString.newBuilder().setValue(v).build().toByteString())
-                                    .build();
-                        }
-                        case Boolean v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.BOOL)
-                                    .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
-                                    .build();
-                        }
-                        case Double v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.FLOAT64)
-                                    .setData(ValueFloat64.newBuilder().setValue(Double.toString(v)).build().toByteString())
-                                    .build();
-                        }
-                        case BigDecimal v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.FLOAT64)
-                                    .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
-                                    .build();
-                        }
-                        case Timestamp v -> {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.TIME)
+                                    .setCode(ValueCode.ARRAY)
                                     .setData(ValueTime.newBuilder()
-                                            .setValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneId.systemDefault())
-                                                    .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                            .setValue(OBJECT_MAPPER.writeValueAsString(Map.of(
+                                                    "baseType", v.getBaseType(),
+                                                    "baseTypeName", v.getBaseTypeName(),
+                                                    "array", v.getArray()
+                                            )))
                                             .build()
                                             .toByteString())
                                     .build();
-                        }
-                        case Array v -> {
-                            try {
-                                return Value.newBuilder()
-                                        .setCode(ValueCode.ARRAY)
-                                        .setData(ValueTime.newBuilder()
-                                                .setValue(OBJECT_MAPPER.writeValueAsString(Map.of(
-                                                        "baseType", v.getBaseType(),
-                                                        "baseTypeName", v.getBaseTypeName(),
-                                                        "array", v.getArray()
-                                                )))
-                                                .build()
-                                                .toByteString())
-                                        .build();
-                            } catch (final JsonProcessingException e) {
-                                throw new RuntimeException(e);
-                            }
-                        }
-                        default -> {
+                        } catch (final JsonProcessingException e) {
+                            throw new RuntimeException(e);
                         }
                     }
                     return null;
@@ -145,7 +143,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                 .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
                 .map(PreparedStatement::nullSafeArgToValue)
-                .toList();
+                .collect(Collectors.toList());
     }
 
     @Override
@@ -159,7 +157,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setNull(int parameterIndex, int sqlType) {
+    public void setNull(final int parameterIndex, final int sqlType) {
         params.put(parameterIndex, null);
     }
 

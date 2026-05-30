@@ -9,27 +9,33 @@
     <properties>
         <revision>0.1.0-SNAPSHOT</revision>
         <file.encoding>UTF-8</file.encoding>
-        <java.version>25</java.version>
+        <client.java.version>25</client.java.version>
+        <server.java.version>25</server.java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.google.cloud_libraries-bom.version>26.79.0</com.google.cloud_libraries-bom.version>
-        <com.google.cloud.sql_postgres-socket-factory.version>1.28.2</com.google.cloud.sql_postgres-socket-factory.version>
+        <com.google.cloud_libraries-bom.version>26.83.0</com.google.cloud_libraries-bom.version>
+        <com.google.cloud.sql_postgres-socket-factory.version>1.28.4</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.4</com.google.protobuf_protoc.version>
+        <com.h2database_h2.version>2.4.240</com.h2database_h2.version>
+        <com.oracle.database.jdbc_ojdbc11.version>23.26.2.0.0</com.oracle.database.jdbc_ojdbc11.version>
+        <dev.langchain4j_langchain4j-bom.version>1.14.0</dev.langchain4j_langchain4j-bom.version>
         <io.grpc_grpc-bom.version>1.77.1</io.grpc_grpc-bom.version>
         <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
         <org.apache.commons_commons-pool2.version>2.13.1</org.apache.commons_commons-pool2.version>
         <org.apache.openjpa_openjpa-persistence-jdbc.version>4.1.1</org.apache.openjpa_openjpa-persistence-jdbc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
-        <org.postgresql_postgresql.version>42.7.10</org.postgresql_postgresql.version>
+        <org.postgresql_postgresql.version>42.7.11</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.44</org.projectlombok_lombok.version>
         <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
-        <spring-boot.version>4.0.5</spring-boot.version>
+        <org.testcontainers_oracle-free.version>1.21.4</org.testcontainers_oracle-free.version>
+        <spring-boot.version>4.0.6</spring-boot.version>
     </properties>
     <modules>
         <module>dbpxy-version</module>
         <module>dbpxy-lib</module>
-        <module>dbpxy</module>
+        <module>dbpxy-langchain4j-lib</module>
+        <module>dbpxy-server</module>
     </modules>
     <repositories>
         <repository>
@@ -44,11 +50,6 @@
     <build>
         <pluginManagement>
             <plugins>
-                <plugin>
-                    <groupId>org.graalvm.buildtools</groupId>
-                    <artifactId>native-maven-plugin</artifactId>
-                    <version>1.0.0</version>
-                </plugin>
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>

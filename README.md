@@ -25,7 +25,7 @@ Have a good day!
 
 ## Build
 
-[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.5.0)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
+[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.6.0)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
 
 ```bash
 true \
