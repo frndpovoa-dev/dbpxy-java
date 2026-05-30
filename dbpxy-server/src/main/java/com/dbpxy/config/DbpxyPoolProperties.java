@@ -28,7 +28,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 @ConfigurationProperties(prefix = "app.dbpxy-pool")
 public class DbpxyPoolProperties {
-    private int maxTotalSize = 5;
+    private int maxTotalSize = 20;
     private int maxIdleSize = 5;
     private int minIdleSize = 1;
     private long maxIdleAgeMs = 60_000;

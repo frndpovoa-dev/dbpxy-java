@@ -53,6 +53,7 @@ message Transaction {
   string node = 6;
   string creation = 7;
   string expiration = 8;
+  string activation = 9;
 
   enum Status {
     NOT_STARTED = 0;

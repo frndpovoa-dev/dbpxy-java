@@ -549,17 +549,20 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                                 connectionStringHash(delegate.getDatabaseOperationProp().getConnectionString()),
                                 ignored -> {
                                     final GenericObjectPoolConfig<ConnectionProxy> poolConfig = new GenericObjectPoolConfig<>();
+                                    poolConfig.setLifo(true);
+                                    poolConfig.setJmxEnabled(false);
                                     poolConfig.setMinEvictableIdleDuration(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs()));
                                     poolConfig.setTimeBetweenEvictionRuns(Duration.ofMillis(dbpxyPoolProperties.getMaxIdleAgeMs() / 2));
+                                    poolConfig.setNumTestsPerEvictionRun(dbpxyPoolProperties.getMaxIdleSize());
                                     poolConfig.setEvictionPolicy(new DefaultEvictionPolicy<>());
                                     poolConfig.setBlockWhenExhausted(true);
                                     poolConfig.setMaxWait(Duration.ofMillis(dbpxyPoolProperties.getMaxWaitMs()));
                                     poolConfig.setMaxTotal(dbpxyPoolProperties.getMaxTotalSize());
                                     poolConfig.setMaxIdle(dbpxyPoolProperties.getMaxIdleSize());
                                     poolConfig.setMinIdle(dbpxyPoolProperties.getMinIdleSize());
-                                    poolConfig.setTestOnCreate(true);
+                                    poolConfig.setTestOnCreate(false);
                                     poolConfig.setTestOnBorrow(true);
-                                    poolConfig.setTestOnReturn(true);
+                                    poolConfig.setTestOnReturn(false);
                                     poolConfig.setTestWhileIdle(true);
 
                                     final Properties props = new Properties();
@@ -597,14 +600,17 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
                                 });
 
                         delegate.openConnection(connectionPool, taskExecutor);
-                        delegate.beginTransaction(delegate.getDatabaseOperationProp().toBuilder()
+
+                        final OffsetDateTime activationTime = delegate.beginTransaction(delegate.getDatabaseOperationProp().toBuilder()
                                 .timeoutInMs(transactionCache.policy().expireVariably()
                                         .flatMap(policy -> policy.getExpiresAfter(cryptoService.decrypt(delegate.getTransaction().getId())))
                                         .map(Duration::toMillis)
                                         .orElseThrow()
                                 )
                                 .build());
+
                         delegate.setTransaction(delegate.getTransaction().toBuilder()
+                                .setActivation(DateTimeFormatter.ISO_OFFSET_DATE_TIME.format(activationTime))
                                 .setStatus(Transaction.Status.ACTIVE)
                                 .build());
 
