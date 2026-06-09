@@ -218,6 +218,7 @@
                     </execution>
                     <execution>
                         <id>process-aot</id>
+                        <phase>prepare-package</phase>
                         <goals>
                             <goal>process-aot</goal>
                         </goals>
