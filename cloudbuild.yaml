@@ -37,7 +37,6 @@ steps:
         cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar
         cp dbpxy-lib/.flattened-pom.xml $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom
         md5sum dbpxy-lib/.flattened-pom.xml | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom.md5
-        sha256sum dbpxy-lib/.flattened-pom.xml | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom.sha256
     env:
       - DBPXY_LIB_DIR=dbpxy-lib/target/gcp-deploy/com/dbpxy/dbpxy-lib/${_VERSION}
   - id: 'build-image-using-docker'
