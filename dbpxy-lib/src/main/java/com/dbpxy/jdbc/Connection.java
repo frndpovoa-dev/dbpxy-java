@@ -30,10 +30,8 @@ import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
-import lombok.AccessLevel;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+import lombok.experimental.Delegate;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
@@ -56,23 +54,34 @@ public class Connection implements java.sql.Connection {
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
-    private static final java.sql.DatabaseMetaData H2_METADATA;
-    private static final java.sql.DatabaseMetaData ORACLE_METADATA;
-    private static final java.sql.DatabaseMetaData POSTGRESQL_METADATA;
+    private static final DatabaseMetaData H2_METADATA;
+    private static final DatabaseMetaData ORACLE_METADATA;
+    private static final DatabaseMetaData POSTGRESQL_METADATA;
+
+    @RequiredArgsConstructor
+    public static class DatabaseMetaData implements java.sql.DatabaseMetaData {
+        @Delegate
+        private final java.sql.DatabaseMetaData delegate;
+
+        @Override
+        public String getDatabaseProductName() {
+            return "DBPXY";
+        }
+    }
 
     static {
         try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:h2", "sa", "")) {
-            H2_METADATA = conn.getMetaData();
+            H2_METADATA = new DatabaseMetaData(conn.getMetaData());
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
         try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:oracle;MODE=Oracle", "sa", "")) {
-            ORACLE_METADATA = conn.getMetaData();
+            ORACLE_METADATA = new DatabaseMetaData(conn.getMetaData());
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
         try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:postgresql;MODE=PostgreSQL", "sa", "")) {
-            POSTGRESQL_METADATA = conn.getMetaData();
+            POSTGRESQL_METADATA = new DatabaseMetaData(conn.getMetaData());
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }

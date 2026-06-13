@@ -23,9 +23,7 @@ package com.dbpxy;
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.jdbc.Connection;
 import com.dbpxy.util.DatabaseUtils;
-import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
-import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
@@ -41,16 +39,22 @@ public class ConnectionHolder {
     private static final String MDC_CONNECTION_ID = "dbpxy.conn.id";
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final ThreadLocal<ArrayDeque<Connection>> CONNECTIONS = ThreadLocal.withInitial(ArrayDeque::new);
-    @Setter
-    private EntityManager entityManager;
+
+    protected void entityManagerFlush() {
+        // Do nothing
+    }
+
+    protected void entityManagerClear() {
+        // Do nothing
+    }
 
     @SuppressWarnings({"java:S1143", "java:S1163"})
     public <T> T doWithSharedTransaction(
             final String transactionId,
             final Callable<T> callable) throws Exception {
 
-        entityManager.flush();
-        entityManager.clear();
+        entityManagerFlush();
+        entityManagerClear();
 
         return getConnection().doWithSharedTransaction(
                 transactionId,
@@ -59,7 +63,7 @@ public class ConnectionHolder {
                         return callable.call();
                     } finally {
                         try {
-                            entityManager.flush();
+                            entityManagerFlush();
                         } catch (final Exception e) {
                             if (e instanceof UnsupportedInReadOnlyModeException) {
                                 throw (UnsupportedInReadOnlyModeException) e;
@@ -69,7 +73,7 @@ public class ConnectionHolder {
                             }
                             throw e;
                         } finally {
-                            entityManager.clear();
+                            entityManagerClear();
                         }
                     }
                 });

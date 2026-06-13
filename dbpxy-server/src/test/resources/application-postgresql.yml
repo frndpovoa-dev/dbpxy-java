@@ -8,3 +8,12 @@ app:
         value: ${POSTGRESQL_USER}
       - name: password
         value: ${POSTGRESQL_PASSWORD}
+
+spring:
+  data:
+    jdbc:
+      dialect: postgresql
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect

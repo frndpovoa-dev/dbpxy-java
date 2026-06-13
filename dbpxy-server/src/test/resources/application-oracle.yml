@@ -8,3 +8,12 @@ app:
         value: ${ORACLE_USER}
       - name: password
         value: ${ORACLE_PASSWORD}
+
+spring:
+  data:
+    jdbc:
+      dialect: oracle
+  jpa:
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.OracleDialect
