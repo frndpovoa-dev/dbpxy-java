@@ -25,7 +25,7 @@
         <org.apache.openjpa_openjpa-persistence-jdbc.version>4.1.1</org.apache.openjpa_openjpa-persistence-jdbc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.postgresql_postgresql.version>42.7.11</org.postgresql_postgresql.version>
-        <org.projectlombok_lombok.version>1.18.44</org.projectlombok_lombok.version>
+        <org.projectlombok_lombok.version>1.18.46</org.projectlombok_lombok.version>
         <org.springframework.grpc_spring-grpc-dependencies.version>1.0.2</org.springframework.grpc_spring-grpc-dependencies.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
         <org.testcontainers_oracle-free.version>1.21.4</org.testcontainers_oracle-free.version>
