@@ -21,6 +21,7 @@ package com.dbpxy;
  */
 
 import com.dbpxy.hint.CaffeineRuntimeHints;
+import com.dbpxy.hint.DbpxyRuntimeHints;
 import com.dbpxy.hint.LogbackRuntimeHints;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.PreDestroy;
@@ -42,6 +43,7 @@ import java.util.TimeZone;
 @RequiredArgsConstructor
 @ImportRuntimeHints(value = {
         CaffeineRuntimeHints.class,
+        DbpxyRuntimeHints.class,
         LogbackRuntimeHints.class,
 })
 @SpringBootApplication(scanBasePackageClasses = {Package.class})

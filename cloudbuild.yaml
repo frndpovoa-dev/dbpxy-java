@@ -9,19 +9,6 @@ steps:
         mkdir -p /workspace/.docker
         cp ~/.docker/config.json /workspace/.docker/config.json
     secretEnv: [ 'DHI_IO_USERNAME', 'DHI_IO_PASSWORD' ]
-  - id: 'generate-backend-certs'
-    name: gcr.io/cloud-builders/gcloud
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        cat << EOF > dbpxy-server/src/main/resources/certs/key.pem
-        $${GRPC_KEY_PEM}
-        EOF
-        cat << EOF > dbpxy-server/src/main/resources/certs/cert.pem
-        $${GRPC_CERT_PEM}
-        EOF
-    secretEnv: [ 'GRPC_KEY_PEM', 'GRPC_CERT_PEM' ]
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
@@ -62,10 +49,6 @@ images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
   secretManager:
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/dbpxy-production-0-1-key-pem/versions/1
-      env: GRPC_KEY_PEM
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/dbpxy-production-0-1-cert-pem/versions/1
-      env: GRPC_CERT_PEM
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_USERNAME/versions/1
       env: DHI_IO_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1
