@@ -22,6 +22,9 @@ package com.dbpxy.jdbc;
 
 import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -45,6 +48,7 @@ import java.util.Optional;
 @Slf4j
 public class ResultSet implements java.sql.ResultSet {
     private static final String MDC_QUERY_ID = "dbpxy.qry.id";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Connection connection;
     private final Statement statement;
     private QueryResult queryResult;
@@ -96,7 +100,7 @@ public class ResultSet implements java.sql.ResultSet {
                     return null;
                 }
             }
-        } catch (InvalidProtocolBufferException e) {
+        } catch (final InvalidProtocolBufferException e) {
             throw new SQLException(e);
         }
     }
@@ -181,7 +185,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public boolean getBoolean(int columnIndex) throws SQLException {
+    public boolean getBoolean(final int columnIndex) throws SQLException {
         log.trace("public boolean getBoolean(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Boolean::parseBoolean)
@@ -195,7 +199,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public short getShort(int columnIndex) throws SQLException {
+    public short getShort(final int columnIndex) throws SQLException {
         log.trace("public short getShort(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Short::parseShort)
@@ -203,7 +207,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public int getInt(int columnIndex) throws SQLException {
+    public int getInt(final int columnIndex) throws SQLException {
         log.trace("public int getInt(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Integer::parseInt)
@@ -211,7 +215,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public long getLong(int columnIndex) throws SQLException {
+    public long getLong(final int columnIndex) throws SQLException {
         log.trace("public long getLong(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Long::parseLong)
@@ -219,7 +223,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public float getFloat(int columnIndex) throws SQLException {
+    public float getFloat(final int columnIndex) throws SQLException {
         log.trace("public float getFloat(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Float::parseFloat)
@@ -227,7 +231,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public double getDouble(int columnIndex) throws SQLException {
+    public double getDouble(final int columnIndex) throws SQLException {
         log.trace("public double getDouble(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Double::parseDouble)
@@ -235,7 +239,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
+    public BigDecimal getBigDecimal(final int columnIndex, final int scale) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(BigDecimal::new)
@@ -249,7 +253,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Date getDate(int columnIndex) throws SQLException {
+    public Date getDate(final int columnIndex) throws SQLException {
         log.trace("public Date getDate(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Date::valueOf)
@@ -257,7 +261,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Time getTime(int columnIndex) throws SQLException {
+    public Time getTime(final int columnIndex) throws SQLException {
         log.trace("public Time getTime(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Time::valueOf)
@@ -265,7 +269,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Timestamp getTimestamp(int columnIndex) throws SQLException {
+    public Timestamp getTimestamp(final int columnIndex) throws SQLException {
         log.trace("public Timestamp getTimestamp(int columnIndex) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .map(Timestamp::valueOf)
@@ -412,8 +416,44 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Object getObject(int columnIndex) throws SQLException {
+    public Object getObject(final int columnIndex) throws SQLException {
         log.trace("public Object getObject(int columnIndex) throws SQLException {");
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            switch (value.getCode()) {
+                case INT32: {
+                    return ValueInt32.parseFrom(value.getData()).getValue();
+                }
+                case INT64: {
+                    return ValueInt64.parseFrom(value.getData()).getValue();
+                }
+                case FLOAT64: {
+                    return ValueFloat64.parseFrom(value.getData()).getValue();
+                }
+                case BOOL: {
+                    return ValueBool.parseFrom(value.getData()).getValue();
+                }
+                case STRING: {
+                    return ValueString.parseFrom(value.getData()).getValue();
+                }
+                case TIME: {
+                    return OffsetDateTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                }
+                case ARRAY: {
+                    final ArrayMirror mirror = OBJECT_MAPPER.readValue(
+                            ValueString.parseFrom(value.getData()).getValue(),
+                            new TypeReference<>() {
+                            });
+                    return mirror.getArray();
+                }
+                case NULL: {
+                    return null;
+                }
+            }
+        } catch (final InvalidProtocolBufferException
+                       | JsonProcessingException e) {
+            throw new SQLException(e);
+        }
         throw new SQLFeatureNotSupportedException();
     }
 
@@ -943,7 +983,7 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+    public Timestamp getTimestamp(final int columnIndex, final Calendar cal) throws SQLException {
         log.trace("public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {");
         return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
                 .filter(text -> !text.trim().isEmpty())

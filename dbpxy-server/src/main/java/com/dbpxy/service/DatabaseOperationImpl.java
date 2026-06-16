@@ -536,6 +536,10 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.BIT: {
                     return booleanValue(metadata, rs, i);
                 }
+                case -2: // BYTEA
+                {
+                    return arrayValue(metadata, rs, i);
+                }
                 case Types.DATE: {
                     return timeValue(metadata, rs, i);
                 }
@@ -564,7 +568,8 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 default:
                     throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
             }
-        } catch (final SQLException e) {
+        } catch (final SQLException
+                       | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -673,6 +678,23 @@ class DatabaseOperationImpl implements DatabaseOperation {
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.STRING)
                 .setData(ValueString.newBuilder().setValue(v).build().toByteString())
+                .build();
+    }
+
+    private static @NonNull Value arrayValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException, JsonProcessingException {
+        final java.sql.Array v = rs.getArray(i);
+        if (rs.wasNull()) return nullValue();
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.STRING)
+                .setData(ValueString.newBuilder()
+                        .setValue(OBJECT_MAPPER.writeValueAsString(new Array(
+                                v.getBaseTypeName(),
+                                v.getBaseType(),
+                                (Object[]) v.getArray())))
+                        .build().toByteString())
                 .build();
     }
 

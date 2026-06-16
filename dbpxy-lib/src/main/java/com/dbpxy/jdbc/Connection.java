@@ -592,7 +592,7 @@ public class Connection implements java.sql.Connection {
             final String typeName,
             final Object[] elements) throws SQLException {
         if ("varchar".equalsIgnoreCase(typeName)) {
-            return new Array(typeName, Types.VARCHAR, elements);
+            return new Array(Types.VARCHAR, typeName, elements);
         }
         log.trace("public Array createArrayOf(String typeName, Object[] elements) throws SQLException {");
         throw new SQLFeatureNotSupportedException();
