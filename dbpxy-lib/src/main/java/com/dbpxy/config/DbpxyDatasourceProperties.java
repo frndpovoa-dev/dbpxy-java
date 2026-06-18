@@ -58,7 +58,6 @@ public class DbpxyDatasourceProperties {
 
     public enum Database {
         H2,
-        ORACLE,
         POSTGRESQL,
         ;
     }

@@ -20,15 +20,17 @@ package com.dbpxy.service;
  * #L%
  */
 
+import lombok.AllArgsConstructor;
 import lombok.Getter;
+import lombok.NoArgsConstructor;
 import lombok.Setter;
-
-import java.util.List;
 
 @Getter
 @Setter
+@NoArgsConstructor
+@AllArgsConstructor
 class ArrayMirror {
     private int baseType;
     private String baseTypeName;
-    private List<Object> array;
+    private Object[] array;
 }

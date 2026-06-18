@@ -31,24 +31,15 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
 @Slf4j
-//@ActiveProfiles({"integration", "oracle"})
 @ActiveProfiles({"integration", "postgresql"})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 public abstract class BaseIntTest {
     @RegisterExtension
-    static OracleExtension oracle = new OracleExtension();
-    @RegisterExtension
     static PostgresExtension postgresql = new PostgresExtension();
     @DynamicPropertySource
     static void configureProperties(
             final DynamicPropertyRegistry registry) {
-        log.info("oracle port: {}", oracle.getMappedPort());
-        registry.add("ORACLE_USER", oracle::getUser);
-        registry.add("ORACLE_PASSWORD", oracle::getPassword);
-        registry.add("ORACLE_DATABASE", oracle::getDatabase);
-        registry.add("ORACLE_PORT", oracle::getMappedPort);
-
         log.info("postgresql port: {}", postgresql.getMappedPort());
         registry.add("POSTGRESQL_USER", postgresql::getUser);
         registry.add("POSTGRESQL_PASSWORD", postgresql::getPassword);

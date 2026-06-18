@@ -55,7 +55,6 @@ public class Connection implements java.sql.Connection {
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
     private static final DatabaseMetaData H2_METADATA;
-    private static final DatabaseMetaData ORACLE_METADATA;
     private static final DatabaseMetaData POSTGRESQL_METADATA;
 
     @RequiredArgsConstructor
@@ -72,11 +71,6 @@ public class Connection implements java.sql.Connection {
     static {
         try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:h2", "sa", "")) {
             H2_METADATA = new DatabaseMetaData(conn.getMetaData());
-        } catch (final SQLException e) {
-            throw new RuntimeException(e);
-        }
-        try (final java.sql.Connection conn = DriverManager.getConnection("jdbc:h2:mem:oracle;MODE=Oracle", "sa", "")) {
-            ORACLE_METADATA = new DatabaseMetaData(conn.getMetaData());
         } catch (final SQLException e) {
             throw new RuntimeException(e);
         }
@@ -381,8 +375,6 @@ public class Connection implements java.sql.Connection {
                 .orElse(DbpxyDatasourceProperties.Database.H2)) {
             case H2:
                 return H2_METADATA;
-            case ORACLE:
-                return ORACLE_METADATA;
             case POSTGRESQL:
                 return POSTGRESQL_METADATA;
             default:

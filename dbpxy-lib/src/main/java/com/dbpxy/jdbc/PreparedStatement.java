@@ -41,6 +41,11 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+    private static final Value NULL_VALUE = Value.newBuilder()
+            .setCode(ValueCode.NULL)
+            .setData(ValueNull.newBuilder().build().toByteString())
+            .build();
+
     private final Map<Integer, Object> params = new HashMap<>();
     private final String sql;
 
@@ -99,14 +104,10 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                 .build();
                     }
                     if (it instanceof Timestamp) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.TIME)
-                                .setData(ValueTime.newBuilder()
-                                        .setValue(OffsetDateTime.ofInstant(((Timestamp) it).toInstant(), ZoneId.systemDefault())
-                                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                                        .build()
-                                        .toByteString())
-                                .build();
+                        return timeValue(OffsetDateTime.ofInstant(((Timestamp) it).toInstant(), ZoneId.systemDefault()));
+                    }
+                    if (it instanceof OffsetDateTime) {
+                        return timeValue((OffsetDateTime) it);
                     }
                     if (it instanceof Array) {
                         final Array v = (Array) it;
@@ -114,10 +115,10 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                             return Value.newBuilder()
                                     .setCode(ValueCode.ARRAY)
                                     .setData(ValueTime.newBuilder()
-                                            .setValue(OBJECT_MAPPER.writeValueAsString(Map.of(
-                                                    "baseType", v.getBaseType(),
-                                                    "baseTypeName", v.getBaseTypeName(),
-                                                    "array", v.getArray()
+                                            .setValue(OBJECT_MAPPER.writeValueAsString(new ArrayMirror(
+                                                    v.getBaseType(),
+                                                    v.getBaseTypeName(),
+                                                    (Object[]) v.getArray()
                                             )))
                                             .build()
                                             .toByteString())
@@ -128,13 +129,16 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                     }
                     return null;
                 })
-                .orElseGet(PreparedStatement::nullValue);
+                .orElse(PreparedStatement.NULL_VALUE);
     }
 
-    private static Value nullValue() {
+    private static Value timeValue(final OffsetDateTime value) {
         return Value.newBuilder()
-                .setCode(ValueCode.NULL)
-                .setData(ValueNull.newBuilder().build().toByteString())
+                .setCode(ValueCode.TIME)
+                .setData(ValueTime.newBuilder()
+                        .setValue(value.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                        .build()
+                        .toByteString())
                 .build();
     }
 
@@ -256,9 +260,9 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setObject(int parameterIndex, Object x) throws SQLException {
+    public void setObject(final int parameterIndex, final Object x) throws SQLException {
         log.trace("public void setObject(int parameterIndex, Object x) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        params.put(parameterIndex, x);
     }
 
     @Override

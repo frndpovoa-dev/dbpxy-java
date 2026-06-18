@@ -536,7 +536,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.BIT: {
                     return booleanValue(metadata, rs, i);
                 }
-                case -2: // BYTEA
+                case -2: // POSTGRESQL BYTEA
                 {
                     return arrayValue(metadata, rs, i);
                 }
@@ -546,7 +546,6 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.NUMERIC: {
                     return float64Value(metadata, rs, i);
                 }
-                case 101: // BINARY_DOUBLE
                 case Types.DOUBLE: {
                     return float64Value(metadata, rs, i);
                 }
@@ -727,7 +726,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                     stmt.setArray(i, new Array(
                             mirror.getBaseTypeName(),
                             mirror.getBaseType(),
-                            mirror.getArray().toArray()));
+                            mirror.getArray()));
                     break;
                 }
                 default:
