@@ -20,28 +20,39 @@ package com.dbpxy.dto;
  * #L%
  */
 
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.Date;
 
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode
 @ToString
+@JsonPropertyOrder(alphabetic = true)
 public class TestDto {
-    @Id
-    @EqualsAndHashCode.Include
     private Long id;
-    @EqualsAndHashCode.Include
     private String name;
-    @EqualsAndHashCode.Include
     private String groupName;
-    @EqualsAndHashCode.Include
+    private Boolean booleanValue;
+    private Byte byteValue;
+    private Short shortValue;
+    private Integer integerValue;
+    private Long longValue;
+    private Float floatValue;
     private Double doubleValue;
-    @EqualsAndHashCode.Include
+    private byte[] bytesValue;
     private BigDecimal bigdecimalValue;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private Date dateValue;
+    private Time timeValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private Timestamp timestampValue;
 }

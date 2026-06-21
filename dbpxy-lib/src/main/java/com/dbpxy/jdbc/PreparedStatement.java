@@ -31,9 +31,7 @@ import java.math.BigDecimal;
 import java.net.URL;
 import java.sql.*;
 import java.sql.Date;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
-import java.time.ZonedDateTime;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -41,6 +39,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class PreparedStatement extends Statement implements java.sql.PreparedStatement {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private static final Value NULL_VALUE = Value.newBuilder()
             .setCode(ValueCode.NULL)
             .setData(ValueNull.newBuilder().build().toByteString())
@@ -61,6 +60,12 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     private static Value nullSafeArgToValue(final Object value) {
         return Optional.ofNullable(value)
                 .map(it -> {
+                    if (it instanceof Byte) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.INT32)
+                                .setData(ValueInt32.newBuilder().setValue((Byte) it).build().toByteString())
+                                .build();
+                    }
                     if (it instanceof Short) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.INT32)
@@ -91,6 +96,12 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                 .setData(ValueBool.newBuilder().setValue((Boolean) it).build().toByteString())
                                 .build();
                     }
+                    if (it instanceof Float) {
+                        return Value.newBuilder()
+                                .setCode(ValueCode.FLOAT64)
+                                .setData(ValueFloat64.newBuilder().setValue(Float.toString((Float) it)).build().toByteString())
+                                .build();
+                    }
                     if (it instanceof Double) {
                         return Value.newBuilder()
                                 .setCode(ValueCode.FLOAT64)
@@ -103,23 +114,34 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                                 .setData(ValueFloat64.newBuilder().setValue(((BigDecimal) it).toString()).build().toByteString())
                                 .build();
                     }
-                    if (it instanceof Timestamp) {
-                        return timeValue(OffsetDateTime.ofInstant(((Timestamp) it).toInstant(), ZoneId.systemDefault()));
+                    if (it instanceof java.sql.Date) {
+                        return dateValue(LocalDate.ofInstant(Instant.ofEpochMilli(((java.sql.Date) it).getTime()), ZoneId.systemDefault()));
+                    }
+                    if (it instanceof java.sql.Time) {
+                        return timeValue(LocalTime.ofInstant(Instant.ofEpochMilli(((java.sql.Time) it).getTime()), ZoneId.systemDefault()));
+                    }
+                    if (it instanceof java.sql.Timestamp) {
+                        return timestampValue(OffsetDateTime.ofInstant(((java.sql.Timestamp) it).toInstant(), ZoneId.systemDefault()));
+                    }
+                    if (it instanceof java.util.Date) {
+                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(((java.util.Date) it).getTime()), ZoneId.systemDefault()));
+                    }
+                    if (it instanceof LocalDate) {
+                        return dateValue((LocalDate) it);
+                    }
+                    if (it instanceof LocalTime) {
+                        return timeValue((LocalTime) it);
                     }
                     if (it instanceof OffsetDateTime) {
-                        return timeValue((OffsetDateTime) it);
+                        return timestampValue((OffsetDateTime) it);
                     }
-                    if (it instanceof Array) {
-                        final Array v = (Array) it;
+                    if (it instanceof byte[]) {
+                        final byte[] v = (byte[]) it;
                         try {
                             return Value.newBuilder()
-                                    .setCode(ValueCode.ARRAY)
-                                    .setData(ValueTime.newBuilder()
-                                            .setValue(OBJECT_MAPPER.writeValueAsString(new ArrayMirror(
-                                                    v.getBaseType(),
-                                                    v.getBaseTypeName(),
-                                                    (Object[]) v.getArray()
-                                            )))
+                                    .setCode(ValueCode.BYTES)
+                                    .setData(ValueString.newBuilder()
+                                            .setValue(OBJECT_MAPPER.writeValueAsString(v))
                                             .build()
                                             .toByteString())
                                     .build();
@@ -132,9 +154,29 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                 .orElse(PreparedStatement.NULL_VALUE);
     }
 
-    private static Value timeValue(final OffsetDateTime value) {
+    private static Value dateValue(final LocalDate value) {
+        return Value.newBuilder()
+                .setCode(ValueCode.DATE)
+                .setData(ValueTime.newBuilder()
+                        .setValue(value.format(DateTimeFormatter.ISO_LOCAL_DATE))
+                        .build()
+                        .toByteString())
+                .build();
+    }
+
+    private static Value timeValue(final LocalTime value) {
         return Value.newBuilder()
                 .setCode(ValueCode.TIME)
+                .setData(ValueTime.newBuilder()
+                        .setValue(value.format(DateTimeFormatter.ISO_LOCAL_TIME))
+                        .build()
+                        .toByteString())
+                .build();
+    }
+
+    private static Value timestampValue(final OffsetDateTime value) {
+        return Value.newBuilder()
+                .setCode(ValueCode.TIMESTAMP)
                 .setData(ValueTime.newBuilder()
                         .setValue(value.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                         .build()

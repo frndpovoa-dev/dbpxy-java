@@ -32,8 +32,8 @@ import java.util.Map;
 
 @RequiredArgsConstructor
 public class Array implements java.sql.Array {
-    private final String baseTypeName;
     private final int baseType;
+    private final String baseTypeName;
     private final Object[] array;
 
     @Override

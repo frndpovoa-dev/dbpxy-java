@@ -170,7 +170,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
                             return Types.BOOLEAN;
                         }
                         case BYTES: {
-                            return Types.VARBINARY;
+                            return Types.BINARY;
                         }
                         case STRING: {
                             return Types.VARCHAR;
@@ -208,7 +208,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
                             return "BOOLEAN";
                         }
                         case BYTES: {
-                            return "VARBINARY";
+                            return "BINARY";
                         }
                         case STRING: {
                             return "VARCHAR";

@@ -28,6 +28,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -66,6 +68,20 @@ public class TestController {
         service.save(testBo.toBuilder()
                 .id(testBo.getId() + 1)
                 .name(testBo.getName() + " from server side")
+                .booleanValue(true)
+                .byteValue((byte) (testBo.getByteValue() + 1))
+                .shortValue((short) (testBo.getShortValue() + 1))
+                .integerValue(testBo.getIntegerValue() + 1)
+                .longValue(testBo.getLongValue() + 1L)
+                .floatValue(testBo.getFloatValue() + 1.0F)
+                .doubleValue(testBo.getDoubleValue() + 1)
+                .bytesValue(new String(testBo.getBytesValue(), StandardCharsets.UTF_8)
+                        .concat(" from server side")
+                        .getBytes(StandardCharsets.UTF_8))
+                .bigdecimalValue(testBo.getBigdecimalValue().add(BigDecimal.ONE))
+                .dateValue(testBo.getDateValue())
+                .timeValue(testBo.getTimeValue())
+                .timestampValue(testBo.getTimestampValue())
                 .build());
 
         assertThat(service.findById(testBo.getId() + 1))

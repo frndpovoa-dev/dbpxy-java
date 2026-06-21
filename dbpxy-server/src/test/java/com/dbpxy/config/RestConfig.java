@@ -23,7 +23,7 @@ package com.dbpxy.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.web.client.RestTemplate;
 
-public class TestConfig {
+public class RestConfig {
     @Bean
     public RestTemplate restTemplate() {
         return new RestTemplate();

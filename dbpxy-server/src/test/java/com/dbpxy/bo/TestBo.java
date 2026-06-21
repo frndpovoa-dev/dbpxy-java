@@ -20,6 +20,8 @@ package com.dbpxy.bo;
  * #L%
  */
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -27,27 +29,38 @@ import jakarta.persistence.Table;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.util.Date;
 
 @Getter
 @Setter
 @Builder(toBuilder = true)
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode
 @ToString
 @Entity
 @Table(name = "test")
+@JsonPropertyOrder(alphabetic = true)
 public class TestBo {
     @Id
-    @EqualsAndHashCode.Include
     private Long id;
-    @EqualsAndHashCode.Include
     private String name;
-    @EqualsAndHashCode.Include
     private String groupName;
-    @EqualsAndHashCode.Include
+    private Boolean booleanValue;
+    private Byte byteValue;
+    private Short shortValue;
+    private Integer integerValue;
+    private Long longValue;
+    private Float floatValue;
     private Double doubleValue;
-    @EqualsAndHashCode.Include
+    private byte[] bytesValue;
     @Column(name = "bigdecimalValue", columnDefinition = "numeric(38,25)")
     private BigDecimal bigdecimalValue;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private Date dateValue;
+    private Time timeValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private Timestamp timestampValue;
 }
