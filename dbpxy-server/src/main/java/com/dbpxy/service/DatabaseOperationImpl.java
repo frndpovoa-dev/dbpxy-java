@@ -548,7 +548,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.TIME: {
                     return timeValue(metadata, rs, i);
                 }
-                case Types.TIMESTAMP: {
+                case Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE: {
                     return timestampValue(metadata, rs, i);
                 }
                 case Types.VARCHAR: {
@@ -671,7 +671,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 .setCode(ValueCode.TIMESTAMP)
                 .setData(ValueTime.newBuilder()
                         .setValue(OffsetDateTime
-                                .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                .ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60))
                                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                         .build()
                         .toByteString()

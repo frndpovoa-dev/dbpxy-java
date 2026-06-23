@@ -48,6 +48,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.time.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -154,9 +155,13 @@ class TestControllerIntTest extends BaseIntTest {
                 .doubleValue(6.0D)
                 .bytesValue("2025".getBytes(StandardCharsets.UTF_8))
                 .bigdecimalValue(new BigDecimal("20.0000000000000000000000001"))
-                .dateValue(new java.sql.Date(now))
-                .timeValue(new java.sql.Time(now))
-                .timestampValue(new java.sql.Timestamp(now))
+                .sqlDateValue(new java.sql.Date(now))
+                .sqlTimeValue(new java.sql.Time(now))
+                .utilDateValue(new java.util.Date(now))
+                .localDateValue(LocalDate.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .localTimeValue(LocalTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .sqlTimestampValue(new java.sql.Timestamp(now))
+                .offsetDateTimeValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
                 .build();
 
         final TestDto insertTx1ServerSide = TestDto.builder()
@@ -172,9 +177,13 @@ class TestControllerIntTest extends BaseIntTest {
                 .doubleValue(7.0)
                 .bytesValue("2025 from server side".getBytes(StandardCharsets.UTF_8))
                 .bigdecimalValue(new BigDecimal("21.0000000000000000000000001"))
-                .dateValue(new java.sql.Date(now))
-                .timeValue(new java.sql.Time(now))
-                .timestampValue(new java.sql.Timestamp(now))
+                .sqlDateValue(new java.sql.Date(now))
+                .sqlTimeValue(new java.sql.Time(now))
+                .sqlTimestampValue(new java.sql.Timestamp(now))
+                .utilDateValue(new java.util.Date(now))
+                .localDateValue(LocalDate.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .localTimeValue(LocalTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .offsetDateTimeValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
                 .build();
 
         log.debug("insert using tx 1");

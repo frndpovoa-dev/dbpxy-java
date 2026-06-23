@@ -279,7 +279,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
-                    <argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
                 </configuration>
             </plugin>
         </plugins>

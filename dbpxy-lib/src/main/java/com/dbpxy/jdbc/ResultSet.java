@@ -1071,13 +1071,9 @@ public class ResultSet implements java.sql.ResultSet {
             return Optional.of(ValueTime.parseFrom(value.getData()).getValue())
                     .filter(text -> !text.trim().isEmpty())
                     .map(text -> OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                    .map(odt -> Optional.ofNullable(cal)
-                            .map(calendar -> odt.atZoneSameInstant(calendar.getTimeZone().toZoneId()))
-                            .orElseGet(odt::toZonedDateTime))
-                    .map(ZonedDateTime::toInstant)
+                    .map(OffsetDateTime::toInstant)
                     .map(Timestamp::from)
                     .orElse(null);
-
         } catch (final InvalidProtocolBufferException e) {
             throw new SQLException(e);
         }

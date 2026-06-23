@@ -27,7 +27,9 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.sql.Time;
 import java.sql.Timestamp;
-import java.util.Date;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
@@ -51,8 +53,17 @@ public class TestDto {
     private byte[] bytesValue;
     private BigDecimal bigdecimalValue;
     @JsonFormat(pattern = "yyyy-MM-dd")
-    private Date dateValue;
-    private Time timeValue;
+    private java.sql.Date sqlDateValue;
     @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
-    private Timestamp timestampValue;
+    private java.util.Date utilDateValue;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate localDateValue;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private Time sqlTimeValue;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime localTimeValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private Timestamp sqlTimestampValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime offsetDateTimeValue;
 }

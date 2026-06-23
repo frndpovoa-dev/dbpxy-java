@@ -79,9 +79,13 @@ public class TestController {
                         .concat(" from server side")
                         .getBytes(StandardCharsets.UTF_8))
                 .bigdecimalValue(testBo.getBigdecimalValue().add(BigDecimal.ONE))
-                .dateValue(testBo.getDateValue())
-                .timeValue(testBo.getTimeValue())
-                .timestampValue(testBo.getTimestampValue())
+                .sqlDateValue(testBo.getSqlDateValue())
+                .sqlTimeValue(testBo.getSqlTimeValue())
+                .sqlTimestampValue(testBo.getSqlTimestampValue())
+                .utilDateValue(testBo.getUtilDateValue())
+                .localDateValue(testBo.getLocalDateValue())
+                .localTimeValue(testBo.getLocalTimeValue())
+                .offsetDateTimeValue(testBo.getOffsetDateTimeValue())
                 .build());
 
         assertThat(service.findById(testBo.getId() + 1))

@@ -121,10 +121,12 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                         return timeValue(LocalTime.ofInstant(Instant.ofEpochMilli(((java.sql.Time) it).getTime()), ZoneId.systemDefault()));
                     }
                     if (it instanceof java.sql.Timestamp) {
-                        return timestampValue(OffsetDateTime.ofInstant(((java.sql.Timestamp) it).toInstant(), ZoneId.systemDefault()));
+                        final java.sql.Timestamp v = (java.sql.Timestamp) it;
+                        return timestampValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60)));
                     }
                     if (it instanceof java.util.Date) {
-                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(((java.util.Date) it).getTime()), ZoneId.systemDefault()));
+                        final java.util.Date v = (java.util.Date) it;
+                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60)));
                     }
                     if (it instanceof LocalDate) {
                         return dateValue((LocalDate) it);
@@ -258,17 +260,17 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setDate(int parameterIndex, Date x) {
+    public void setDate(final int parameterIndex, final Date x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setTime(int parameterIndex, Time x) {
+    public void setTime(final int parameterIndex, final Time x) {
         params.put(parameterIndex, x);
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x) {
+    public void setTimestamp(final int parameterIndex, final Timestamp x) {
         params.put(parameterIndex, x);
     }
 
@@ -365,14 +367,9 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     }
 
     @Override
-    public void setTimestamp(int parameterIndex, Timestamp x, Calendar cal) {
+    public void setTimestamp(final int parameterIndex, final Timestamp x, final Calendar cal) {
         params.put(parameterIndex, Optional.ofNullable(x)
-                .map(t -> OffsetDateTime.ofInstant(t.toInstant(), ZoneId.systemDefault()))
-                .map(odt -> Optional.ofNullable(cal)
-                        .map(calendar -> odt.atZoneSameInstant(calendar.getTimeZone().toZoneId()))
-                        .orElseGet(odt::toZonedDateTime))
-                .map(ZonedDateTime::toInstant)
-                .map(Timestamp::from)
+                .map(t -> OffsetDateTime.ofInstant(t.toInstant(), cal.getTimeZone().toZoneId()))
                 .orElse(null));
     }
 

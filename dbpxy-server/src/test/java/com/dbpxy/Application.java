@@ -24,7 +24,6 @@ import com.dbpxy.config.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Import;
@@ -61,8 +60,4 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
         RestConfig.class,
 })
 public class Application {
-    static void main(String[] args) {
-        new SpringApplicationBuilder(Application.class)
-                .run(args);
-    }
 }

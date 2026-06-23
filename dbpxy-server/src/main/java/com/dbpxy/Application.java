@@ -37,7 +37,6 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.context.event.EventListener;
 
 import java.util.Optional;
-import java.util.TimeZone;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -60,8 +59,6 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(@Nullable final String[] args) {
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-        log.info("default timezone set to UTC");
         synchronized (lock) {
             while (shouldContinueRunning) {
                 try {

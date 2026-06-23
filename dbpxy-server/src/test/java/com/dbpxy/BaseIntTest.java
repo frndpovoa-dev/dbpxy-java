@@ -37,15 +37,16 @@ import org.springframework.test.context.DynamicPropertySource;
 public abstract class BaseIntTest {
     @RegisterExtension
     static PostgresExtension postgresql = new PostgresExtension();
+
     @DynamicPropertySource
     static void configureProperties(
             final DynamicPropertyRegistry registry) {
-        log.info("postgresql port: {}", postgresql.getMappedPort());
         registry.add("POSTGRESQL_USER", postgresql::getUser);
         registry.add("POSTGRESQL_PASSWORD", postgresql::getPassword);
         registry.add("POSTGRESQL_DATABASE", postgresql::getDatabase);
         registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
     }
+
     @Autowired
     protected DbpxyDatasourceProperties dataSourceProperties;
 }
