@@ -122,11 +122,11 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                     }
                     if (it instanceof java.sql.Timestamp) {
                         final java.sql.Timestamp v = (java.sql.Timestamp) it;
-                        return timestampValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60)));
+                        return timestampValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
                     }
                     if (it instanceof java.util.Date) {
                         final java.util.Date v = (java.util.Date) it;
-                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60)));
+                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
                     }
                     if (it instanceof LocalDate) {
                         return dateValue((LocalDate) it);
@@ -369,7 +369,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
     @Override
     public void setTimestamp(final int parameterIndex, final Timestamp x, final Calendar cal) {
         params.put(parameterIndex, Optional.ofNullable(x)
-                .map(t -> OffsetDateTime.ofInstant(t.toInstant(), cal.getTimeZone().toZoneId()))
+                .map(t -> OffsetDateTime.ofInstant(t.toInstant(), (cal == null) ? ZoneId.systemDefault() : cal.getTimeZone().toZoneId()))
                 .orElse(null));
     }
 

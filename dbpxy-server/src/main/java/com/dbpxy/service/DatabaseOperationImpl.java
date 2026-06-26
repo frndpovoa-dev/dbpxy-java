@@ -671,7 +671,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 .setCode(ValueCode.TIMESTAMP)
                 .setData(ValueTime.newBuilder()
                         .setValue(OffsetDateTime
-                                .ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(v.getTimezoneOffset() / 60, v.getTimezoneOffset() % 60))
+                                .ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60))
                                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                         .build()
                         .toByteString()
