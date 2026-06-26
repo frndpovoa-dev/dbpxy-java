@@ -25,7 +25,7 @@
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>
         <org.postgresql_postgresql.version>42.7.11</org.postgresql_postgresql.version>
         <org.projectlombok_lombok.version>1.18.46</org.projectlombok_lombok.version>
-        <org.springframework.grpc_spring-grpc-dependencies.version>1.0.3</org.springframework.grpc_spring-grpc-dependencies.version>
+        <org.springframework.grpc_spring-grpc-dependencies.version>1.1.0</org.springframework.grpc_spring-grpc-dependencies.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
         <spring-boot.version>4.0.7</spring-boot.version>
     </properties>
