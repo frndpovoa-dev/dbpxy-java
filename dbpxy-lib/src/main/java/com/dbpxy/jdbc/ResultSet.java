@@ -152,7 +152,7 @@ public class ResultSet implements java.sql.ResultSet {
     public String getString(final int columnIndex) throws SQLException {
         log.trace("public String getString(final int columnIndex) throws SQLException {");
         try {
-            final Value value = getCurrentRowColValue(col);
+            final Value value = getCurrentRowColValue(columnIndex);
             switch (value.getCode()) {
                 case INT32: {
                     return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
