@@ -21,6 +21,7 @@ package com.dbpxy;
  */
 
 import com.dbpxy.hint.CaffeineRuntimeHints;
+import com.dbpxy.hint.DbpxyRuntimeHints;
 import com.dbpxy.hint.LogbackRuntimeHints;
 import jakarta.annotation.Nullable;
 import jakarta.annotation.PreDestroy;
@@ -36,12 +37,12 @@ import org.springframework.context.annotation.ImportRuntimeHints;
 import org.springframework.context.event.EventListener;
 
 import java.util.Optional;
-import java.util.TimeZone;
 
 @Slf4j
 @RequiredArgsConstructor
 @ImportRuntimeHints(value = {
         CaffeineRuntimeHints.class,
+        DbpxyRuntimeHints.class,
         LogbackRuntimeHints.class,
 })
 @SpringBootApplication(scanBasePackageClasses = {Package.class})
@@ -58,8 +59,6 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(@Nullable final String[] args) {
-        TimeZone.setDefault(TimeZone.getTimeZone("UTC"));
-        log.info("default timezone set to UTC");
         synchronized (lock) {
             while (shouldContinueRunning) {
                 try {

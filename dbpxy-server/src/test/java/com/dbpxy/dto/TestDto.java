@@ -20,28 +20,50 @@ package com.dbpxy.dto;
  * #L%
  */
 
-import jakarta.persistence.Id;
+import com.fasterxml.jackson.annotation.JsonFormat;
+import com.fasterxml.jackson.annotation.JsonPropertyOrder;
 import lombok.*;
 
 import java.math.BigDecimal;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.OffsetDateTime;
 
 @Getter
 @Setter
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-@EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode
 @ToString
+@JsonPropertyOrder(alphabetic = true)
 public class TestDto {
-    @Id
-    @EqualsAndHashCode.Include
     private Long id;
-    @EqualsAndHashCode.Include
     private String name;
-    @EqualsAndHashCode.Include
     private String groupName;
-    @EqualsAndHashCode.Include
+    private Boolean booleanValue;
+    private Byte byteValue;
+    private Short shortValue;
+    private Integer integerValue;
+    private Long longValue;
+    private Float floatValue;
     private Double doubleValue;
-    @EqualsAndHashCode.Include
+    private byte[] bytesValue;
     private BigDecimal bigdecimalValue;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private java.sql.Date sqlDateValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private java.util.Date utilDateValue;
+    @JsonFormat(pattern = "yyyy-MM-dd")
+    private LocalDate localDateValue;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private Time sqlTimeValue;
+    @JsonFormat(pattern = "HH:mm:ss")
+    private LocalTime localTimeValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private Timestamp sqlTimestampValue;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss.SSSXXX")
+    private OffsetDateTime offsetDateTimeValue;
 }

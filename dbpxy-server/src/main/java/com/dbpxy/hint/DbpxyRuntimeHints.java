@@ -1,10 +1,10 @@
-package com.dbpxy.config;
+package com.dbpxy.hint;
 
 /*-
  * #%L
  * dbpxy
  * %%
- * Copyright (C) 2025 Fernando Lemes Povoa
+ * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,12 +20,17 @@ package com.dbpxy.config;
  * #L%
  */
 
-import org.springframework.context.annotation.Bean;
-import org.springframework.web.client.RestTemplate;
+import org.jspecify.annotations.NonNull;
+import org.springframework.aot.hint.RuntimeHints;
+import org.springframework.aot.hint.RuntimeHintsRegistrar;
 
-public class TestConfig {
-    @Bean
-    public RestTemplate restTemplate() {
-        return new RestTemplate();
+public class DbpxyRuntimeHints implements RuntimeHintsRegistrar {
+
+    @Override
+    public void registerHints(
+            @NonNull final RuntimeHints hints,
+            final ClassLoader classLoader) {
+        hints.resources().registerPattern("certs/cert.pem");
+        hints.resources().registerPattern("certs/key.pem");
     }
 }

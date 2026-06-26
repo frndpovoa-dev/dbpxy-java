@@ -21,7 +21,6 @@ package com.dbpxy.service;
  */
 
 
-import com.dbpxy.jdbc.Array;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
@@ -41,10 +40,7 @@ import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.sql.*;
-import java.time.Duration;
-import java.time.Instant;
-import java.time.OffsetDateTime;
-import java.time.ZoneId;
+import java.time.*;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
@@ -62,6 +58,11 @@ class DatabaseOperationImpl implements DatabaseOperation {
     private static final String MDC_QUERY_ID = "dbpxy.qry.id";
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+    private static final Value NULL_VALUE = Value.newBuilder()
+            .setCode(ValueCode.NULL)
+            .setData(ValueNull.newBuilder().build().toByteString())
+            .build();
 
     private static final SQLFormatter SQL_FORMATTER;
 
@@ -514,13 +515,6 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 });
     }
 
-    private static Value nullValue() {
-        return Value.newBuilder()
-                .setCode(ValueCode.NULL)
-                .setData(ValueNull.newBuilder().build().toByteString())
-                .build();
-    }
-
     private static Value getSqlArg(
             final ResultSetMetaData metadata,
             final ResultSet rs,
@@ -536,14 +530,13 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.BIT: {
                     return booleanValue(metadata, rs, i);
                 }
+                case Types.BINARY: {
+                    return bytesValue(metadata, rs, i);
+                }
                 case Types.DATE: {
-                    return timeValue(metadata, rs, i);
+                    return dateValue(metadata, rs, i);
                 }
-                case Types.NUMERIC: {
-                    return float64Value(metadata, rs, i);
-                }
-                case 101: // BINARY_DOUBLE
-                case Types.DOUBLE: {
+                case Types.REAL, Types.NUMERIC, Types.DOUBLE: {
                     return float64Value(metadata, rs, i);
                 }
                 case Types.SMALLINT: {
@@ -552,19 +545,23 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.INTEGER: {
                     return int32Value(metadata, rs, i);
                 }
-                case Types.TIMESTAMP: {
+                case Types.TIME: {
+                    return timeValue(metadata, rs, i);
+                }
+                case Types.TIMESTAMP, Types.TIMESTAMP_WITH_TIMEZONE: {
                     return timestampValue(metadata, rs, i);
                 }
                 case Types.VARCHAR: {
                     return varcharValue(metadata, rs, i);
                 }
                 case Types.NULL: {
-                    return nullValue();
+                    return NULL_VALUE;
                 }
                 default:
                     throw new UnsupportedOperationException("Unsupported column type: " + metadata.getColumnType(i));
             }
-        } catch (final SQLException e) {
+        } catch (final SQLException
+                       | JsonProcessingException e) {
             throw new RuntimeException(e);
         }
     }
@@ -583,7 +580,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final long v = rs.getLong(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.INT64)
                 .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
@@ -595,10 +592,28 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final boolean v = rs.getBoolean(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.BOOL)
                 .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
+                .build();
+    }
+
+    private static @NonNull Value dateValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException {
+        final Date v = rs.getDate(i);
+        if (rs.wasNull()) return NULL_VALUE;
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.DATE)
+                .setData(ValueTime.newBuilder()
+                        .setValue(LocalDate
+                                .ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneId.systemDefault())
+                                .format(DateTimeFormatter.ISO_LOCAL_DATE))
+                        .build()
+                        .toByteString()
+                )
                 .build();
     }
 
@@ -606,14 +621,14 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSetMetaData metadata,
             final ResultSet rs,
             final int i) throws SQLException {
-        final Date v = rs.getDate(i);
-        if (rs.wasNull()) return nullValue();
+        final Time v = rs.getTime(i);
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.TIME)
                 .setData(ValueTime.newBuilder()
-                        .setValue(OffsetDateTime
+                        .setValue(LocalTime
                                 .ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneId.systemDefault())
-                                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                                .format(DateTimeFormatter.ISO_LOCAL_TIME))
                         .build()
                         .toByteString()
                 )
@@ -625,7 +640,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final BigDecimal v = rs.getBigDecimal(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.FLOAT64)
                 .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
@@ -639,7 +654,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final int v = rs.getInt(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.INT32)
                 .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
@@ -651,12 +666,12 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final Timestamp v = rs.getTimestamp(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
-                .setCode(ValueCode.TIME)
+                .setCode(ValueCode.TIMESTAMP)
                 .setData(ValueTime.newBuilder()
                         .setValue(OffsetDateTime
-                                .ofInstant(v.toInstant(), ZoneId.systemDefault())
+                                .ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60))
                                 .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
                         .build()
                         .toByteString()
@@ -669,16 +684,33 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final String v = rs.getString(i);
-        if (rs.wasNull()) return nullValue();
+        if (rs.wasNull()) return NULL_VALUE;
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.STRING)
                 .setData(ValueString.newBuilder().setValue(v).build().toByteString())
                 .build();
     }
 
+    private static @NonNull Value bytesValue(
+            final ResultSetMetaData metadata,
+            final ResultSet rs,
+            final int i) throws SQLException, JsonProcessingException {
+        final byte[] v = rs.getBytes(i);
+        if (rs.wasNull()) return NULL_VALUE;
+        return createValueBuilder(metadata, i)
+                .setCode(ValueCode.BYTES)
+                .setData(ValueString.newBuilder()
+                        .setValue(OBJECT_MAPPER.writeValueAsString(v))
+                        .build().toByteString())
+                .build();
+    }
+
     private static void setSqlArg(final PreparedStatement stmt, final int i, final Value value) {
         try {
             switch (value.getCode()) {
+                case INT32:
+                    stmt.setInt(i, ValueInt32.parseFrom(value.getData()).getValue());
+                    break;
                 case INT64:
                     stmt.setLong(i, ValueInt64.parseFrom(value.getData()).getValue());
                     break;
@@ -691,25 +723,40 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case STRING:
                     stmt.setString(i, ValueString.parseFrom(value.getData()).getValue());
                     break;
+                case DATE: {
+                    final String s = ValueTime.parseFrom(value.getData()).getValue();
+                    stmt.setObject(i, LocalDate.parse(s, DateTimeFormatter.ISO_LOCAL_DATE));
+                    break;
+                }
                 case TIME: {
                     final String s = ValueTime.parseFrom(value.getData()).getValue();
-                    final OffsetDateTime odt = OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME);
-                    stmt.setTimestamp(i, new Timestamp(odt.toInstant().toEpochMilli()));
+                    stmt.setObject(i, LocalTime.parse(s, DateTimeFormatter.ISO_LOCAL_TIME));
                     break;
                 }
-                case ARRAY: {
-                    final ArrayMirror mirror = OBJECT_MAPPER.readValue(
-                            ValueString.parseFrom(value.getData()).getValue(),
-                            new TypeReference<>() {
-                            });
-                    stmt.setArray(i, new Array(
-                            mirror.getBaseTypeName(),
-                            mirror.getBaseType(),
-                            mirror.getArray().toArray()));
+                case TIMESTAMP: {
+                    final String s = ValueTime.parseFrom(value.getData()).getValue();
+                    stmt.setObject(i, OffsetDateTime.parse(s, DateTimeFormatter.ISO_OFFSET_DATE_TIME));
                     break;
                 }
-                default:
+                case BYTES: {
+                    byte[] bytes;
+                    final String stringValue = ValueString.parseFrom(value.getData()).getValue();
+                    if (stringValue.isEmpty()) {
+                        bytes = new byte[0];
+                    } else {
+                        bytes = OBJECT_MAPPER.readValue(
+                                stringValue,
+                                new TypeReference<>() {
+                                });
+                    }
+                    stmt.setBytes(i, bytes);
+                    break;
+                }
+                case NULL:
                     stmt.setNull(i, Types.NULL);
+                    break;
+                default:
+                    throw new SQLFeatureNotSupportedException("ValueCode." + value.getCode());
             }
         } catch (final InvalidProtocolBufferException
                        | SQLException

@@ -69,6 +69,7 @@ public class PostgresExtension implements BeforeAllCallback, AfterAllCallback {
         }
                 .withReuse(false)
                 .withSharedMemorySize(1000 * 1000 * 512L)
+                .withEnv("TZ", "UTC")
                 .withEnv("POSTGRES_DB", database)
                 .withEnv("POSTGRES_USER", user)
                 .withEnv("POSTGRES_PASSWORD", password)

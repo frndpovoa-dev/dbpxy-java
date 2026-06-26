@@ -9,19 +9,6 @@ steps:
         mkdir -p /workspace/.docker
         cp ~/.docker/config.json /workspace/.docker/config.json
     secretEnv: [ 'DHI_IO_USERNAME', 'DHI_IO_PASSWORD' ]
-  - id: 'generate-backend-certs'
-    name: gcr.io/cloud-builders/gcloud
-    entrypoint: bash
-    args:
-      - '-c'
-      - |
-        cat << EOF > dbpxy-server/src/main/resources/certs/key.pem
-        $${GRPC_KEY_PEM}
-        EOF
-        cat << EOF > dbpxy-server/src/main/resources/certs/cert.pem
-        $${GRPC_CERT_PEM}
-        EOF
-    secretEnv: [ 'GRPC_KEY_PEM', 'GRPC_CERT_PEM' ]
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
@@ -36,6 +23,9 @@ steps:
         cp dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.jar
         cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar
         cp dbpxy-lib/.flattened-pom.xml $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom
+        sha1sum dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.jar.sha1
+        sha1sum dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar.sha1
+        sha1sum dbpxy-lib/.flattened-pom.xml | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom.sha1
     env:
       - DBPXY_LIB_DIR=dbpxy-lib/target/gcp-deploy/com/dbpxy/dbpxy-lib/${_VERSION}
   - id: 'build-image-using-docker'
@@ -59,10 +49,6 @@ images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
 availableSecrets:
   secretManager:
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_KEY_PEM/versions/1
-      env: GRPC_KEY_PEM
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/GRPC_CERT_PEM/versions/1
-      env: GRPC_CERT_PEM
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_USERNAME/versions/1
       env: DHI_IO_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1

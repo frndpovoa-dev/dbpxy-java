@@ -1,17 +1,17 @@
-package com.dbpxy.service;
+package com.dbpxy.config;
 
 /*-
  * #%L
  * dbpxy
  * %%
- * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
+ * Copyright (C) 2025 Fernando Lemes Povoa
  * %%
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -20,17 +20,12 @@ package com.dbpxy.service;
  * #L%
  */
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-class ArrayMirror {
-    private int baseType;
-    private String baseTypeName;
-    private Object[] array;
+public class RestConfig {
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 }

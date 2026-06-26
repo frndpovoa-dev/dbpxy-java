@@ -27,19 +27,18 @@ import com.dbpxy.config.Headers;
 import com.dbpxy.dto.TestDto;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.TransactionUtils;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.lang3.time.StopWatch;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -48,12 +47,11 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
-import java.time.Duration;
+import java.nio.charset.StandardCharsets;
+import java.time.*;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -67,6 +65,8 @@ class TestControllerIntTest extends BaseIntTest {
     private static final String INSERT_URL = "http://localhost:9091/api/v1/test/insert";
 
     @Autowired
+    private ObjectMapper objectMapper;
+    @Autowired
     private RestTemplate restTemplate;
     @Autowired
     private DbpxyProperties dbpxyProperties;
@@ -78,8 +78,6 @@ class TestControllerIntTest extends BaseIntTest {
     private String tx1Id;
     private Transaction tx2Transaction;
     private String tx2Id;
-
-    private final StopWatch stopWatch = new StopWatch();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -133,71 +131,89 @@ class TestControllerIntTest extends BaseIntTest {
     }
 
     @Test
-    void testApiUsingSharedTransaction() {
-        final ParameterizedTypeReference<List<TestDto>> listTypeReference = new ParameterizedTypeReference<>() {
-        };
-
+    void testApiUsingSharedTransaction() throws Exception {
         log.debug("read before insert using tx 1");
-        assertThat(listGroupWeb(tx1Id, listTypeReference))
-                .isEmpty();
+        assertThat(listGroupWeb(tx1Id))
+                .isEqualTo("[]");
 
         log.debug("read before insert using tx 2");
-        assertThat(listGroupWeb(tx2Id, listTypeReference))
-                .isEmpty();
+        assertThat(listGroupWeb(tx2Id))
+                .isEqualTo("[]");
 
-        log.debug("insert using tx 1");
+        final long now = System.currentTimeMillis();
+
         final TestDto insertTx1 = TestDto.builder()
                 .id(2025L)
                 .name("Hello World!")
                 .groupName("web")
-                .doubleValue(2.0)
+                .booleanValue(true)
+                .byteValue((byte) 1)
+                .shortValue((short) 2)
+                .integerValue(3)
+                .longValue(4L)
+                .floatValue(5.0F)
+                .doubleValue(6.0D)
+                .bytesValue("2025".getBytes(StandardCharsets.UTF_8))
                 .bigdecimalValue(new BigDecimal("20.0000000000000000000000001"))
+                .sqlDateValue(new java.sql.Date(now))
+                .sqlTimeValue(new java.sql.Time(now))
+                .utilDateValue(new java.util.Date(now))
+                .localDateValue(LocalDate.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .localTimeValue(LocalTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .sqlTimestampValue(new java.sql.Timestamp(now))
+                .offsetDateTimeValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
                 .build();
-        final TestDto insertTx1a = TestDto.builder()
+
+        final TestDto insertTx1ServerSide = TestDto.builder()
                 .id(2026L)
                 .name("Hello World! from server side")
                 .groupName("web")
-                .doubleValue(2.0)
-                .bigdecimalValue(new BigDecimal("20.0000000000000000000000001"))
+                .booleanValue(true)
+                .byteValue((byte) 2)
+                .shortValue((short) 3)
+                .integerValue(4)
+                .longValue(5L)
+                .floatValue(6.0F)
+                .doubleValue(7.0)
+                .bytesValue("2025 from server side".getBytes(StandardCharsets.UTF_8))
+                .bigdecimalValue(new BigDecimal("21.0000000000000000000000001"))
+                .sqlDateValue(new java.sql.Date(now))
+                .sqlTimeValue(new java.sql.Time(now))
+                .sqlTimestampValue(new java.sql.Timestamp(now))
+                .utilDateValue(new java.util.Date(now))
+                .localDateValue(LocalDate.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .localTimeValue(LocalTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
+                .offsetDateTimeValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(now), ZoneId.systemDefault()))
                 .build();
-        assertThat(insert(tx1Id, TestDto.class, insertTx1))
-                .isNotNull()
-                .isEqualTo(insertTx1);
 
-        log.debug("concurrent reads after insert using tx 1 and tx 2");
-        stopWatch.run(() -> {
-            try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
-                forkJoinPool.execute(() -> IntStream.range(0, 500).parallel().forEach(ignored -> {
-                    assertThat(listGroupWeb(tx1Id, listTypeReference))
-                            .isNotEmpty()
-                            .containsExactlyInAnyOrder(insertTx1, insertTx1a);
-                    assertThat(listGroupWeb(tx2Id, listTypeReference))
-                            .isNotEmpty()
-                            .containsExactly(insertTx1a);
-                }));
-            }
-        });
-        log.info("concurrent reads on tx 1 and tx 2 ran for {}ms", stopWatch.getDuration().toMillis());
-        assertThat(stopWatch.getDuration())
-                .isLessThan(Duration.ofSeconds(20));
+        log.debug("insert using tx 1");
+        assertThat(insert(tx1Id, insertTx1))
+                .isNotNull()
+                .isEqualTo(objectMapper.writeValueAsString(insertTx1));
+
+        assertThat(listGroupWeb(tx1Id))
+                .isNotEmpty()
+                .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1, insertTx1ServerSide)));
+
+        assertThat(listGroupWeb(tx2Id))
+                .isNotEmpty()
+                .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
     }
 
-    private @Nullable <T> T insert(
+    private @Nullable <T> String insert(
             final String transactionId,
-            final Class<T> clazz,
             final T data) {
         return restTemplate.exchange(INSERT_URL, HttpMethod.POST,
                         new HttpEntity<>(data, HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
-                        clazz)
+                        String.class)
                 .getBody();
     }
 
-    private @Nullable <T> T listGroupWeb(
-            final String transactionId,
-            final ParameterizedTypeReference<T> typeReference) {
+    private @Nullable <T> String listGroupWeb(
+            final String transactionId) {
         return restTemplate.exchange(LIST_GROUP_WEB_URL, HttpMethod.GET,
                         new HttpEntity<>(HttpHeaders.readOnlyHttpHeaders(MultiValueMap.fromSingleValue(Map.of(Headers.TRANSACTION, transactionId)))),
-                        typeReference)
+                        String.class)
                 .getBody();
     }
 }

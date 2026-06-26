@@ -20,13 +20,10 @@ package com.dbpxy;
  * #L%
  */
 
-import com.dbpxy.config.DbpxyGrpcProperties;
-import com.dbpxy.config.DbpxyPoolProperties;
-import com.dbpxy.config.TestConfig;
+import com.dbpxy.config.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.boot.persistence.autoconfigure.EntityScan;
 import org.springframework.context.annotation.Import;
@@ -57,10 +54,10 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
                 com.dbpxy.controller.Package.class,
         }
 )
-@Import(TestConfig.class)
+@Import(value = {
+        JpaConfig.class,
+        JsonConfig.class,
+        RestConfig.class,
+})
 public class Application {
-    static void main(String[] args) {
-        new SpringApplicationBuilder(Application.class)
-                .run(args);
-    }
 }

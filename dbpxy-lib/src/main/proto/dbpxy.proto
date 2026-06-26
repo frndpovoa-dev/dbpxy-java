@@ -127,6 +127,8 @@ enum ValueCode {
   TIME = 6;
   NULL = 7;
   ARRAY = 8;
+  DATE = 9;
+  TIMESTAMP = 10;
 }
 
 message ValueInt32 {

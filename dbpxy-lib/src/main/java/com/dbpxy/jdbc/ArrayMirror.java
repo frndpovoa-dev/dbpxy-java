@@ -1,8 +1,8 @@
-package com.dbpxy.service;
+package com.dbpxy.jdbc;
 
 /*-
  * #%L
- * dbpxy
+ * dbpxy-lib
  * %%
  * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%

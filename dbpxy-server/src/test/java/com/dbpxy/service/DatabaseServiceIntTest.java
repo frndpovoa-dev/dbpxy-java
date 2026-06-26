@@ -91,9 +91,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                     " id numeric(19,0) primary key," +
                     " name varchar(255)" +
                     " );";
-    public static final String DROP_TABLE_IF_EXISTS_TEST_ORACLE =
-            "drop table if exists test cascade constraints;";
-    public static final String DROP_TABLE_IF_EXISTS_TEST_POSTGRESQL =
+    public static final String DROP_TABLE_IF_EXISTS_TEST =
             "drop table if exists test cascade;";
 
     @Autowired
@@ -115,7 +113,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
                 .build();
         this.databaseProxyServiceClient = DbpxyGrpc.newBlockingStub(channel);
 
-        ddl(dbpxyDatasourceProperties.getDatabase() == DbpxyDatasourceProperties.Database.ORACLE ? DROP_TABLE_IF_EXISTS_TEST_ORACLE : DROP_TABLE_IF_EXISTS_TEST_POSTGRESQL);
+        ddl(DROP_TABLE_IF_EXISTS_TEST);
         ddl(CREATE_TABLE_TEST);
     }
 

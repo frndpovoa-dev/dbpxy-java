@@ -1,8 +1,8 @@
-package com.dbpxy.service;
+package com.dbpxy.config;
 
 /*-
  * #%L
- * dbpxy
+ * dbpxy-server
  * %%
  * Copyright (C) 2025 - 2026 Fernando Lemes Povoa
  * %%
@@ -20,17 +20,19 @@ package com.dbpxy.service;
  * #L%
  */
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
 
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-class ArrayMirror {
-    private int baseType;
-    private String baseTypeName;
-    private Object[] array;
+@Configuration
+public class JsonConfig {
+    @Bean
+    public ObjectMapper objectMapper() {
+        ObjectMapper mapper = new ObjectMapper();
+        mapper.registerModule(new JavaTimeModule());
+        mapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        return mapper;
+    }
 }

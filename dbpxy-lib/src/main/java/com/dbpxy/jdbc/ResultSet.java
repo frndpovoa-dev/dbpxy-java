@@ -22,6 +22,9 @@ package com.dbpxy.jdbc;
 
 import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.proto.*;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
@@ -31,11 +34,13 @@ import org.slf4j.MDC;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.sql.*;
 import java.sql.Statement;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Map;
@@ -45,6 +50,7 @@ import java.util.Optional;
 @Slf4j
 public class ResultSet implements java.sql.ResultSet {
     private static final String MDC_QUERY_ID = "dbpxy.qry.id";
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private final Connection connection;
     private final Statement statement;
     private QueryResult queryResult;
@@ -67,38 +73,6 @@ public class ResultSet implements java.sql.ResultSet {
     protected Value getCurrentRowColValue(final int col) {
         this.col = col;
         return queryResult.getRows(localRow).getCols(col - 1);
-    }
-
-    protected String getCurrentRowColValueDataAsString(final int col) throws SQLException {
-        this.col = col;
-        final Value value = getCurrentRowColValue(col);
-        try {
-            switch (value.getCode()) {
-                case INT32: {
-                    return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
-                }
-                case INT64: {
-                    return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
-                }
-                case FLOAT64: {
-                    return ValueFloat64.parseFrom(value.getData()).getValue();
-                }
-                case BOOL: {
-                    return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
-                }
-                case STRING: {
-                    return ValueString.parseFrom(value.getData()).getValue();
-                }
-                case TIME: {
-                    return ValueTime.parseFrom(value.getData()).getValue();
-                }
-                default: {
-                    return null;
-                }
-            }
-        } catch (InvalidProtocolBufferException e) {
-            throw new SQLException(e);
-        }
     }
 
     @Override
@@ -177,99 +151,212 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public String getString(final int columnIndex) throws SQLException {
         log.trace("public String getString(final int columnIndex) throws SQLException {");
-        return getCurrentRowColValueDataAsString(columnIndex);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            switch (value.getCode()) {
+                case INT32: {
+                    return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
+                }
+                case INT64: {
+                    return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
+                }
+                case FLOAT64: {
+                    return ValueFloat64.parseFrom(value.getData()).getValue();
+                }
+                case BOOL: {
+                    return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
+                }
+                case BYTES, STRING: {
+                    return ValueString.parseFrom(value.getData()).getValue();
+                }
+                case DATE, TIME, TIMESTAMP: {
+                    return ValueTime.parseFrom(value.getData()).getValue();
+                }
+                case NULL: {
+                    return null;
+                }
+            }
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
-    public boolean getBoolean(int columnIndex) throws SQLException {
+    public boolean getBoolean(final int columnIndex) throws SQLException {
         log.trace("public boolean getBoolean(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Boolean::parseBoolean)
-                .orElse(false);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return false;
+            }
+            return ValueBool.parseFrom(value.getData()).getValue();
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
     public byte getByte(int columnIndex) throws SQLException {
         log.trace("public byte getByte(int columnIndex) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return (byte) ValueInt32.parseFrom(value.getData()).getValue();
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public short getShort(int columnIndex) throws SQLException {
+    public short getShort(final int columnIndex) throws SQLException {
         log.trace("public short getShort(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Short::parseShort)
-                .orElse((short) 0);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return (short) ValueInt32.parseFrom(value.getData()).getValue();
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public int getInt(int columnIndex) throws SQLException {
+    public int getInt(final int columnIndex) throws SQLException {
         log.trace("public int getInt(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Integer::parseInt)
-                .orElse(0);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return ValueInt32.parseFrom(value.getData()).getValue();
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public long getLong(int columnIndex) throws SQLException {
+    public long getLong(final int columnIndex) throws SQLException {
         log.trace("public long getLong(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Long::parseLong)
-                .orElse(0L);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return ValueInt64.parseFrom(value.getData()).getValue();
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public float getFloat(int columnIndex) throws SQLException {
+    public float getFloat(final int columnIndex) throws SQLException {
         log.trace("public float getFloat(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Float::parseFloat)
-                .orElse(0.0F);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return Float.parseFloat(ValueFloat64.parseFrom(value.getData()).getValue());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public double getDouble(int columnIndex) throws SQLException {
+    public double getDouble(final int columnIndex) throws SQLException {
         log.trace("public double getDouble(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Double::parseDouble)
-                .orElse(0.0);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return 0;
+            }
+            return Double.parseDouble(ValueFloat64.parseFrom(value.getData()).getValue());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
+    public BigDecimal getBigDecimal(final int columnIndex, final int scale) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(BigDecimal::new)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()).setScale(scale, RoundingMode.HALF_UP);
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
     public byte[] getBytes(int columnIndex) throws SQLException {
         log.trace("public byte[] getBytes(int columnIndex) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            final String stringValue = ValueString.parseFrom(value.getData()).getValue();
+            if (stringValue.isEmpty()) {
+                return new byte[0];
+            }
+            return OBJECT_MAPPER.readValue(
+                    stringValue,
+                    new TypeReference<byte[]>() {
+                    });
+        } catch (final InvalidProtocolBufferException
+                       | JsonProcessingException e) {
+            throw new SQLException(e);
+        }
+
     }
 
     @Override
-    public Date getDate(int columnIndex) throws SQLException {
+    public Date getDate(final int columnIndex) throws SQLException {
         log.trace("public Date getDate(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Date::valueOf)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return Date.valueOf(ValueTime.parseFrom(value.getData()).getValue());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public Time getTime(int columnIndex) throws SQLException {
+    public Time getTime(final int columnIndex) throws SQLException {
         log.trace("public Time getTime(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Time::valueOf)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return Time.valueOf(ValueTime.parseFrom(value.getData()).getValue());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
-    public Timestamp getTimestamp(int columnIndex) throws SQLException {
+    public Timestamp getTimestamp(final int columnIndex) throws SQLException {
         log.trace("public Timestamp getTimestamp(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(Timestamp::valueOf)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return Timestamp.from(OffsetDateTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
@@ -412,8 +499,53 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Object getObject(int columnIndex) throws SQLException {
+    public Object getObject(final int columnIndex) throws SQLException {
         log.trace("public Object getObject(int columnIndex) throws SQLException {");
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            switch (value.getCode()) {
+                case INT32: {
+                    return ValueInt32.parseFrom(value.getData()).getValue();
+                }
+                case INT64: {
+                    return ValueInt64.parseFrom(value.getData()).getValue();
+                }
+                case FLOAT64: {
+                    return ValueFloat64.parseFrom(value.getData()).getValue();
+                }
+                case BOOL: {
+                    return ValueBool.parseFrom(value.getData()).getValue();
+                }
+                case STRING: {
+                    return ValueString.parseFrom(value.getData()).getValue();
+                }
+                case DATE: {
+                    return LocalDate.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_LOCAL_DATE);
+                }
+                case TIME: {
+                    return LocalTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_LOCAL_TIME);
+                }
+                case TIMESTAMP: {
+                    return OffsetDateTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+                }
+                case BYTES: {
+                    final String stringValue = ValueString.parseFrom(value.getData()).getValue();
+                    if (stringValue.isEmpty()) {
+                        return new byte[0];
+                    }
+                    return OBJECT_MAPPER.readValue(
+                            stringValue,
+                            new TypeReference<byte[]>() {
+                            });
+                }
+                case NULL: {
+                    return null;
+                }
+            }
+        } catch (final InvalidProtocolBufferException
+                       | JsonProcessingException e) {
+            throw new SQLException(e);
+        }
         throw new SQLFeatureNotSupportedException();
     }
 
@@ -444,9 +576,15 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public BigDecimal getBigDecimal(final int columnIndex) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(int columnIndex) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .map(BigDecimal::new)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue());
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
@@ -943,17 +1081,22 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
+    public Timestamp getTimestamp(final int columnIndex, final Calendar cal) throws SQLException {
         log.trace("public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {");
-        return Optional.ofNullable(getCurrentRowColValueDataAsString(columnIndex))
-                .filter(text -> !text.trim().isEmpty())
-                .map(text -> OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME))
-                .map(odt -> Optional.ofNullable(cal)
-                        .map(calendar -> odt.atZoneSameInstant(calendar.getTimeZone().toZoneId()))
-                        .orElseGet(odt::toZonedDateTime))
-                .map(ZonedDateTime::toInstant)
-                .map(Timestamp::from)
-                .orElse(null);
+        try {
+            final Value value = getCurrentRowColValue(columnIndex);
+            if (value.getCode() == ValueCode.NULL) {
+                return null;
+            }
+            return Optional.of(ValueTime.parseFrom(value.getData()).getValue())
+                    .filter(text -> !text.trim().isEmpty())
+                    .map(text -> OffsetDateTime.parse(text, DateTimeFormatter.ISO_OFFSET_DATE_TIME))
+                    .map(OffsetDateTime::toInstant)
+                    .map(Timestamp::from)
+                    .orElse(null);
+        } catch (final InvalidProtocolBufferException e) {
+            throw new SQLException(e);
+        }
     }
 
     @Override
