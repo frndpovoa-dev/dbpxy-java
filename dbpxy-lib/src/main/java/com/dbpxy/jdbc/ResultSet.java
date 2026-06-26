@@ -34,13 +34,13 @@ import org.slf4j.MDC;
 import java.io.InputStream;
 import java.io.Reader;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.net.URL;
 import java.sql.*;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
-import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Calendar;
 import java.util.Map;
@@ -152,14 +152,34 @@ public class ResultSet implements java.sql.ResultSet {
     public String getString(final int columnIndex) throws SQLException {
         log.trace("public String getString(final int columnIndex) throws SQLException {");
         try {
-            final Value value = getCurrentRowColValue(columnIndex);
-            if (value.getCode() == ValueCode.NULL) {
-                return null;
+            final Value value = getCurrentRowColValue(col);
+            switch (value.getCode()) {
+                case INT32: {
+                    return Integer.toString(ValueInt32.parseFrom(value.getData()).getValue());
+                }
+                case INT64: {
+                    return Long.toString(ValueInt64.parseFrom(value.getData()).getValue());
+                }
+                case FLOAT64: {
+                    return ValueFloat64.parseFrom(value.getData()).getValue();
+                }
+                case BOOL: {
+                    return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
+                }
+                case BYTES, STRING: {
+                    return ValueString.parseFrom(value.getData()).getValue();
+                }
+                case DATE, TIME, TIMESTAMP: {
+                    return ValueTime.parseFrom(value.getData()).getValue();
+                }
+                case NULL: {
+                    return null;
+                }
             }
-            return ValueString.parseFrom(value.getData()).getValue();
         } catch (final InvalidProtocolBufferException e) {
             throw new SQLException(e);
         }
+        throw new SQLFeatureNotSupportedException();
     }
 
     @Override
@@ -268,7 +288,7 @@ public class ResultSet implements java.sql.ResultSet {
             if (value.getCode() == ValueCode.NULL) {
                 return null;
             }
-            return new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()).setScale(scale);
+            return new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue()).setScale(scale, RoundingMode.HALF_UP);
         } catch (final InvalidProtocolBufferException e) {
             throw new SQLException(e);
         }
