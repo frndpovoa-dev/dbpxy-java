@@ -333,7 +333,7 @@ public class ResultSet implements java.sql.ResultSet {
             if (value.getCode() == ValueCode.NULL) {
                 return null;
             }
-            return Timestamp.valueOf(OffsetDateTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toLocalDateTime());
+            return Timestamp.from(OffsetDateTime.parse(ValueTime.parseFrom(value.getData()).getValue(), DateTimeFormatter.ISO_OFFSET_DATE_TIME).toInstant());
         } catch (final InvalidProtocolBufferException e) {
             throw new SQLException(e);
         }
