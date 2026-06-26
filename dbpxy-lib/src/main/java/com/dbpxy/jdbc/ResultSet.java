@@ -166,10 +166,13 @@ public class ResultSet implements java.sql.ResultSet {
                 case BOOL: {
                     return Boolean.toString(ValueBool.parseFrom(value.getData()).getValue());
                 }
-                case BYTES, STRING: {
+                case BYTES:
+                case STRING: {
                     return ValueString.parseFrom(value.getData()).getValue();
                 }
-                case DATE, TIME, TIMESTAMP: {
+                case DATE:
+                case TIME:
+                case TIMESTAMP: {
                     return ValueTime.parseFrom(value.getData()).getValue();
                 }
                 case NULL: {
