@@ -196,7 +196,7 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
         for (final Object value : params.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
-                .toList()) {
+                .collect(Collectors.toList())) {
             result.add(nullSafeArgToValue(value));
         }
         return result;
