@@ -20,55 +20,45 @@ package com.dbpxy.service;
  * #L%
  */
 
-import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
-import com.dbpxy.jdbc.ConnectionProxy;
-import com.dbpxy.proto.ExecuteConfig;
-import com.dbpxy.proto.ExecuteResult;
+import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
+import com.dbpxy.proto.NextConfig;
+import com.dbpxy.proto.QueryConfig;
+import com.dbpxy.proto.QueryResult;
+import com.dbpxy.proto.Transaction;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
-import lombok.experimental.Delegate;
-import org.apache.commons.pool2.ObjectPool;
-
-import java.time.OffsetDateTime;
-import java.util.concurrent.ExecutorService;
 
 @RequiredArgsConstructor
-public class DatabaseReadOnlyOperation implements DatabaseOperation {
+public class DatabaseReadOnlyOperation extends DatabaseNoOperation implements DatabaseOperation {
     @Getter
-    @Delegate(types = DatabaseOperation.class)
     private final DatabaseOperation delegate;
 
-    @Override
-    public void openConnection(
-            final ObjectPool<ConnectionProxy> connectionPool,
-            final ExecutorService taskExecutor) {
-        // Do nothing
+    public long getTimeoutInMs() {
+        return delegate.getTimeoutInMs();
     }
 
     @Override
-    public void closeConnection() {
-        // Do nothing
+    public DatabaseOperationProp getDatabaseOperationProp() {
+        return delegate.getDatabaseOperationProp();
     }
 
     @Override
-    public OffsetDateTime beginTransaction(
-            final DatabaseOperationProp databaseOperationProp) {
-        return OffsetDateTime.now();
+    public Transaction getTransaction() {
+        return delegate.getTransaction();
     }
 
     @Override
-    public ExecuteResult execute(
-            final ExecuteConfig config) throws UnsupportedInReadOnlyModeException {
-        throw new UnsupportedInReadOnlyModeException();
+    public QueryResult query(final QueryConfig config) throws UnsupportedInWriteOnlyModeException {
+        return delegate.query(config);
     }
 
     @Override
-    public boolean commitTransaction() {
-        return false;
+    public QueryResult next(final NextConfig config) throws UnsupportedInWriteOnlyModeException {
+        return delegate.next(config);
     }
 
     @Override
-    public boolean rollbackTransaction() {
-        return false;
+    public void closeResultSet(final NextConfig config) throws UnsupportedInWriteOnlyModeException {
+        delegate.closeResultSet(config);
     }
 }

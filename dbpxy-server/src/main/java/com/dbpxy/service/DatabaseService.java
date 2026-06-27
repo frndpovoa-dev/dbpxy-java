@@ -216,7 +216,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             final DatabaseOperation ops = DatabaseOperationImpl.builder()
                     .databaseOperationProp(DatabaseOperationProp.builder()
-                            .timeoutInMs(config.getTimeoutInMs())
+                            .timeoutInMs(DatabaseUtils.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                             .autoCommit(config.getAutoCommit())
                             .readOnly(config.getReadOnly())
                             .connectionString(DatabaseOperationProp.ConnectionString.builder()

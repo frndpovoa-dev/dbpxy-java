@@ -514,7 +514,7 @@ public class ResultSet implements java.sql.ResultSet {
                     return ValueInt64.parseFrom(value.getData()).getValue();
                 }
                 case FLOAT64: {
-                    return ValueFloat64.parseFrom(value.getData()).getValue();
+                    return new BigDecimal(ValueFloat64.parseFrom(value.getData()).getValue());
                 }
                 case BOOL: {
                     return ValueBool.parseFrom(value.getData()).getValue();
