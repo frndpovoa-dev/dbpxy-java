@@ -30,6 +30,11 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import java.lang.management.ManagementFactory;
+import java.lang.management.MemoryMXBean;
+
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 @Slf4j
 @ActiveProfiles({"integration", "postgresql"})
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
@@ -49,4 +54,19 @@ public abstract class BaseIntTest {
 
     @Autowired
     protected DbpxyDatasourceProperties dataSourceProperties;
+
+    protected long usedHeapSize() {
+        System.gc();
+        final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        return memoryMXBean.getHeapMemoryUsage().getUsed();
+    }
+
+    protected void assertHeapSizeDiff(final long memoryBefore, final long acceptableMemoryDiff) {
+        System.gc();
+        final MemoryMXBean memoryMXBean = ManagementFactory.getMemoryMXBean();
+        final long memoryAfter = memoryMXBean.getHeapMemoryUsage().getUsed();
+        final long memoryDiff = memoryAfter - memoryBefore;
+        log.info("heap size diff: {} bytes", memoryDiff);
+        assertTrue(memoryDiff < acceptableMemoryDiff, "potential memory leak detected: " + memoryDiff + " bytes");
+    }
 }

@@ -27,12 +27,14 @@ import com.dbpxy.config.Headers;
 import com.dbpxy.dto.TestDto;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.TransactionUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Condition;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -51,15 +53,16 @@ import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ForkJoinPool;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {"app.dbpxy.ddl-auto=create"}
-)
+        properties = {"app.dbpxy.ddl-auto=create"})
 class TestControllerIntTest extends BaseIntTest {
     private static final String LIST_GROUP_WEB_URL = "http://localhost:9091/api/v1/test/list?group=web";
     private static final String INSERT_URL = "http://localhost:9091/api/v1/test/insert";
@@ -198,6 +201,30 @@ class TestControllerIntTest extends BaseIntTest {
         assertThat(listGroupWeb(tx2Id))
                 .isNotEmpty()
                 .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+
+        log.debug("concurrent reads after insert using tx 1 and tx 2");
+        final long memoryBefore = usedHeapSize();
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2000).parallel().map(ignored -> {
+                        try {
+                            assertThat(listGroupWeb(tx1Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1, insertTx1ServerSide)));
+                            assertThat(listGroupWeb(tx2Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+                            return 1;
+                        } catch (final JsonProcessingException e) {
+                            log.error(e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .sum()))
+                    .isNotNull()
+                    .succeedsWithin(Duration.ofSeconds(40))
+                    .is(new Condition<>(total -> total == 2000, "Expected 2000 iteration results"));
+        }
+        assertHeapSizeDiff(memoryBefore, 40 * 1_024 * 1_024);
     }
 
     private @Nullable <T> String insert(
