@@ -230,12 +230,12 @@ class TestControllerIntTest extends BaseIntTest {
                     })
                     .sum()))
                     .isNotNull()
-                    .succeedsWithin(Duration.ofSeconds(60))
+                    .succeedsWithin(Duration.ofSeconds(90))
                     .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
             final Instant end = Instant.now();
             assertThat(Duration.between(start, end))
-                    .isGreaterThanOrEqualTo(Duration.ofSeconds(30))
-                    .isLessThanOrEqualTo(Duration.ofSeconds(60));
+                    .isGreaterThanOrEqualTo(Duration.ofSeconds(45))
+                    .isLessThanOrEqualTo(Duration.ofSeconds(90));
         }
 
         // Toxiproxy
@@ -256,7 +256,7 @@ class TestControllerIntTest extends BaseIntTest {
                 log.error(e.getMessage());
             }
         });
-        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(3)) {
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
             final Instant start = Instant.now();
             assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
                     .map(ignored -> {
