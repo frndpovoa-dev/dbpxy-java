@@ -249,7 +249,7 @@ class TestControllerIntTest extends BaseIntTest {
                     latency.setLatency(1_500);
                     Thread.sleep(200);
                     latency.setLatency(1);
-                    Thread.sleep(10_000);
+                    Thread.sleep(30_000);
                 }
             } catch (final InterruptedException |
                            IOException e) {
