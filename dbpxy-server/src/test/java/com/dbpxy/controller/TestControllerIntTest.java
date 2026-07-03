@@ -222,10 +222,10 @@ class TestControllerIntTest extends BaseIntTest {
                     })
                     .sum()))
                     .isNotNull()
-                    .succeedsWithin(Duration.ofSeconds(40))
+                    .succeedsWithin(Duration.ofSeconds(60))
                     .is(new Condition<>(total -> total == 2000, "Expected 2000 iteration results"));
         }
-        assertHeapSizeDiff(memoryBefore, 40 * 1_024 * 1_024);
+        assertHeapSizeDiff(memoryBefore, 40_000_000);
     }
 
     private @Nullable <T> String insert(

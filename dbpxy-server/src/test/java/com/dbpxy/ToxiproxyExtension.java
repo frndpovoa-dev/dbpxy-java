@@ -68,7 +68,8 @@ public class ToxiproxyExtension implements BeforeAllCallback, AfterAllCallback {
                 .withNetwork(Network.SHARED)
                 .withReuse(false)
                 .withLogConsumer(new Slf4jLogConsumer(log))
-                .withSharedMemorySize(1000 * 1000 * 512L)
+                .withSharedMemorySize(512_000_000L)
+                .withEnv("LOG_LEVEL", "ERROR")
         ;
         final ArrayList<Integer> exposedPorts = new ArrayList<>();
         exposedPorts.add(8474);

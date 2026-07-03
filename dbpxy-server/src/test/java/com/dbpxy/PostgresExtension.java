@@ -74,7 +74,7 @@ public class PostgresExtension implements BeforeAllCallback, AfterAllCallback {
                 .withNetworkAliases("postgres")
                 .withReuse(false)
                 .withLogConsumer(new Slf4jLogConsumer(log))
-                .withSharedMemorySize(1000 * 1000 * 512L)
+                .withSharedMemorySize(512_000_000L)
                 .withEnv("TZ", "UTC")
                 .withEnv("POSTGRES_DB", database)
                 .withEnv("POSTGRES_USER", user)
