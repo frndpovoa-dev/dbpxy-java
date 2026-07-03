@@ -6,7 +6,7 @@ app:
     port: ${GRPC_PORT:9090}
     show-sql: false
     keep-alive-interval-s: 30
-    keep-alive-timeout-s: 10
+    keep-alive-timeout-s: 30
     timeout-s: 1
 
 server:
