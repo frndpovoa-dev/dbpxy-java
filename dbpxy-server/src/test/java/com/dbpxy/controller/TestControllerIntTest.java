@@ -247,7 +247,7 @@ class TestControllerIntTest extends BaseIntTest {
             try {
                 while (intermittentIssue.get()) {
                     latency.setLatency(1_500);
-                    Thread.sleep(200);
+                    Thread.sleep(100);
                     latency.setLatency(1);
                     Thread.sleep(30_000);
                 }
