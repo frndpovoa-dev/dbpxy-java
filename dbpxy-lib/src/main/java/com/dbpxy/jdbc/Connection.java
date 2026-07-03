@@ -23,9 +23,12 @@ package com.dbpxy.jdbc;
 import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
+import com.dbpxy.grpc.RetryLoggerInterceptor;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.DatabaseUtils;
 import com.dbpxy.util.TransactionUtils;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
@@ -36,6 +39,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
+import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -104,16 +108,25 @@ public class Connection implements java.sql.Connection {
         if (channel != null) {
             return;
         }
-        try (final InputStream cert = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(dbpxyCertPath))) {
+        try (final InputStream cert = Objects.requireNonNull(new ClassPathResource(dbpxyCertPath).getInputStream());
+             final InputStream grpcConfig = Objects.requireNonNull(new ClassPathResource("serviceConfig.json").getInputStream())) {
             final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(cert)
                     .build();
+            final Map<String, ?> serviceConfig = new ObjectMapper().readValue(grpcConfig, new TypeReference<Map<String, ?>>() {
+            });
             this.channel = Grpc.newChannelBuilderForAddress(
                             dbpxyProperties.getHostname(),
                             dbpxyProperties.getPort(),
                             credentials)
+                    .intercept(new RetryLoggerInterceptor())
+                    .keepAliveTime(dbpxyProperties.getKeepAliveIntervalS(), TimeUnit.SECONDS)
+                    .keepAliveTimeout(dbpxyProperties.getKeepAliveTimeoutS(), TimeUnit.SECONDS)
+                    .defaultServiceConfig(serviceConfig)
+                    .enableRetry()
                     .build();
-            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
+            this.blockingStub = DbpxyGrpc.newBlockingStub(channel)
+                    .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS);
             log.debug("gRPC opened to {}:{}", dbpxyProperties.getHostname(), dbpxyProperties.getPort());
         } catch (final IOException e) {
             throw new SQLException(e);

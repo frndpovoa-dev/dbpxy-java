@@ -575,12 +575,22 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 .setLabel(metadata.getColumnLabel(i).toLowerCase());
     }
 
+    private static Value createNullValue(
+            final ResultSetMetaData metadata,
+            final int i) throws SQLException {
+        return NULL_VALUE.toBuilder()
+                .setSize(metadata.getColumnDisplaySize(i))
+                .setName(metadata.getColumnName(i).toLowerCase())
+                .setLabel(metadata.getColumnLabel(i).toLowerCase())
+                .build();
+    }
+
     private static @NonNull Value int64Value(
             final ResultSetMetaData metadata,
             final ResultSet rs,
             final int i) throws SQLException {
         final long v = rs.getLong(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.INT64)
                 .setData(ValueInt64.newBuilder().setValue(v).build().toByteString())
@@ -592,7 +602,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final boolean v = rs.getBoolean(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.BOOL)
                 .setData(ValueBool.newBuilder().setValue(v).build().toByteString())
@@ -604,7 +614,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final Date v = rs.getDate(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.DATE)
                 .setData(ValueTime.newBuilder()
@@ -622,7 +632,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final Time v = rs.getTime(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.TIME)
                 .setData(ValueTime.newBuilder()
@@ -640,7 +650,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final BigDecimal v = rs.getBigDecimal(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.FLOAT64)
                 .setData(ValueFloat64.newBuilder().setValue(v.toString()).build().toByteString())
@@ -654,7 +664,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final int v = rs.getInt(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.INT32)
                 .setData(ValueInt32.newBuilder().setValue(v).build().toByteString())
@@ -666,7 +676,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final Timestamp v = rs.getTimestamp(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.TIMESTAMP)
                 .setData(ValueTime.newBuilder()
@@ -684,7 +694,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException {
         final String v = rs.getString(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.STRING)
                 .setData(ValueString.newBuilder().setValue(v).build().toByteString())
@@ -696,7 +706,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
             final ResultSet rs,
             final int i) throws SQLException, JsonProcessingException {
         final byte[] v = rs.getBytes(i);
-        if (rs.wasNull()) return NULL_VALUE;
+        if (rs.wasNull()) return createNullValue(metadata, i);
         return createValueBuilder(metadata, i)
                 .setCode(ValueCode.BYTES)
                 .setData(ValueString.newBuilder()

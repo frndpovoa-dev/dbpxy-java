@@ -29,6 +29,8 @@ import com.dbpxy.proto.*;
 import com.dbpxy.util.TransactionUtils;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.rekawek.toxiproxy.model.ToxicDirection;
+import eu.rekawek.toxiproxy.model.toxic.Latency;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
@@ -48,12 +50,15 @@ import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -203,9 +208,12 @@ class TestControllerIntTest extends BaseIntTest {
                 .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
 
         log.debug("concurrent reads after insert using tx 1 and tx 2");
+
         final long memoryBefore = usedHeapSize();
+
         try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
-            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2000).parallel()
+            final Instant start = Instant.now();
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
                     .map(ignored -> {
                         try {
                             assertThat(listGroupWeb(tx1Id))
@@ -222,9 +230,61 @@ class TestControllerIntTest extends BaseIntTest {
                     })
                     .sum()))
                     .isNotNull()
-                    .succeedsWithin(Duration.ofSeconds(90))
-                    .is(new Condition<>(total -> total == 2000, "Expected 2000 iteration results"));
+                    .succeedsWithin(Duration.ofSeconds(60))
+                    .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
+            final Instant end = Instant.now();
+            assertThat(Duration.between(start, end))
+                    .isGreaterThanOrEqualTo(Duration.ofSeconds(30))
+                    .isLessThanOrEqualTo(Duration.ofSeconds(60));
         }
+
+        // Toxiproxy
+        final AtomicBoolean intermittentIssue = new AtomicBoolean(true);
+        final Latency latency = toxiproxyClient.getProxy("dbpxy").toxics()
+                .latency("latency-toxic", ToxicDirection.UPSTREAM, 1)
+                .setJitter(100);
+        CompletableFuture.runAsync(() -> {
+            try {
+                while (intermittentIssue.get()) {
+                    latency.setLatency(1_500);
+                    Thread.sleep(200);
+                    latency.setLatency(1);
+                    Thread.sleep(10_000);
+                }
+            } catch (final InterruptedException |
+                           IOException e) {
+                log.error(e.getMessage());
+            }
+        });
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+            final Instant start = Instant.now();
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
+                    .map(ignored -> {
+                        try {
+                            assertThat(listGroupWeb(tx1Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1, insertTx1ServerSide)));
+                            assertThat(listGroupWeb(tx2Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+                            return 1;
+                        } catch (final JsonProcessingException e) {
+                            log.error(e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .sum()))
+                    .isNotNull()
+                    .succeedsWithin(Duration.ofMinutes(5))
+                    .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
+            final Instant end = Instant.now();
+            assertThat(Duration.between(start, end))
+                    .isGreaterThanOrEqualTo(Duration.ofMinutes(2))
+                    .isLessThanOrEqualTo(Duration.ofMinutes(5));
+        }
+        intermittentIssue.set(false);
+        // End toxiproxy
+
         assertHeapSizeDiff(memoryBefore, 40_000_000);
     }
 

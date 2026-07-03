@@ -1,0 +1,21 @@
+{
+  "methodConfig": [
+    {
+      "name": [
+        {
+          "service": "com.dbpxy.proto.Dbpxy"
+        }
+      ],
+      "retryPolicy": {
+        "maxAttempts": "10",
+        "maxBackoff": "15s",
+        "initialBackoff": "0.2s",
+        "backoffMultiplier": 1.5,
+        "retryableStatusCodes": [
+          "UNAVAILABLE",
+          "DEADLINE_EXCEEDED"
+        ]
+      }
+    }
+  ]
+}
