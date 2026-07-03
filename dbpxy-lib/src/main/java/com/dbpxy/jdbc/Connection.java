@@ -114,7 +114,7 @@ public class Connection implements java.sql.Connection {
                             credentials)
                     .build();
             this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
-            log.debug("gRPC opened");
+            log.debug("gRPC opened to {}:{}", dbpxyProperties.getHostname(), dbpxyProperties.getPort());
         } catch (final IOException e) {
             throw new SQLException(e);
         }

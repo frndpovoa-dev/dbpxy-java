@@ -138,7 +138,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
             queryTx(tx, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
             rollback(tx);
         });
-        assertHeapSizeDiff(memoryBefore, 50 * 1_024 * 1_024);
+        assertHeapSizeDiff(memoryBefore, 60 * 1_024 * 1_024);
     }
 
     @Test

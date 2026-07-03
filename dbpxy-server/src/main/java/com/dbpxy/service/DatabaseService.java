@@ -98,7 +98,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node) {
-        log.info("hello from dbpxy on {}", node);
+        log.info("hello from dbpxy at {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
         this.dbpxyPoolProperties = dbpxyPoolProperties;
         this.dbpxyClient = dbpxyClient;

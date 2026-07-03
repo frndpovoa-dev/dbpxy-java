@@ -3,7 +3,7 @@ _pod_name: localhost
 app:
   dbpxy:
     hostname: localhost
-    port: 9090
+    port: ${GRPC_PORT:9090}
     show-sql: false
 
 server:

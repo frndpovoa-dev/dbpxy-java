@@ -21,7 +21,10 @@ package com.dbpxy;
  */
 
 import com.dbpxy.config.DbpxyDatasourceProperties;
+import eu.rekawek.toxiproxy.ToxiproxyClient;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -29,6 +32,7 @@ import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.Testcontainers;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryMXBean;
@@ -42,6 +46,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 public abstract class BaseIntTest {
     @RegisterExtension
     static PostgresExtension postgresql = new PostgresExtension();
+    @RegisterExtension
+    static ToxiproxyExtension toxiproxy = new ToxiproxyExtension(new int[]{5432, 9092});
+    protected static ToxiproxyClient toxiproxyClient;
 
     @DynamicPropertySource
     static void configureProperties(
@@ -49,11 +56,25 @@ public abstract class BaseIntTest {
         registry.add("POSTGRESQL_USER", postgresql::getUser);
         registry.add("POSTGRESQL_PASSWORD", postgresql::getPassword);
         registry.add("POSTGRESQL_DATABASE", postgresql::getDatabase);
-        registry.add("POSTGRESQL_PORT", postgresql::getMappedPort);
+        registry.add("POSTGRESQL_PORT", () -> toxiproxy.getMappedPort(5432));
+        registry.add("GRPC_PORT", () -> toxiproxy.getMappedPort(9092));
     }
 
     @Autowired
     protected DbpxyDatasourceProperties dataSourceProperties;
+
+    @BeforeAll
+    static void beforeAll() throws Exception {
+        Testcontainers.exposeHostPorts(9090);
+        toxiproxyClient = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
+        toxiproxyClient.createProxy("dbpxy", "0.0.0.0:9092", "host.testcontainers.internal:9090");
+        toxiproxyClient.createProxy("postgres", "0.0.0.0:5432", "postgres:" + postgresql.getPort());
+    }
+
+    @AfterAll
+    static void afterAll() throws Exception {
+        toxiproxyClient.reset();
+    }
 
     protected long usedHeapSize() {
         System.gc();

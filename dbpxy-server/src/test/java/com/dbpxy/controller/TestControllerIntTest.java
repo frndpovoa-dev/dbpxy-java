@@ -205,7 +205,8 @@ class TestControllerIntTest extends BaseIntTest {
         log.debug("concurrent reads after insert using tx 1 and tx 2");
         final long memoryBefore = usedHeapSize();
         try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
-            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2000).parallel().map(ignored -> {
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2000).parallel()
+                    .map(ignored -> {
                         try {
                             assertThat(listGroupWeb(tx1Id))
                                     .isNotEmpty()

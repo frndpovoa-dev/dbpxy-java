@@ -27,6 +27,7 @@
         <org.projectlombok_lombok.version>1.18.46</org.projectlombok_lombok.version>
         <org.springframework.grpc_spring-grpc-dependencies.version>1.0.3</org.springframework.grpc_spring-grpc-dependencies.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
+        <org.testcontainers_testcontainers-toxiproxy.version>2.0.5</org.testcontainers_testcontainers-toxiproxy.version>
         <spring-boot.version>4.0.7</spring-boot.version>
     </properties>
     <modules>
