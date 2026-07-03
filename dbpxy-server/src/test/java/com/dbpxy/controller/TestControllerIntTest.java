@@ -256,7 +256,7 @@ class TestControllerIntTest extends BaseIntTest {
                 log.error(e.getMessage());
             }
         });
-        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(4)) {
             final Instant start = Instant.now();
             assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
                     .map(ignored -> {
