@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
+import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.toxiproxy.ToxiproxyContainer;
@@ -36,6 +37,7 @@ import java.util.ArrayList;
 @RequiredArgsConstructor
 public class ToxiproxyExtension implements BeforeAllCallback, AfterAllCallback {
     private final int[] ports;
+    private final int[] hostPorts;
     private ToxiproxyContainer container;
 
     public String getHost() {
@@ -59,6 +61,9 @@ public class ToxiproxyExtension implements BeforeAllCallback, AfterAllCallback {
 
     @Override
     public void beforeAll(final ExtensionContext context) throws Exception {
+        for (final int port : hostPorts) {
+            Testcontainers.exposeHostPorts(port);
+        }
         container = new ToxiproxyContainer(DockerImageName
                 .parse("ghcr.io/shopify/toxiproxy")
                 .withTag(context.getConfigurationParameter("toxiproxy.version").orElse("latest"))
