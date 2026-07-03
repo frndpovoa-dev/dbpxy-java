@@ -53,7 +53,7 @@ jobs:
 
       # begin scanning for vulnerabilities
       - name: List dependencies
-        run: mvn dependency:tree
+        run: mvn dependency:tree --no-transfer-progress
       - name: Setup Snyk
         uses: snyk/actions/setup@master
       - name: Snyk test

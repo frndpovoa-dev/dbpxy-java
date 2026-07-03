@@ -67,7 +67,7 @@ public abstract class BaseIntTest {
     static void beforeAll() throws Exception {
         Testcontainers.exposeHostPorts(9090);
         toxiproxyClient = new ToxiproxyClient(toxiproxy.getHost(), toxiproxy.getControlPort());
-        toxiproxyClient.createProxy("dbpxy", "0.0.0.0:9092", "host.testcontainers.internal:9090");
+        toxiproxyClient.createProxy("dbpxy", "0.0.0.0:9092", "host.docker.internal:9090");
         toxiproxyClient.createProxy("postgres", "0.0.0.0:5432", "postgres:" + postgresql.getPort());
     }
 
