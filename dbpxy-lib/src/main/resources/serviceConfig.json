@@ -10,7 +10,7 @@
         "maxAttempts": "10",
         "maxBackoff": "15s",
         "initialBackoff": "0.2s",
-        "backoffMultiplier": 1.5,
+        "backoffMultiplier": 1.75,
         "retryableStatusCodes": [
           "UNAVAILABLE",
           "DEADLINE_EXCEEDED"
