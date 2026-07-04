@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Git checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
       # begin build tool & cache
       - name: Setup JDK
@@ -25,7 +25,7 @@ jobs:
         with:
           go-version: '1.26'
       - name: .m2/repository cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         env:
           CACHE_NAME: cache-m2-repository
         with:
