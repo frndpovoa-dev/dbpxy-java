@@ -87,6 +87,9 @@ class TestControllerIntTest extends BaseIntTest {
     private Transaction tx2Transaction;
     private String tx2Id;
 
+    final AtomicBoolean toxiproxyFlag = new AtomicBoolean(false);
+    private CompletableFuture<Void> toxiproxyFuture;
+
     @BeforeEach
     void setUp() throws Exception {
         final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
@@ -136,6 +139,12 @@ class TestControllerIntTest extends BaseIntTest {
         blockingStub.rollbackTransaction(tx1Transaction);
         blockingStub.rollbackTransaction(tx2Transaction);
         channel.shutdownNow();
+
+        if (toxiproxyFuture != null) {
+            toxiproxyFlag.set(false);
+            toxiproxyFuture.cancel(true);
+            this.toxiproxyFuture = null;
+        }
     }
 
     @Test
@@ -239,13 +248,13 @@ class TestControllerIntTest extends BaseIntTest {
         }
 
         // Toxiproxy
-        final AtomicBoolean intermittentIssue = new AtomicBoolean(true);
+        toxiproxyFlag.set(true);
         final Latency latency = toxiproxyClient.getProxy("dbpxy").toxics()
                 .latency("latency-toxic", ToxicDirection.UPSTREAM, 1)
                 .setJitter(100);
         CompletableFuture.runAsync(() -> {
             try {
-                while (intermittentIssue.get()) {
+                while (toxiproxyFlag.get()) {
                     latency.setLatency(3_250);
                     Thread.sleep(100);
                     latency.setLatency(1);
@@ -282,7 +291,7 @@ class TestControllerIntTest extends BaseIntTest {
                     .isGreaterThanOrEqualTo(Duration.ofMinutes(2))
                     .isLessThanOrEqualTo(Duration.ofMinutes(5));
         }
-        intermittentIssue.set(false);
+        toxiproxyFlag.set(false);
         // End toxiproxy
 
         assertHeapSizeDiff(memoryBefore, 40_000_000);

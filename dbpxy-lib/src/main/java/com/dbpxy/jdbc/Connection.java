@@ -89,6 +89,7 @@ public class Connection implements java.sql.Connection {
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString().replace("-", "");
     private final ConnectionHolder connectionHolder;
+    @Getter(AccessLevel.PACKAGE)
     private final DbpxyProperties dbpxyProperties;
     private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
     private final String dbpxyCertPath;
@@ -125,8 +126,7 @@ public class Connection implements java.sql.Connection {
                     .defaultServiceConfig(serviceConfig)
                     .enableRetry()
                     .build();
-            this.blockingStub = DbpxyGrpc.newBlockingStub(channel)
-                    .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS);
+            this.blockingStub = DbpxyGrpc.newBlockingStub(channel);
             log.debug("gRPC opened to {}:{}", dbpxyProperties.getHostname(), dbpxyProperties.getPort());
         } catch (final IOException e) {
             throw new SQLException(e);
@@ -185,6 +185,7 @@ public class Connection implements java.sql.Connection {
 
                 try {
                     final Transaction transaction = blockingStub
+                            .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                             .beginTransaction(BeginTransactionConfig.newBuilder()
                                     .setActivation((maybeDbpxyDatasourceProperties.get().getActivation() == DbpxyDatasourceProperties.Activation.EAGER)
                                             ? BeginTransactionConfig.Activation.EAGER
@@ -315,7 +316,9 @@ public class Connection implements java.sql.Connection {
             try {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
-                        blockingStub.commitTransaction(transaction);
+                        blockingStub
+                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
+                                .commitTransaction(transaction);
                         log.debug("transaction commited");
                     } catch (final RuntimeException e) {
                         throw new SQLException(e);
@@ -336,7 +339,9 @@ public class Connection implements java.sql.Connection {
             try {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
-                        blockingStub.rollbackTransaction(transaction);
+                        blockingStub
+                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
+                                .rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
                     } catch (final RuntimeException e) {
                         throw new SQLException(e);

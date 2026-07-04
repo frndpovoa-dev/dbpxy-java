@@ -46,6 +46,7 @@ import java.util.Calendar;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 public class ResultSet implements java.sql.ResultSet {
@@ -88,10 +89,12 @@ public class ResultSet implements java.sql.ResultSet {
             if (queryResult.getHasNext()) {
                 final Transaction transaction = connection.getOrCreateTransaction(false);
                 if (transaction != null) {
-                    this.queryResult = connection.getBlockingStub().next(NextConfig.newBuilder()
-                            .setQueryResultId(queryResult.getId())
-                            .setTransaction(transaction)
-                            .build());
+                    this.queryResult = connection.getBlockingStub()
+                            .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                            .next(NextConfig.newBuilder()
+                                    .setQueryResultId(queryResult.getId())
+                                    .setTransaction(transaction)
+                                    .build());
 
                     if (queryResult.getRowsCount() > 0) {
                         localRow = 0;
@@ -123,10 +126,12 @@ public class ResultSet implements java.sql.ResultSet {
                 log.debug("close resultset skipped: no transaction");
                 return;
             }
-            connection.getBlockingStub().closeResultSet(NextConfig.newBuilder()
-                    .setQueryResultId(queryResult.getId())
-                    .setTransaction(transaction)
-                    .build());
+            connection.getBlockingStub()
+                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                    .closeResultSet(NextConfig.newBuilder()
+                            .setQueryResultId(queryResult.getId())
+                            .setTransaction(transaction)
+                            .build());
             log.debug("resultset closed");
         } catch (final StatusRuntimeException e) {
             if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
