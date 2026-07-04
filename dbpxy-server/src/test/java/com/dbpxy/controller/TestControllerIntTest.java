@@ -87,8 +87,8 @@ class TestControllerIntTest extends BaseIntTest {
     private Transaction tx2Transaction;
     private String tx2Id;
 
-    final AtomicBoolean toxiproxyFlag = new AtomicBoolean(false);
     private CompletableFuture<Void> toxiproxyFuture;
+    final AtomicBoolean toxiproxyFlag = new AtomicBoolean(false);
 
     @BeforeEach
     void setUp() throws Exception {
@@ -252,7 +252,7 @@ class TestControllerIntTest extends BaseIntTest {
         final Latency latency = toxiproxyClient.getProxy("dbpxy").toxics()
                 .latency("latency-toxic", ToxicDirection.UPSTREAM, 1)
                 .setJitter(100);
-        CompletableFuture.runAsync(() -> {
+        this.toxiproxyFuture = CompletableFuture.runAsync(() -> {
             try {
                 while (toxiproxyFlag.get()) {
                     latency.setLatency(3_250);
