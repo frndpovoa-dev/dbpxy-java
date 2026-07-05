@@ -38,6 +38,7 @@ import java.time.Duration;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -66,14 +67,16 @@ public class Statement implements java.sql.Statement {
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
-            final QueryResult result = connection.getBlockingStub().queryTx(QueryTxConfig.newBuilder()
-                    .setTransaction(transaction)
-                    .setQueryConfig(QueryConfig.newBuilder()
-                            .setQuery(sql)
-                            .setTimeoutInMs(getQueryTimeoutInMs())
-                            .addAllArgs(params)
-                            .build())
-                    .build());
+            final QueryResult result = connection.getBlockingStub()
+                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                    .queryTx(QueryTxConfig.newBuilder()
+                            .setTransaction(transaction)
+                            .setQueryConfig(QueryConfig.newBuilder()
+                                    .setQuery(sql)
+                                    .setTimeoutInMs(getQueryTimeoutInMs())
+                                    .addAllArgs(params)
+                                    .build())
+                            .build());
             this.resultSet = new ResultSet(
                     connection,
                     this,
@@ -107,14 +110,16 @@ public class Statement implements java.sql.Statement {
             if (OffsetDateTime.now().isAfter(OffsetDateTime.parse(transaction.getExpiration()))) {
                 throw new PreemptiveTimeoutException();
             }
-            final ExecuteResult result = connection.getBlockingStub().executeTx(ExecuteTxConfig.newBuilder()
-                    .setTransaction(transaction)
-                    .setExecuteConfig(ExecuteConfig.newBuilder()
-                            .setQuery(sql)
-                            .setTimeoutInMs(getQueryTimeoutInMs())
-                            .addAllArgs(params)
-                            .build())
-                    .build());
+            final ExecuteResult result = connection.getBlockingStub()
+                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                    .executeTx(ExecuteTxConfig.newBuilder()
+                            .setTransaction(transaction)
+                            .setExecuteConfig(ExecuteConfig.newBuilder()
+                                    .setQuery(sql)
+                                    .setTimeoutInMs(getQueryTimeoutInMs())
+                                    .addAllArgs(params)
+                                    .build())
+                            .build());
             return result.getRowsAffected();
         } catch (final StatusRuntimeException e) {
             if (e.getStatus().getCode() == Status.Code.PERMISSION_DENIED
@@ -135,7 +140,9 @@ public class Statement implements java.sql.Statement {
                 log.debug("close statement skipped: no transaction");
                 return;
             }
-            connection.getBlockingStub().closeStatement(Empty.getDefaultInstance());
+            connection.getBlockingStub()
+                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                    .closeStatement(Empty.getDefaultInstance());
         } catch (final RuntimeException e) {
             throw new SQLException(e);
         } finally {

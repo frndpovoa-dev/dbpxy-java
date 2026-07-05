@@ -1,7 +1,7 @@
 app:
   node: ${_pod_name:${HOSTNAME:localhost}}
   dbpxy-grpc:
-    port: ${GRPC_PORT:9090}
+    port: ${DBPXY_PORT:9090}
   encryption:
     enabled: ${USE_ENCRYPTION:true}
 

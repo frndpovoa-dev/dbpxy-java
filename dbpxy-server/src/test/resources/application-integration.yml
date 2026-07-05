@@ -3,8 +3,11 @@ _pod_name: localhost
 app:
   dbpxy:
     hostname: localhost
-    port: 9090
+    port: ${GRPC_PORT:9090}
     show-sql: false
+    keep-alive-interval-s: 30
+    keep-alive-timeout-s: 10
+    timeout-s: 3
 
 server:
   port: 9091

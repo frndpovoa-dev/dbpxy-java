@@ -2,12 +2,12 @@
 .github/
 .idea/
 .env-template
-.flattened-pom.xml
+**/.flattened-pom.xml
 .gitignore
 **/*.drawio
-LICENSE.txt
+**/LICENSE.txt
 *.sh
-README.md
+**/README.md
 gha-creds-*.json
 **/.env
 **/*.pem

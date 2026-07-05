@@ -124,6 +124,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
 
     @Test
     void unlimitedLazyTransactions_thenSelect_thenRollback() {
+        final long memoryBefore = usedHeapSize();
         List<Transaction> transactions = IntStream.range(0, 10_000).parallel()
                 .mapToObj(_ -> beginTransaction(100_000))
                 .collect(Collectors.toList());
@@ -137,6 +138,7 @@ class DatabaseServiceIntTest extends BaseIntTest {
             queryTx(tx, 0, SELECT_NAME_FROM_TEST_WHERE_ID, ARGS_ID_1, null);
             rollback(tx);
         });
+        assertHeapSizeDiff(memoryBefore, 60_000_000);
     }
 
     @Test

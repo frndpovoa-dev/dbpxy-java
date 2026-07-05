@@ -30,4 +30,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class DbpxyProperties {
     private String hostname;
     private Integer port;
+    private Long keepAliveIntervalS;
+    private Long keepAliveTimeoutS;
+    private Long timeoutS;
 }

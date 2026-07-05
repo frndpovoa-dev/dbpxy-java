@@ -27,12 +27,16 @@ import com.dbpxy.config.Headers;
 import com.dbpxy.dto.TestDto;
 import com.dbpxy.proto.*;
 import com.dbpxy.util.TransactionUtils;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import eu.rekawek.toxiproxy.model.ToxicDirection;
+import eu.rekawek.toxiproxy.model.toxic.Latency;
 import io.grpc.ChannelCredentials;
 import io.grpc.Grpc;
 import io.grpc.ManagedChannel;
 import io.grpc.TlsChannelCredentials;
 import lombok.extern.slf4j.Slf4j;
+import org.assertj.core.api.Condition;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -46,20 +50,24 @@ import org.springframework.http.HttpMethod;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @Slf4j
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT,
-        properties = {"app.dbpxy.ddl-auto=create"}
-)
+        properties = {"app.dbpxy.ddl-auto=create"})
 class TestControllerIntTest extends BaseIntTest {
     private static final String LIST_GROUP_WEB_URL = "http://localhost:9091/api/v1/test/list?group=web";
     private static final String INSERT_URL = "http://localhost:9091/api/v1/test/insert";
@@ -78,6 +86,9 @@ class TestControllerIntTest extends BaseIntTest {
     private String tx1Id;
     private Transaction tx2Transaction;
     private String tx2Id;
+
+    private CompletableFuture<Void> toxiproxyFuture;
+    final AtomicBoolean toxiproxyFlag = new AtomicBoolean(false);
 
     @BeforeEach
     void setUp() throws Exception {
@@ -128,6 +139,12 @@ class TestControllerIntTest extends BaseIntTest {
         blockingStub.rollbackTransaction(tx1Transaction);
         blockingStub.rollbackTransaction(tx2Transaction);
         channel.shutdownNow();
+
+        if (toxiproxyFuture != null) {
+            toxiproxyFlag.set(false);
+            toxiproxyFuture.cancel(true);
+            this.toxiproxyFuture = null;
+        }
     }
 
     @Test
@@ -198,6 +215,86 @@ class TestControllerIntTest extends BaseIntTest {
         assertThat(listGroupWeb(tx2Id))
                 .isNotEmpty()
                 .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+
+        log.debug("concurrent reads after insert using tx 1 and tx 2");
+
+        final long memoryBefore = usedHeapSize();
+
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+            final Instant start = Instant.now();
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
+                    .map(ignored -> {
+                        try {
+                            assertThat(listGroupWeb(tx1Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1, insertTx1ServerSide)));
+                            assertThat(listGroupWeb(tx2Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+                            return 1;
+                        } catch (final JsonProcessingException e) {
+                            log.error(e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .sum()))
+                    .isNotNull()
+                    .succeedsWithin(Duration.ofSeconds(90))
+                    .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
+            final Instant end = Instant.now();
+            assertThat(Duration.between(start, end))
+                    .isGreaterThanOrEqualTo(Duration.ofSeconds(45))
+                    .isLessThanOrEqualTo(Duration.ofSeconds(90));
+        }
+
+        // Toxiproxy
+        toxiproxyFlag.set(true);
+        final Latency latency = toxiproxyClient.getProxy("dbpxy").toxics()
+                .latency("latency-toxic", ToxicDirection.UPSTREAM, 1)
+                .setJitter(100);
+        this.toxiproxyFuture = CompletableFuture.runAsync(() -> {
+            try {
+                while (toxiproxyFlag.get()) {
+                    latency.setLatency(3_250);
+                    Thread.sleep(100);
+                    latency.setLatency(1);
+                    Thread.sleep(30_000);
+                }
+            } catch (final InterruptedException |
+                           IOException e) {
+                log.error(e.getMessage());
+            }
+        });
+        try (final ForkJoinPool forkJoinPool = new ForkJoinPool(5)) {
+            final Instant start = Instant.now();
+            assertThat(forkJoinPool.submit(() -> IntStream.range(0, 2_000).parallel()
+                    .map(ignored -> {
+                        try {
+                            assertThat(listGroupWeb(tx1Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1, insertTx1ServerSide)));
+                            assertThat(listGroupWeb(tx2Id))
+                                    .isNotEmpty()
+                                    .isEqualTo(objectMapper.writeValueAsString(List.of(insertTx1ServerSide)));
+                            return 1;
+                        } catch (final JsonProcessingException e) {
+                            log.error(e.getMessage());
+                            throw new RuntimeException(e);
+                        }
+                    })
+                    .sum()))
+                    .isNotNull()
+                    .succeedsWithin(Duration.ofMinutes(5))
+                    .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
+            final Instant end = Instant.now();
+            assertThat(Duration.between(start, end))
+                    .isGreaterThanOrEqualTo(Duration.ofMinutes(2))
+                    .isLessThanOrEqualTo(Duration.ofMinutes(5));
+        }
+        toxiproxyFlag.set(false);
+        // End toxiproxy
+
+        assertHeapSizeDiff(memoryBefore, 40_000_000);
     }
 
     private @Nullable <T> String insert(

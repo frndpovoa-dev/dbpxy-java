@@ -19,15 +19,17 @@ steps:
     args:
       - '-c'
       - |
-        mkdir -pv $${DBPXY_LIB_DIR}
-        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.jar
-        cp dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar
-        cp dbpxy-lib/.flattened-pom.xml $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom
-        sha1sum dbpxy-lib/target/dbpxy-lib-${_VERSION}.jar | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.jar.sha1
-        sha1sum dbpxy-lib/target/dbpxy-lib-${_VERSION}-sources.jar | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}-sources.jar.sha1
-        sha1sum dbpxy-lib/.flattened-pom.xml | awk '{print $1}' > $${DBPXY_LIB_DIR}/dbpxy-lib-${_VERSION}.pom.sha1
-    env:
-      - DBPXY_LIB_DIR=dbpxy-lib/target/gcp-deploy/com/dbpxy/dbpxy-lib/${_VERSION}
+        LIBS="dbpxy-lib dbpxy-langchain4j-lib"
+        for lib in $${LIBS}; do
+          LIB_DIR=$${lib}/target/gcp-deploy/com/dbpxy/$${lib}/${_VERSION}
+          mkdir -pv $${LIB_DIR}
+          cp $${lib}/target/$${lib}-${_VERSION}.jar $${LIB_DIR}/$${lib}-${_VERSION}.jar
+          cp $${lib}/target/$${lib}-${_VERSION}-sources.jar $${LIB_DIR}/$${lib}-${_VERSION}-sources.jar
+          cp $${lib}/.flattened-pom.xml $${LIB_DIR}/$${lib}-${_VERSION}.pom
+          sha1sum $${lib}/target/$${lib}-${_VERSION}.jar | awk '{print $1}' > $${LIB_DIR}/$${lib}-${_VERSION}.jar.sha1
+          sha1sum $${lib}/target/$${lib}-${_VERSION}-sources.jar | awk '{print $1}' > $${LIB_DIR}/$${lib}-${_VERSION}-sources.jar.sha1
+          sha1sum $${lib}/.flattened-pom.xml | awk '{print $1}' > $${LIB_DIR}/$${lib}-${_VERSION}.pom.sha1
+        done
   - id: 'build-image-using-docker'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -44,6 +46,11 @@ artifacts:
       deployFolder: dbpxy-lib/target/gcp-deploy
       groupId: com.dbpxy
       artifactId: dbpxy-lib
+      version: ${_VERSION}
+    - repository: https://${_GCP_REGION}-maven.pkg.dev/${_GCP_PROJECT_ID}/${_MAVEN_REPOSITORY}
+      deployFolder: dbpxy-langchain4j-lib/target/gcp-deploy
+      groupId: com.dbpxy
+      artifactId: dbpxy-langchain4j-lib
       version: ${_VERSION}
 images:
   - ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}

@@ -57,103 +57,108 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
         this.sql = sql;
     }
 
-    private static Value nullSafeArgToValue(final Object value) {
-        return Optional.ofNullable(value)
-                .map(it -> {
-                    if (it instanceof Byte) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder().setValue((Byte) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Short) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder().setValue((Short) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Integer) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT32)
-                                .setData(ValueInt32.newBuilder().setValue((Integer) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Long) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.INT64)
-                                .setData(ValueInt64.newBuilder().setValue((Long) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof String) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.STRING)
-                                .setData(ValueString.newBuilder().setValue((String) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Boolean) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.BOOL)
-                                .setData(ValueBool.newBuilder().setValue((Boolean) it).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Float) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(Float.toString((Float) it)).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof Double) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(Double.toString((Double) it)).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof BigDecimal) {
-                        return Value.newBuilder()
-                                .setCode(ValueCode.FLOAT64)
-                                .setData(ValueFloat64.newBuilder().setValue(((BigDecimal) it).toString()).build().toByteString())
-                                .build();
-                    }
-                    if (it instanceof java.sql.Date) {
-                        return dateValue(LocalDate.ofInstant(Instant.ofEpochMilli(((java.sql.Date) it).getTime()), ZoneId.systemDefault()));
-                    }
-                    if (it instanceof java.sql.Time) {
-                        return timeValue(LocalTime.ofInstant(Instant.ofEpochMilli(((java.sql.Time) it).getTime()), ZoneId.systemDefault()));
-                    }
-                    if (it instanceof java.sql.Timestamp) {
-                        final java.sql.Timestamp v = (java.sql.Timestamp) it;
-                        return timestampValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
-                    }
-                    if (it instanceof java.util.Date) {
-                        final java.util.Date v = (java.util.Date) it;
-                        return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
-                    }
-                    if (it instanceof LocalDate) {
-                        return dateValue((LocalDate) it);
-                    }
-                    if (it instanceof LocalTime) {
-                        return timeValue((LocalTime) it);
-                    }
-                    if (it instanceof OffsetDateTime) {
-                        return timestampValue((OffsetDateTime) it);
-                    }
-                    if (it instanceof byte[]) {
-                        final byte[] v = (byte[]) it;
-                        try {
-                            return Value.newBuilder()
-                                    .setCode(ValueCode.BYTES)
-                                    .setData(ValueString.newBuilder()
-                                            .setValue(OBJECT_MAPPER.writeValueAsString(v))
-                                            .build()
-                                            .toByteString())
-                                    .build();
-                        } catch (final JsonProcessingException e) {
-                            throw new RuntimeException(e);
-                        }
-                    }
-                    return null;
-                })
-                .orElse(PreparedStatement.NULL_VALUE);
+    private static Value nullSafeArgToValue(final Object value) throws SQLException {
+        if (value == null) {
+            return NULL_VALUE;
+        }
+        if (value instanceof Byte) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.INT32)
+                    .setData(ValueInt32.newBuilder().setValue((Byte) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Short) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.INT32)
+                    .setData(ValueInt32.newBuilder().setValue((Short) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Integer) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.INT32)
+                    .setData(ValueInt32.newBuilder().setValue((Integer) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Long) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.INT64)
+                    .setData(ValueInt64.newBuilder().setValue((Long) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof String) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.STRING)
+                    .setData(ValueString.newBuilder().setValue((String) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Boolean) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.BOOL)
+                    .setData(ValueBool.newBuilder().setValue((Boolean) value).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Float) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.FLOAT64)
+                    .setData(ValueFloat64.newBuilder().setValue(Float.toString((Float) value)).build().toByteString())
+                    .build();
+        }
+        if (value instanceof Double) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.FLOAT64)
+                    .setData(ValueFloat64.newBuilder().setValue(Double.toString((Double) value)).build().toByteString())
+                    .build();
+        }
+        if (value instanceof BigDecimal) {
+            return Value.newBuilder()
+                    .setCode(ValueCode.FLOAT64)
+                    .setData(ValueFloat64.newBuilder().setValue(((BigDecimal) value).toString()).build().toByteString())
+                    .build();
+        }
+        if (value instanceof java.sql.Date) {
+            return dateValue(LocalDate.ofInstant(Instant.ofEpochMilli(((java.sql.Date) value).getTime()), ZoneId.systemDefault()));
+        }
+        if (value instanceof java.sql.Time) {
+            return timeValue(LocalTime.ofInstant(Instant.ofEpochMilli(((java.sql.Time) value).getTime()), ZoneId.systemDefault()));
+        }
+        if (value instanceof java.sql.Timestamp) {
+            final java.sql.Timestamp v = (java.sql.Timestamp) value;
+            return timestampValue(OffsetDateTime.ofInstant(v.toInstant(), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
+        }
+        if (value instanceof java.util.Date) {
+            final java.util.Date v = (java.util.Date) value;
+            return timestampValue(OffsetDateTime.ofInstant(Instant.ofEpochMilli(v.getTime()), ZoneOffset.ofHoursMinutes(-v.getTimezoneOffset() / 60, -v.getTimezoneOffset() % 60)));
+        }
+        if (value instanceof LocalDate) {
+            return dateValue((LocalDate) value);
+        }
+        if (value instanceof LocalTime) {
+            return timeValue((LocalTime) value);
+        }
+        if (value instanceof OffsetDateTime) {
+            return timestampValue((OffsetDateTime) value);
+        }
+        if (value instanceof LocalDateTime) {
+            throw new SQLFeatureNotSupportedException("Use OffsetDateTime");
+        }
+        if (value instanceof ZonedDateTime) {
+            throw new SQLFeatureNotSupportedException("Use OffsetDateTime");
+        }
+        if (value instanceof byte[]) {
+            final byte[] v = (byte[]) value;
+            try {
+                return Value.newBuilder()
+                        .setCode(ValueCode.BYTES)
+                        .setData(ValueString.newBuilder()
+                                .setValue(OBJECT_MAPPER.writeValueAsString(v))
+                                .build()
+                                .toByteString())
+                        .build();
+            } catch (final JsonProcessingException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        throw new SQLFeatureNotSupportedException();
     }
 
     private static Value dateValue(final LocalDate value) {
@@ -186,12 +191,15 @@ public class PreparedStatement extends Statement implements java.sql.PreparedSta
                 .build();
     }
 
-    protected List<Value> paramAsList() {
-        return params.entrySet().stream()
+    protected List<Value> paramAsList() throws SQLException {
+        final ArrayList<Value> result = new ArrayList<>();
+        for (final Object value : params.entrySet().stream()
                 .sorted(Map.Entry.comparingByKey())
                 .map(Map.Entry::getValue)
-                .map(PreparedStatement::nullSafeArgToValue)
-                .collect(Collectors.toList());
+                .collect(Collectors.toList())) {
+            result.add(nullSafeArgToValue(value));
+        }
+        return result;
     }
 
     @Override

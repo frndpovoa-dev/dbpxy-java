@@ -98,7 +98,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final CryptoService cryptoService,
             final UniqueIdGenerator uniqueIdGenerator,
             @org.springframework.beans.factory.annotation.Value("${app.node}") final String node) {
-        log.info("hello from dbpxy on {}", node);
+        log.info("hello from dbpxy at {}", node);
         this.dbpxyGrpcProperties = dbpxyGrpcProperties;
         this.dbpxyPoolProperties = dbpxyPoolProperties;
         this.dbpxyClient = dbpxyClient;
@@ -216,7 +216,7 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
             final DatabaseOperation ops = DatabaseOperationImpl.builder()
                     .databaseOperationProp(DatabaseOperationProp.builder()
-                            .timeoutInMs(config.getTimeoutInMs())
+                            .timeoutInMs(DatabaseUtils.sanitizeTimeoutInMs(config.getTimeoutInMs()))
                             .autoCommit(config.getAutoCommit())
                             .readOnly(config.getReadOnly())
                             .connectionString(DatabaseOperationProp.ConnectionString.builder()

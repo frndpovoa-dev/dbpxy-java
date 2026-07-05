@@ -66,7 +66,7 @@ public class DbpxyServer {
                     .build()
                     .start();
         }
-        log.info("gRPC server started");
+        log.info("gRPC server started on 0.0.0.0:{}", dbpxyGrpcProperties.getPort());
     }
 
     @EventListener(AvailabilityChangeEvent.class)
