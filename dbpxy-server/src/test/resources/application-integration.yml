@@ -7,7 +7,7 @@ app:
     show-sql: false
     keep-alive-interval-s: 30
     keep-alive-timeout-s: 10
-    timeout-s: 3
+    timeout-s: 1
 
 server:
   port: 9091

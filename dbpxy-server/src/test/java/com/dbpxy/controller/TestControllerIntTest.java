@@ -255,7 +255,7 @@ class TestControllerIntTest extends BaseIntTest {
         this.toxiproxyFuture = CompletableFuture.runAsync(() -> {
             try {
                 while (toxiproxyFlag.get()) {
-                    latency.setLatency(3_250);
+                    latency.setLatency(1_250);
                     Thread.sleep(100);
                     latency.setLatency(1);
                     Thread.sleep(30_000);

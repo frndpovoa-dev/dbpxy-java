@@ -109,8 +109,9 @@ public class Connection implements java.sql.Connection {
         if (channel != null) {
             return;
         }
-        try (final InputStream cert = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream(dbpxyCertPath));
-             final InputStream grpcConfig = Objects.requireNonNull(getClass().getClassLoader().getResourceAsStream("serviceConfig.json"))) {
+        final ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+        try (final InputStream cert = Objects.requireNonNull(classLoader.getResourceAsStream(dbpxyCertPath));
+             final InputStream grpcConfig = Objects.requireNonNull(classLoader.getResourceAsStream("serviceConfig.json"))) {
             final ChannelCredentials credentials = TlsChannelCredentials.newBuilder()
                     .trustManager(cert)
                     .build();
