@@ -90,7 +90,7 @@ public class ResultSet implements java.sql.ResultSet {
                 final Transaction transaction = connection.getOrCreateTransaction(false);
                 if (transaction != null) {
                     this.queryResult = connection.getBlockingStub()
-                            .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
+                            .withDeadlineAfter(connection.getDbpxyProperties().getReadTimeoutS(), TimeUnit.SECONDS)
                             .next(NextConfig.newBuilder()
                                     .setQueryResultId(queryResult.getId())
                                     .setTransaction(transaction)

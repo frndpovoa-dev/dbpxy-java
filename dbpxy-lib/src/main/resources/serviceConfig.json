@@ -8,9 +8,9 @@
       ],
       "retryPolicy": {
         "maxAttempts": "10",
-        "maxBackoff": "15s",
-        "initialBackoff": "0.2s",
-        "backoffMultiplier": 1.75,
+        "maxBackoff": "5s",
+        "initialBackoff": "0.25s",
+        "backoffMultiplier": 2.0,
         "retryableStatusCodes": [
           "UNAVAILABLE",
           "DEADLINE_EXCEEDED"

@@ -24,6 +24,8 @@ import lombok.Getter;
 import lombok.Setter;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+import java.util.Objects;
+
 @Getter
 @Setter
 @ConfigurationProperties(prefix = "app.dbpxy")
@@ -32,5 +34,20 @@ public class DbpxyProperties {
     private Integer port;
     private Long keepAliveIntervalS;
     private Long keepAliveTimeoutS;
+    private Long connectionTimeoutS;
+    private Long readTimeoutS;
+    private Long writeTimeoutS;
     private Long timeoutS;
+
+    public Long getConnectionTimeoutS() {
+        return Objects.requireNonNullElse(connectionTimeoutS, timeoutS);
+    }
+
+    public Long getReadTimeoutS() {
+        return Objects.requireNonNullElse(readTimeoutS, timeoutS);
+    }
+
+    public Long getWriteTimeoutS() {
+        return Objects.requireNonNullElse(writeTimeoutS, timeoutS);
+    }
 }

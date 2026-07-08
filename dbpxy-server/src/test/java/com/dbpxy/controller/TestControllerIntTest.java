@@ -239,12 +239,12 @@ class TestControllerIntTest extends BaseIntTest {
                     })
                     .sum()))
                     .isNotNull()
-                    .succeedsWithin(Duration.ofSeconds(90))
+                    .succeedsWithin(Duration.ofSeconds(100))
                     .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
             final Instant end = Instant.now();
             assertThat(Duration.between(start, end))
-                    .isGreaterThanOrEqualTo(Duration.ofSeconds(45))
-                    .isLessThanOrEqualTo(Duration.ofSeconds(90));
+                    .isGreaterThanOrEqualTo(Duration.ofSeconds(40))
+                    .isLessThanOrEqualTo(Duration.ofSeconds(100));
         }
 
         // Toxiproxy

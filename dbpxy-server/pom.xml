@@ -285,7 +285,14 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
-                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
+                    <argLine>
+                        -javaagent:${org.mockito:mockito-core:jar}
+                        -Xmx1g
+                        -Duser.timezone=UTC
+                        -XX:ActiveProcessorCount=4
+                        -XX:CICompilerCount=2
+                        -XX:ParallelGCThreads=2
+                    </argLine>
                 </configuration>
             </plugin>
         </plugins>
