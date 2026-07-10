@@ -39,7 +39,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -121,8 +120,8 @@ public class Connection implements java.sql.Connection {
                             dbpxyProperties.getPort(),
                             credentials)
                     .intercept(new RetryLoggerInterceptor())
-                    .keepAliveTime(dbpxyProperties.getKeepAliveIntervalS(), TimeUnit.SECONDS)
-                    .keepAliveTimeout(dbpxyProperties.getKeepAliveTimeoutS(), TimeUnit.SECONDS)
+                    .keepAliveTime(dbpxyProperties.getKeepAliveIntervalInMs(), TimeUnit.MILLISECONDS)
+                    .keepAliveTimeout(dbpxyProperties.getKeepAliveTimeoutInMs(), TimeUnit.MILLISECONDS)
                     .defaultServiceConfig(serviceConfig)
                     .enableRetry()
                     .build();
@@ -185,7 +184,6 @@ public class Connection implements java.sql.Connection {
 
                 try {
                     final Transaction transaction = blockingStub
-                            .withDeadlineAfter(dbpxyProperties.getConnectionTimeoutS(), TimeUnit.SECONDS)
                             .beginTransaction(BeginTransactionConfig.newBuilder()
                                     .setActivation((maybeDbpxyDatasourceProperties.get().getActivation() == DbpxyDatasourceProperties.Activation.EAGER)
                                             ? BeginTransactionConfig.Activation.EAGER
@@ -317,7 +315,6 @@ public class Connection implements java.sql.Connection {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub
-                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                                 .commitTransaction(transaction);
                         log.debug("transaction commited");
                     } catch (final RuntimeException e) {
@@ -340,7 +337,6 @@ public class Connection implements java.sql.Connection {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub
-                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                                 .rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
                     } catch (final RuntimeException e) {

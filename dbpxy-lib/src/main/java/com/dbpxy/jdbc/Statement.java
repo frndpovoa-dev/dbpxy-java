@@ -68,7 +68,6 @@ public class Statement implements java.sql.Statement {
                 throw new PreemptiveTimeoutException();
             }
             final QueryResult result = connection.getBlockingStub()
-                    .withDeadlineAfter(connection.getDbpxyProperties().getReadTimeoutS(), TimeUnit.SECONDS)
                     .queryTx(QueryTxConfig.newBuilder()
                             .setTransaction(transaction)
                             .setQueryConfig(QueryConfig.newBuilder()
@@ -111,7 +110,6 @@ public class Statement implements java.sql.Statement {
                 throw new PreemptiveTimeoutException();
             }
             final ExecuteResult result = connection.getBlockingStub()
-                    .withDeadlineAfter(connection.getDbpxyProperties().getWriteTimeoutS(), TimeUnit.SECONDS)
                     .executeTx(ExecuteTxConfig.newBuilder()
                             .setTransaction(transaction)
                             .setExecuteConfig(ExecuteConfig.newBuilder()
@@ -141,7 +139,6 @@ public class Statement implements java.sql.Statement {
                 return;
             }
             connection.getBlockingStub()
-                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
                     .closeStatement(Empty.getDefaultInstance());
         } catch (final RuntimeException e) {
             throw new SQLException(e);

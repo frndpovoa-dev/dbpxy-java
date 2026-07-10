@@ -12,8 +12,7 @@
         "initialBackoff": "0.25s",
         "backoffMultiplier": 2.0,
         "retryableStatusCodes": [
-          "UNAVAILABLE",
-          "DEADLINE_EXCEEDED"
+          "RESOURCE_EXHAUSTED"
         ]
       }
     }

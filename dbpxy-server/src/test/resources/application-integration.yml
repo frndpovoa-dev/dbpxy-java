@@ -5,9 +5,8 @@ app:
     hostname: localhost
     port: ${GRPC_PORT:9090}
     show-sql: false
-    keep-alive-interval-s: 30
-    keep-alive-timeout-s: 10
-    timeout-s: 1
+    keep-alive-interval-in-ms: 30000
+    keep-alive-timeout-in-ms: 10000
 
 server:
   port: 9091
