@@ -20,7 +20,6 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
-import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import lombok.RequiredArgsConstructor;
@@ -35,7 +34,6 @@ import java.util.logging.Logger;
 @RequiredArgsConstructor
 public class DataSource implements javax.sql.DataSource {
     private static final Logger LOGGER = Logger.getLogger(DataSource.class.getName());
-    private final ConnectionHolder connectionHolder;
     private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
     private final DbpxyProperties dbpxyProperties;
     private final String dbpxyCertPath;
@@ -45,7 +43,6 @@ public class DataSource implements javax.sql.DataSource {
     @Override
     public Connection getConnection() throws SQLException {
         return new Connection(
-                connectionHolder,
                 dbpxyProperties,
                 maybeDbpxyDatasourceProperties,
                 dbpxyCertPath);

@@ -25,6 +25,7 @@ import com.dbpxy.ConnectionHolder;
 import com.dbpxy.jdbc.DataSource;
 import com.dbpxy.springframework.TransactionExecutionListener;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -63,19 +64,18 @@ import java.util.Optional;
 public class DbpxyAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean(ConnectionHolder.class)
-    public ConnectionHolder connectionHolder() {
-        return new ConnectionHolder();
+    public ConnectionHolder connectionHolder(
+            final ObjectProvider<DataSource> dataSourceProvider) {
+        return new ConnectionHolder(dataSourceProvider);
     }
 
     @Bean(name = "dataSource")
     public DataSource dataSource(
-            final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
             final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             @Value("${app.grpc.grpc-cert-path:certs/cert.pem}") final String dbpxyCertPath
     ) {
         return new DataSource(
-                connectionHolder,
                 maybeDbpxyDatasourceProperties,
                 dbpxyProperties,
                 dbpxyCertPath);

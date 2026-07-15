@@ -20,7 +20,6 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
-import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.grpc.RetryLoggerInterceptor;
@@ -54,6 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
+    private static final String MDC_CONNECTION_ID = "dbpxy.conn.id";
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
@@ -87,7 +87,6 @@ public class Connection implements java.sql.Connection {
     @Getter
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString().replace("-", "");
-    private final ConnectionHolder connectionHolder;
     @Getter(AccessLevel.PACKAGE)
     private final DbpxyProperties dbpxyProperties;
     private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
@@ -261,16 +260,14 @@ public class Connection implements java.sql.Connection {
     }
 
     public Connection(
-            final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
             final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             final String dbpxyCertPath
     ) throws SQLException {
-        this.connectionHolder = connectionHolder;
         this.dbpxyProperties = dbpxyProperties;
         this.maybeDbpxyDatasourceProperties = maybeDbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
-        connectionHolder.pushConnection(this);
+        MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(getId()));
         log.debug("connection lazyly opened");
     }
 
@@ -373,7 +370,7 @@ public class Connection implements java.sql.Connection {
         } finally {
             this.closed = true;
             this.channel = null;
-            connectionHolder.popConnection(this);
+            MDC.remove(MDC_CONNECTION_ID);
         }
     }
 
