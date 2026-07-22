@@ -193,7 +193,7 @@ public class Connection implements java.sql.Connection {
                                     .setReadOnly(readOnly)
                                     .build());
                     pushTransaction(transaction);
-                    log.debug("transaction began");
+                    log.debug("transaction started on {} at {}", transaction.getNode(), transaction.getCreation());
                 } catch (final RuntimeException e) {
                     throw new SQLException(e);
                 }
