@@ -22,7 +22,6 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
-import com.dbpxy.proto.QueryResult;
 import com.dbpxy.proto.Row;
 import com.dbpxy.proto.Value;
 import lombok.RequiredArgsConstructor;
@@ -31,23 +30,16 @@ import lombok.extern.slf4j.Slf4j;
 import java.sql.SQLException;
 import java.sql.SQLFeatureNotSupportedException;
 import java.sql.Types;
-import java.util.Optional;
 
 @Slf4j
 @RequiredArgsConstructor
 public class ResultSetMetaData implements java.sql.ResultSetMetaData {
-    private final QueryResult queryResult;
-
-    protected Optional<Row> getFirstRow() {
-        return Optional.ofNullable(queryResult)
-                .filter(it -> it.getRowsCount() > 0)
-                .map(it -> it.getRows(0));
-    }
+    private final ResultSet resultSet;
 
     @Override
     public int getColumnCount() {
         log.trace("public int getColumnCount() throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(Row::getColsCount)
                 .orElse(0);
     }
@@ -91,25 +83,25 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     @Override
     public int getColumnDisplaySize(int column) throws SQLException {
         log.trace("public int getColumnDisplaySize(int column) throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getSize)
                 .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
-    public String getColumnLabel(int column) throws SQLException {
+    public String getColumnLabel(final int column) throws SQLException {
         log.trace("public String getColumnLabel(int column) throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getLabel)
                 .orElseThrow(SQLFeatureNotSupportedException::new);
     }
 
     @Override
-    public String getColumnName(int column) throws SQLException {
+    public String getColumnName(final int column) throws SQLException {
         log.trace("public String getColumnName(int column) throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getName)
                 .orElseThrow(SQLFeatureNotSupportedException::new);
@@ -122,9 +114,9 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     }
 
     @Override
-    public int getPrecision(int column) throws SQLException {
+    public int getPrecision(final int column) throws SQLException {
         log.trace("public int getPrecision(int column) throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getPrecision)
                 .orElseThrow(SQLFeatureNotSupportedException::new);
@@ -133,7 +125,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
     @Override
     public int getScale(final int column) throws SQLException {
         log.trace("public int getScale(final int column) throws SQLException {");
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(Value::getScale)
                 .orElseThrow(SQLFeatureNotSupportedException::new);
@@ -153,7 +145,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
 
     @Override
     public int getColumnType(final int column) {
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
                     switch (col.getCode()) {
@@ -176,7 +168,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
                             return Types.VARCHAR;
                         }
                         case TIME: {
-                            return Types.TIMESTAMP;
+                            return Types.TIMESTAMP_WITH_TIMEZONE;
                         }
                         case NULL: {
                             return Types.NULL;
@@ -191,7 +183,7 @@ public class ResultSetMetaData implements java.sql.ResultSetMetaData {
 
     @Override
     public String getColumnTypeName(final int column) {
-        return getFirstRow()
+        return resultSet.getFirstRow()
                 .map(row -> row.getCols(column - 1))
                 .map(col -> {
                     switch (col.getCode()) {

@@ -534,10 +534,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.BIGINT: {
                     return int64Value(metadata, rs, i);
                 }
-                case Types.BOOLEAN: {
-                    return booleanValue(metadata, rs, i);
-                }
-                case Types.BIT: {
+                case Types.BOOLEAN, Types.BIT: {
                     return booleanValue(metadata, rs, i);
                 }
                 case Types.BINARY: {
@@ -549,10 +546,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.REAL, Types.NUMERIC, Types.DOUBLE: {
                     return float64Value(metadata, rs, i);
                 }
-                case Types.SMALLINT: {
-                    return int32Value(metadata, rs, i);
-                }
-                case Types.INTEGER: {
+                case Types.SMALLINT, Types.INTEGER: {
                     return int32Value(metadata, rs, i);
                 }
                 case Types.TIME: {
