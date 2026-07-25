@@ -77,6 +77,22 @@ public class ResultSet implements java.sql.ResultSet {
         return queryResult.getRows(localRow).getCols(col - 1);
     }
 
+    protected Integer getColumnIndexByColumnLabel(final String columnLabel) {
+        if (columnIndexByColumnLabelMap == null) {
+            this.columnIndexByColumnLabelMap = getFirstRow()
+                    .map(row -> IntStream.range(0, row.getColsCount())
+                            .mapToObj(i -> new AbstractMap.SimpleEntry<>(
+                                    Optional.of(row.getCols(i).getLabel()).filter(StringUtils::isNotBlank)
+                                            .or(() -> Optional.of(row.getCols(i).getName()).filter(StringUtils::isNotBlank))
+                                            .orElseThrow(),
+                                    i + 1))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, TreeMap::new))
+                    )
+                    .orElseGet(TreeMap::new);
+        }
+        return columnIndexByColumnLabelMap.get(columnLabel);
+    }
+
     protected Optional<Row> getFirstRow() {
         return Optional.ofNullable(queryResult)
                 .filter(it -> it.getRowsCount() > 0)
@@ -393,79 +409,79 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public String getString(final String columnLabel) throws SQLException {
         log.trace("public String getString(String columnLabel) throws SQLException {");
-        return getString(columnIndexByColumnLabelMap.get(columnLabel));
+        return getString(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public boolean getBoolean(final String columnLabel) throws SQLException {
         log.trace("public boolean getBoolean(String columnLabel) throws SQLException {");
-        return getBoolean(columnIndexByColumnLabelMap.get(columnLabel));
+        return getBoolean(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public byte getByte(final String columnLabel) throws SQLException {
         log.trace("public byte getByte(String columnLabel) throws SQLException {");
-        return getByte(columnIndexByColumnLabelMap.get(columnLabel));
+        return getByte(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public short getShort(final String columnLabel) throws SQLException {
         log.trace("public short getShort(String columnLabel) throws SQLException {");
-        return getShort(columnIndexByColumnLabelMap.get(columnLabel));
+        return getShort(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public int getInt(final String columnLabel) throws SQLException {
         log.trace("public int getInt(String columnLabel) throws SQLException {");
-        return getInt(columnIndexByColumnLabelMap.get(columnLabel));
+        return getInt(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public long getLong(final String columnLabel) throws SQLException {
         log.trace("public long getLong(String columnLabel) throws SQLException {");
-        return getLong(columnIndexByColumnLabelMap.get(columnLabel));
+        return getLong(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public float getFloat(final String columnLabel) throws SQLException {
         log.trace("public float getFloat(String columnLabel) throws SQLException {");
-        return getFloat(columnIndexByColumnLabelMap.get(columnLabel));
+        return getFloat(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public double getDouble(final String columnLabel) throws SQLException {
         log.trace("public double getDouble(String columnLabel) throws SQLException {");
-        return getDouble(columnIndexByColumnLabelMap.get(columnLabel));
+        return getDouble(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public BigDecimal getBigDecimal(final String columnLabel, final int scale) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {");
-        return getBigDecimal(columnIndexByColumnLabelMap.get(columnLabel), scale);
+        return getBigDecimal(getColumnIndexByColumnLabel(columnLabel), scale);
     }
 
     @Override
     public byte[] getBytes(final String columnLabel) throws SQLException {
         log.trace("public byte[] getBytes(String columnLabel) throws SQLException {");
-        return getBytes(columnIndexByColumnLabelMap.get(columnLabel));
+        return getBytes(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public Date getDate(final String columnLabel) throws SQLException {
         log.trace("public Date getDate(String columnLabel) throws SQLException {");
-        return getDate(columnIndexByColumnLabelMap.get(columnLabel));
+        return getDate(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public Time getTime(final String columnLabel) throws SQLException {
         log.trace("public Time getTime(String columnLabel) throws SQLException {");
-        return getTime(columnIndexByColumnLabelMap.get(columnLabel));
+        return getTime(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public Timestamp getTimestamp(final String columnLabel) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel) throws SQLException {");
-        return getTimestamp(columnIndexByColumnLabelMap.get(columnLabel));
+        return getTimestamp(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
@@ -507,16 +523,6 @@ public class ResultSet implements java.sql.ResultSet {
     public ResultSetMetaData getMetaData() {
         if (resultSetMetaData == null) {
             this.resultSetMetaData = new ResultSetMetaData(this);
-            this.columnIndexByColumnLabelMap = getFirstRow()
-                    .map(row -> IntStream.range(0, row.getColsCount())
-                            .mapToObj(i -> new AbstractMap.SimpleEntry<>(
-                                    Optional.of(row.getCols(i).getLabel()).filter(StringUtils::isNotBlank)
-                                            .or(() -> Optional.of(row.getCols(i).getName()).filter(StringUtils::isNotBlank))
-                                            .orElseThrow(),
-                                    i + 1))
-                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, TreeMap::new))
-                    )
-                    .orElseGet(TreeMap::new);
         }
         return resultSetMetaData;
     }
@@ -575,13 +581,13 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public Object getObject(final String columnLabel) throws SQLException {
         log.trace("public Object getObject(String columnLabel) throws SQLException {");
-        return getObject(columnIndexByColumnLabelMap.get(columnLabel));
+        return getObject(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
     public int findColumn(final String columnLabel) throws SQLException {
         log.trace("public int findColumn(String columnLabel) throws SQLException {");
-        return columnIndexByColumnLabelMap.get(columnLabel);
+        return getColumnIndexByColumnLabel(columnLabel);
     }
 
     @Override
@@ -613,7 +619,7 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public BigDecimal getBigDecimal(final String columnLabel) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel) throws SQLException {");
-        return getBigDecimal(columnIndexByColumnLabelMap.get(columnLabel));
+        return getBigDecimal(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
@@ -1125,7 +1131,7 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public Timestamp getTimestamp(final String columnLabel, final Calendar cal) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {");
-        return getTimestamp(columnIndexByColumnLabelMap.get(columnLabel), cal);
+        return getTimestamp(getColumnIndexByColumnLabel(columnLabel), cal);
     }
 
     @Override
