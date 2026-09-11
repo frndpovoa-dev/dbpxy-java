@@ -235,6 +235,7 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
+                        <builder>paketobuildpacks/ubuntu-resolute-builder:latest</builder>
                         <buildpacks>
                             <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11.9.0</buildpack>
                             <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
