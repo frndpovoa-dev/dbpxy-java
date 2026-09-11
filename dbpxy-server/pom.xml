@@ -235,6 +235,10 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
+                        <buildpacks>
+                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11.9.0</buildpack>
+                            <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
+                        </buildpacks>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
