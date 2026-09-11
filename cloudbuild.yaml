@@ -5,7 +5,7 @@ steps:
     args:
       - '-c'
       - |
-        echo "$${DOCKERHUB_DBPXY_PASSWORD}" | docker login --username $${DOCKERHUB_DBPXY_USERNAME} --password-stdin
+        echo "$${DOCKERHUB_DBPXY_PASSWORD}" | docker login docker.io --username $${DOCKERHUB_DBPXY_USERNAME} --password-stdin
         echo "$${DHI_IO_PASSWORD}" | docker login dhi.io --username $${DHI_IO_USERNAME} --password-stdin
         mkdir -p /workspace/.docker
         cp ~/.docker/config.json /workspace/.docker/config.json
@@ -67,9 +67,9 @@ availableSecrets:
       env: DHI_IO_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1
       env: DHI_IO_PASSWORD
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_USERNAME/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_USERNAME/versions/2
       env: DOCKERHUB_DBPXY_USERNAME
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_PASSWORD/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_PASSWORD/versions/2
       env: DOCKERHUB_DBPXY_PASSWORD
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
