@@ -1,14 +1,14 @@
-# dbpxy
+[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.9)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
 
-### "Caminha e o caminho se abrirá", Gassho.
+# DBPXY - Shareable Database Transactions for Microservices
 
 [See the original LinkedIn post here.](https://www.linkedin.com/posts/activity-7343623220677201920-6qk9?utm_source=share&utm_medium=member_desktop&rcm=ACoAABC2-aoB9oRA7fI-ca2qc4EhypSjGLhoDaE)
 
 I'd like to share a project I've been working on in past couple of years. In simple words: it's an implementation of shareable database transactions for architectures based on microservices.
 
-It can be used to try and solve problem scenarios such as the ones below:
+It can be used to try and solve problem scenarios such as the following:
 
-1. Using Spring Boot and JPA do begin transaction via @Transactional, then read/write local repository, then read/write API in same transaction, then commit/rollback.
+1. Using Spring Boot and JPA do begin transaction using @Transactional, then read/write local repository, then read/write APIs 1..N in same transaction, then commit/rollback.
 2. Using gRPC do begin transaction, then read/write APIs 1..N in same transaction, then commit/rollback.
 
 Other than those scenarios above, it might be helpful to:
@@ -25,11 +25,9 @@ Have a good day!
 
 ## Build
 
-[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.9)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
-
 ```bash
 true \
-  && mvn clean install -Drevision=0.1.0-0
+  && mvn clean install -Drevision=0.0.0-0-SNAPSHOT
 ```
 
 ## Publish
@@ -45,4 +43,17 @@ true \
     -r $GCP_REGION \
     -m $MAVEN_REPOSITORY \
     -d $DOCKER_REPOSITORY
+```
+
+## Run
+
+Docker images now available at https://hub.docker.com/r/dbpxy/dbpxy-server
+
+```bash
+true \
+  && docker run \
+    -v ./certs/cert.pem:/workspace/BOOT-INF/classes/certs/cert.pem \
+    -v ./certs/key.pem:/workspace/BOOT-INF/classes/certs/key.pem \
+    -p 9090:9090 \
+    dbpxy/dbpxy-server:0.0.0-0-SNAPSHOT
 ```
