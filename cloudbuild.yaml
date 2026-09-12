@@ -71,7 +71,7 @@ steps:
         apt-get update
         apt-get install -y --no-install-recommends gnupg
         mkdir -p /workspace/.m2/repository
-        mvn deploy \
+        mvn deploy:deploy \
           -s settings.xml \
           -Dmaven.repo.local=/workspace/.m2/repository \
           -Dmaven.test.skip=true \

@@ -106,6 +106,40 @@
                     </execution>
                 </executions>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>defaults</flattenMode>
+                    <pomElements>
+                        <name>keep</name>
+                        <description>keep</description>
+                        <url>keep</url>
+                        <scm>keep</scm>
+                        <developers>keep</developers>
+                        <properties>interpolate</properties>
+                        <dependencyManagement>resolve</dependencyManagement>
+                        <dependencies>resolve</dependencies>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
         <resources>
             <resource>

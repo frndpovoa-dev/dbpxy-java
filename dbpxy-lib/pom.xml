@@ -8,7 +8,7 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
-    <name>DBPXY</name>
+    <name>dbpxy-lib</name>
     <description>Shareable Database Transactions for Microservices</description>
     <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
     <developers>
@@ -168,10 +168,44 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
-                                <source>${basedir}/target/generated-sources/protobuf/java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/grpc-java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>defaults</flattenMode>
+                    <pomElements>
+                        <name>keep</name>
+                        <description>keep</description>
+                        <url>keep</url>
+                        <scm>keep</scm>
+                        <developers>keep</developers>
+                        <properties>interpolate</properties>
+                        <dependencyManagement>resolve</dependencyManagement>
+                        <dependencies>resolve</dependencies>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
