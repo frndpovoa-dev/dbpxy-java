@@ -63,7 +63,7 @@ jobs:
           SNYK_TOKEN: ${{steps.secret-manager.outputs.snyk-token}}
       # end
 
-      # preparing certificates
+      # preparing ssl certificates
       - name: Generate testing SSL key/cert files
         run: |
           openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
@@ -74,11 +74,26 @@ jobs:
           CERTS_DIR: dbpxy-server/src/main/resources/certs
       # end
 
+      # preparing gpg key
+      - name: Generate testing GPG key
+        run: |
+              gpg --batch --generate-key <<EOF
+              Key-Type: RSA
+              Key-Length: 4096
+              Subkey-Type: RSA
+              Subkey-Length: 4096
+              Name-Real: Testing Only
+              Name-Email: testing-only@localhost
+              Expire-Date: 1d
+              Passphrase: testing-only
+              EOF
+      # end
+
       # begin testing
       - name: Compile client libraries using JDK 11
-        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dclient.java.version=11
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dclient.java.version=11 -Dgpg.passphrase="testing-only"
       - name: Compile all using default JDK
-        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION
+        run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dgpg.passphrase="testing-only"
       # end
 
       - name: Clean up

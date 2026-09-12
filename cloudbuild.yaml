@@ -21,7 +21,8 @@ steps:
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
-    args: [ 'clean', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}' ]
+    args: [ 'clean', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}', '-Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}"' ]
+    secretEnv: [ 'MAVEN_DBPXY_GPG_PASSWORD' ]
   - id: 'prepare-to-deploy-maven-artifacts'
     name: gcr.io/cloud-builders/mvn
     entrypoint: bash
@@ -58,10 +59,9 @@ steps:
       - |
         mvn deploy -q \
           -s settings.xml \
-          -Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}" \
           -Dmaven.test.skip=true \
           -Drevision=${_VERSION}
-    secretEnv: ['MAVEN_DBPXY_USERNAME', 'MAVEN_DBPXY_PASSWORD', 'MAVEN_DBPXY_GPG_PASSWORD']
+    secretEnv: [ 'MAVEN_DBPXY_USERNAME', 'MAVEN_DBPXY_PASSWORD' ]
   - id: 'push-public-docker-image'
     name: gcr.io/cloud-builders/docker
     args:
