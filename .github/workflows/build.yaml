@@ -90,7 +90,7 @@ jobs:
       # end
 
       # begin testing
-      - name: Compile client libraries using JDK 11
+      - name: Compile all using default JDK and client libraries using JDK 11
         run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dclient.java.version=11 -Dgpg.passphrase="testing-only"
       - name: Compile all using default JDK
         run: mvn clean install -q -Dmaven.test.skip=false -Drevision=$APP_VERSION -Dgpg.passphrase="testing-only"

@@ -13,12 +13,6 @@
     <properties>
         <spring-boot.build-image.skip>true</spring-boot.build-image.skip>
     </properties>
-    <distributionManagement>
-        <repository>
-            <id>central</id>
-            <url>https://central.sonatype.com/api/v1/publisher/deployments/upload</url>
-        </repository>
-    </distributionManagement>
     <dependencyManagement>
         <dependencies>
             <dependency>

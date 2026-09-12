@@ -47,6 +47,12 @@
             <url>https://repo.spring.io/release/</url>
         </repository>
     </repositories>
+    <distributionManagement>
+        <repository>
+            <id>central</id>
+            <url>https://central.sonatype.com/api/v1/publisher/deployments/upload</url>
+        </repository>
+    </distributionManagement>
     <build>
         <pluginManagement>
             <plugins>
