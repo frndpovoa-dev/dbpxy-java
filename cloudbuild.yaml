@@ -20,8 +20,17 @@ steps:
     secretEnv: [ 'MAVEN_DBPXY_GPG_KEY' ]
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
-    entrypoint: mvn
-    args: [ 'clean', 'install', 'spring-boot:build-image', '-q', '-Dmaven.test.skip=true', '-Drevision=${_VERSION}', '-Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}"' ]
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        apt-get update
+        apt-get install -y --no-install-recommends gnupg
+        mvn clean install -q \
+          spring-boot:build-image \
+          -Dmaven.test.skip=true \
+          -Drevision=${_VERSION} \
+          -Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}"
     secretEnv: [ 'MAVEN_DBPXY_GPG_PASSWORD' ]
   - id: 'prepare-to-deploy-maven-artifacts'
     name: gcr.io/cloud-builders/mvn
