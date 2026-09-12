@@ -11,6 +11,7 @@
     <artifactId>dbpxy-langchain4j-lib</artifactId>
     <packaging>jar</packaging>
     <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
         <spring-boot.build-image.skip>true</spring-boot.build-image.skip>
     </properties>
     <dependencyManagement>

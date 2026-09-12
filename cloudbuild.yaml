@@ -10,6 +10,14 @@ steps:
         mkdir -p /workspace/.docker
         cp ~/.docker/config.json /workspace/.docker/config.json
     secretEnv: [ 'DHI_IO_USERNAME', 'DHI_IO_PASSWORD', 'DOCKERHUB_DBPXY_USERNAME', 'DOCKERHUB_DBPXY_PASSWORD' ]
+  - id: 'import-gpg-key'
+    name: gcr.io/cloud-builders/gcloud
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        echo "$${MAVEN_DBPXY_GPG_KEY}" | gpg --batch --import
+    secretEnv: [ 'MAVEN_DBPXY_GPG_KEY' ]
   - id: 'build-backend-using-maven'
     name: maven:3.9-amazoncorretto-25-debian
     entrypoint: mvn
@@ -42,7 +50,19 @@ steps:
         docker tag dbpxy:${_VERSION} dbpxy/dbpxy-server:${_VERSION}
     env:
       - DOCKER_BUILDKIT=1
-  - id: 'push-image-to-dockerhub'
+  - id: 'push-public-maven-artifacts'
+    name: maven:3.9-amazoncorretto-25-debian
+    entrypoint: bash
+    args:
+      - '-c'
+      - |
+        mvn deploy -q \
+          -s settings.xml \
+          -Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}" \
+          -Dmaven.test.skip=true \
+          -Drevision=${_VERSION}
+    secretEnv: ['MAVEN_DBPXY_USERNAME', 'MAVEN_DBPXY_PASSWORD', 'MAVEN_DBPXY_GPG_PASSWORD']
+  - id: 'push-public-docker-image'
     name: gcr.io/cloud-builders/docker
     args:
       - 'push'
@@ -71,6 +91,14 @@ availableSecrets:
       env: DOCKERHUB_DBPXY_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_PASSWORD/versions/2
       env: DOCKERHUB_DBPXY_PASSWORD
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_GPG_KEY/versions/1
+      env: MAVEN_DBPXY_GPG_KEY
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_GPG_PASSWORD/versions/1
+      env: MAVEN_DBPXY_GPG_PASSWORD
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_USERNAME/versions/1
+      env: MAVEN_DBPXY_USERNAME
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_PASSWORD/versions/1
+      env: MAVEN_DBPXY_PASSWORD
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
   logging: CLOUD_LOGGING_ONLY
