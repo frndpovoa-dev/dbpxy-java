@@ -8,6 +8,26 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <name>DBPXY</name>
+    <description>Shareable Database Transactions for Microservices</description>
+    <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
+    <developers>
+        <developer>
+            <name>Fernando Lemes Povoa</name>
+            <email>frndpovoa.dev@gmail.com</email>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
+        <connection>scm:git:https://github.com/frndpovoa-dev/dbpxy-java.git</connection>
+        <developerConnection>scm:git:https://github.com/frndpovoa-dev/dbpxy-java.git</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
     <artifactId>dbpxy-lib</artifactId>
     <packaging>jar</packaging>
     <properties>
@@ -175,6 +195,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
