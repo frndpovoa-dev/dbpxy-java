@@ -66,11 +66,14 @@ steps:
     args:
       - '-c'
       - |
-        mvn deploy -q \
+        apt-get update
+        apt-get install -y --no-install-recommends gnupg
+        mvn deploy \
           -s settings.xml \
           -Dmaven.test.skip=true \
-          -Drevision=${_VERSION}
-    secretEnv: [ 'MAVEN_DBPXY_USERNAME', 'MAVEN_DBPXY_PASSWORD' ]
+          -Drevision=${_VERSION} \
+          -Dgpg.passphrase="$${MAVEN_DBPXY_GPG_PASSWORD}"
+    secretEnv: [ 'MAVEN_DBPXY_USERNAME', 'MAVEN_DBPXY_PASSWORD', 'MAVEN_DBPXY_GPG_PASSWORD' ]
   - id: 'push-public-docker-image'
     name: gcr.io/cloud-builders/docker
     args:
