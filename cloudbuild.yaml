@@ -71,7 +71,7 @@ steps:
         apt-get update
         apt-get install -y --no-install-recommends gnupg
         mkdir -p /workspace/.m2/repository
-        mvn central-publishing:publish \
+        mvn deploy \
           -s settings.xml \
           --projects=dbpxy-lib -am \
           -Dmaven.repo.local=/workspace/.m2/repository \
