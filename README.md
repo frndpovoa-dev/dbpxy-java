@@ -25,28 +25,24 @@ Have a good day!
 
 ![image](https://github.com/user-attachments/assets/5f279bae-743f-4ac8-8bc6-275fc34d3a5b)
 
-## Build using Maven
+## Quick build
+
+* Docker environment is required to build server image and alternatives like Podman also work well.
+* Testing is optional and can be skipped using `-Dmaven.test.skip=true`.
+* GPG signing is optional and can be skipped using `-Dgpg.skip=true`.
 
 ```bash
 true \
   && mvn clean install \
-    -Drevision=0.0.0-0-SNAPSHOT
+    spring-boot:build-image \
+    -Drevision=0.0.0-0-SNAPSHOT \
+    -Dmaven.test.skip=true \
+    -Dgpg.skip=true
 ```
 
-## Publish Docker image and Maven artifacts
+### How to use
 
-```bash
-true \
-  && source .env \
-  && ./publish.sh -v "0.0.0-0-SNAPSHOT" \
-    -a $GCP_SVC_ACCOUNT \
-    -p $GCP_PROJECT_ID \
-    -r $GCP_REGION \
-    -m $MAVEN_REPOSITORY \
-    -d $DOCKER_REPOSITORY
-```
-
-## Maven dependency
+For Java applications, add below Maven dependency.
 
 ```xml
 <dependency>
@@ -56,15 +52,40 @@ true \
 </dependency>
 ```
 
-## Docker run
+Then, point your client application to your RDBMS via the DBPXY server container.
 
-Docker images now available at https://hub.docker.com/r/dbpxy/dbpxy-server
+For Spring Boot applications, add below properties and replace/remove default values.
+Data source and transaction manager will be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
+
+PostgreSQL driver and Cloud SQL for PostgreSQL connector are available in default Docker image.
+
+```yaml
+app:
+  dbpxy:
+    hostname: ${DB_PROXY_HOST:localhost}
+    port: ${DB_PROXY_PORT:9090}
+    keep-alive-interval-in-ms: 30000
+    keep-alive-timeout-in-ms: 10000
+  dbpxy-datasource:
+    activation: LAZY
+    database: POSTGRESQL
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE:postgres}}
+    props:
+      - name: user
+        value: ${DB_USER:postgres}
+      - name: password
+        value: ${DB_PASSWORD:postgres}
+```
+
+Then, run DBPXY container.
 
 ```bash
 true \
-  && docker run \
+  && docker run --rm \
     -v ./certs/cert.pem:/workspace/BOOT-INF/classes/certs/cert.pem \
     -v ./certs/key.pem:/workspace/BOOT-INF/classes/certs/key.pem \
     -p 9090:9090 \
-    dbpxy/dbpxy-server:0.0.0-0-SNAPSHOT
+    dbpxy-server:0.0.0-0-SNAPSHOT
 ```
+
+Docker image is also available on [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server).
