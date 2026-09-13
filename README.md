@@ -68,5 +68,3 @@ true \
     -p 9090:9090 \
     dbpxy/dbpxy-server:0.0.0-0-SNAPSHOT
 ```
-
-Don't forget to change your version number.
