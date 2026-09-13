@@ -30,6 +30,7 @@ Have a good day!
 * Docker environment is required to build server image and alternatives like Podman also work well.
 * Testing is optional and can be skipped using `-Dmaven.test.skip=true`.
 * GPG signing is optional and can be skipped using `-Dgpg.skip=true`.
+* Version in `revision` argument might need to be adjusted according to your release cycle.
 
 ```bash
 true \
@@ -42,22 +43,22 @@ true \
 
 ### How to use
 
-For Java applications, add below Maven dependency.
+For Java applications, start by adding below Maven dependency.
 
 ```xml
+
 <dependency>
-  <groupId>com.dbpxy</groupId>
-  <artifactId>dbpxy-lib</artifactId>
-  <version>0.0.0-0-SNAPSHOT</version>
+    <groupId>com.dbpxy</groupId>
+    <artifactId>dbpxy-lib</artifactId>
+    <version>0.0.0-0-SNAPSHOT</version>
 </dependency>
 ```
 
-Then, point your client application to your RDBMS via the DBPXY server container.
-
+Then, connect your client application to your RDBMS through the DBPXY server.
 For Spring Boot applications, add below properties and replace/remove default values.
-Data source and transaction manager will be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
 
-PostgreSQL driver and Cloud SQL for PostgreSQL connector are available in default Docker image.
+* Data source and transaction manager beans will be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
+* PostgreSQL driver and Cloud SQL for PostgreSQL connector are available in default Docker image.
 
 ```yaml
 app:
@@ -77,7 +78,21 @@ app:
         value: ${DB_PASSWORD:postgres}
 ```
 
-Then, run DBPXY container.
+Next, generate a private key and share the certificate to client applications.
+
+* Certificate is required to secure gRPC communications between your client applications and DBPXY server.
+* Adjust [configuration template](dbpxy-server/src/main/resources/certs/localhost.cnf-template) and certificate validity as needed.
+
+```bash
+true \
+  && CERTS_DIR=certs \
+  && openssl req -x509 -newkey rsa:2048 -nodes -days 1 \
+    -keyout $CERTS_DIR/key.pem \
+    -out $CERTS_DIR/cert.pem \
+    -config $CERTS_DIR/localhost.cnf-template
+```
+
+Then, run DBPXY server container.
 
 ```bash
 true \
@@ -88,4 +103,22 @@ true \
     dbpxy-server:0.0.0-0-SNAPSHOT
 ```
 
-Docker image is also available on [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server).
+## License
+
+Copyright 2025 Fernando Lemes Povoa. All rights reserved.
+
+Licensed under the Apache License, Version 2.0 (the "License"); you may not use
+these files except in compliance with the License. You may obtain a copy of the
+License at
+
+    https://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software distributed
+under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
+CONDITIONS OF ANY KIND, either express or implied. See the License for the
+specific language governing permissions and limitations under the License.
+
+### Downloadable artifacts and images
+
+* [Maven Central](https://repo1.maven.org/maven2/com/dbpxy/)
+* [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server)
