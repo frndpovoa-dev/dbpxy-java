@@ -2,6 +2,8 @@
 
 # DBPXY - Shareable Database Transactions for Microservices
 
+### "Caminha e o caminho se abrirá", Gassho.
+
 [See the original LinkedIn post here.](https://www.linkedin.com/posts/activity-7343623220677201920-6qk9?utm_source=share&utm_medium=member_desktop&rcm=ACoAABC2-aoB9oRA7fI-ca2qc4EhypSjGLhoDaE)
 
 I'd like to share a project I've been working on in past couple of years. In simple words: it's an implementation of shareable database transactions for architectures based on microservices.
@@ -23,16 +25,15 @@ Have a good day!
 
 ![image](https://github.com/user-attachments/assets/5f279bae-743f-4ac8-8bc6-275fc34d3a5b)
 
-## Build
+## Build using Maven
 
 ```bash
 true \
-  && mvn clean install -Drevision=0.0.0-0-SNAPSHOT
+  && mvn clean install \
+    -Drevision=0.0.0-0-SNAPSHOT
 ```
 
-## Publish
-
-Don't forget to change your version number.
+## Publish Docker image and Maven artifacts
 
 ```bash
 true \
@@ -45,7 +46,17 @@ true \
     -d $DOCKER_REPOSITORY
 ```
 
-## Run
+## Maven dependency
+
+```xml
+<dependency>
+  <groupId>com.dbpxy</groupId>
+  <artifactId>dbpxy-lib</artifactId>
+  <version>0.0.0-0-SNAPSHOT</version>
+</dependency>
+```
+
+## Docker run
 
 Docker images now available at https://hub.docker.com/r/dbpxy/dbpxy-server
 
@@ -57,3 +68,5 @@ true \
     -p 9090:9090 \
     dbpxy/dbpxy-server:0.0.0-0-SNAPSHOT
 ```
+
+Don't forget to change your version number.
