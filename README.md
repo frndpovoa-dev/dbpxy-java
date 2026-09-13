@@ -24,6 +24,7 @@ Other than those scenarios above, it might be helpful to:
 Have a good day!
 
 ![image](https://github.com/user-attachments/assets/5f279bae-743f-4ac8-8bc6-275fc34d3a5b)
+[](https://static.scarf.sh/a.png?x-pxid=064ab4cf-e1ee-47b6-bfc1-4d0b82b96a15)
 
 ## Quick build
 
@@ -57,7 +58,7 @@ For Java applications, start by adding below Maven dependency.
 Then, connect your client application to your RDBMS through the DBPXY server.
 For Spring Boot applications, add below properties and replace/remove default values.
 
-* Data source and transaction manager beans will be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
+* Data source and transaction manager beans can be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
 * PostgreSQL driver and Cloud SQL for PostgreSQL connector are available in default Docker image.
 
 ```yaml
@@ -78,10 +79,10 @@ app:
         value: ${DB_PASSWORD:postgres}
 ```
 
-Next, generate a private key and share the certificate to client applications.
+Next, generate a private key and share the certificate to your client applications.
 
 * Certificate is required to secure gRPC communications between your client applications and DBPXY server.
-* Adjust [configuration template](dbpxy-server/src/main/resources/certs/localhost.cnf-template) and certificate validity as needed.
+* Adjust your [configuration template](dbpxy-server/src/main/resources/certs/localhost.cnf-template) and certificate validity as needed.
 
 ```bash
 true \
@@ -120,5 +121,5 @@ specific language governing permissions and limitations under the License.
 
 ### Downloadable artifacts and images
 
-* [Maven Central](https://repo1.maven.org/maven2/com/dbpxy/)
 * [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server)
+* [Maven Central](https://repo1.maven.org/maven2/com/dbpxy/)
