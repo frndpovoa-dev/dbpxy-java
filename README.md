@@ -1,10 +1,12 @@
 [![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.9)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
+[![MvnRepository badge](https://badges.mvnrepository.com/badge/com.dbpxy/dbpxy-lib/badge.svg?label=MvnRepository&selector=0.9)](https://mvnrepository.com/artifact/com.dbpxy/dbpxy-lib)
+![scarf.sh pixel](https://static.scarf.sh/a.png?x-pxid=064ab4cf-e1ee-47b6-bfc1-4d0b82b96a15)
 
 # DBPXY - Shareable Database Transactions for Microservices
 
 ### "Caminha e o caminho se abrirá", Gassho.
 
-[See the original LinkedIn post here.](https://www.linkedin.com/posts/activity-7343623220677201920-6qk9?utm_source=share&utm_medium=member_desktop&rcm=ACoAABC2-aoB9oRA7fI-ca2qc4EhypSjGLhoDaE)
+[See the original LinkedIn post here](https://www.linkedin.com/posts/activity-7343623220677201920-6qk9?utm_source=share&utm_medium=member_desktop&rcm=ACoAABC2-aoB9oRA7fI-ca2qc4EhypSjGLhoDaE).
 
 I'd like to share a project I've been working on in past couple of years. In simple words: it's an implementation of shareable database transactions for architectures based on microservices.
 
@@ -24,9 +26,10 @@ Other than those scenarios above, it might be helpful to:
 Have a good day!
 
 ![image](https://github.com/user-attachments/assets/5f279bae-743f-4ac8-8bc6-275fc34d3a5b)
-[](https://static.scarf.sh/a.png?x-pxid=064ab4cf-e1ee-47b6-bfc1-4d0b82b96a15)
 
-## Quick build
+## Quick build for local development
+
+Build this Maven project from root folder using command-line below.
 
 * Docker environment is required to build server image and alternatives like Podman also work well.
 * Testing is optional and can be skipped using `-Dmaven.test.skip=true`.
@@ -38,16 +41,17 @@ true \
   && mvn clean install \
     spring-boot:build-image \
     -Drevision=0.0.0-0-SNAPSHOT \
-    -Dmaven.test.skip=true \
+    -Dmaven.test.skip=false \
     -Dgpg.skip=true
 ```
 
 ### How to use
 
-For Java applications, start by adding below Maven dependency.
+For your Java client applications, start by adding the following Maven dependency.
+
+* Adjust artifact `version` to be same as `revision` from previous step. 
 
 ```xml
-
 <dependency>
     <groupId>com.dbpxy</groupId>
     <artifactId>dbpxy-lib</artifactId>
@@ -56,7 +60,7 @@ For Java applications, start by adding below Maven dependency.
 ```
 
 Then, connect your client application to your RDBMS through the DBPXY server.
-For Spring Boot applications, add below properties and replace/remove default values.
+For Spring Boot applications, add these properties and replace/remove default values.
 
 * Data source and transaction manager beans can be autoconfigured as part of [DbpxyAutoConfiguration.java](dbpxy-lib/src/main/java/com/dbpxy/config/DbpxyAutoConfiguration.java).
 * PostgreSQL driver and Cloud SQL for PostgreSQL connector are available in default Docker image.
@@ -64,8 +68,8 @@ For Spring Boot applications, add below properties and replace/remove default va
 ```yaml
 app:
   dbpxy:
-    hostname: ${DB_PROXY_HOST:localhost}
-    port: ${DB_PROXY_PORT:9090}
+    hostname: ${DBPXY_HOST:dbpxy}
+    port: ${DBPXY_PORT:9090}
     keep-alive-interval-in-ms: 30000
     keep-alive-timeout-in-ms: 10000
   dbpxy-datasource:
@@ -74,7 +78,7 @@ app:
     url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_DATABASE:postgres}}
     props:
       - name: user
-        value: ${DB_USER:postgres}
+        value: ${DB_USERNAME:postgres}
       - name: password
         value: ${DB_PASSWORD:postgres}
 ```
@@ -93,16 +97,32 @@ true \
     -config $CERTS_DIR/localhost.cnf-template
 ```
 
-Then, run DBPXY server container.
+Then, run one or more DBPXY server containers.
+
+* Name and hostname are required, if not provided by container orchestrator.
+* Network can be used to isolate your applications from other applications in same container runtime.
+* Network alias can be used as DNS-based load balancer, if not provided by container orchestrator.
+* Adjust image `version` to be same as `revision` from previous step.
 
 ```bash
 true \
-  && docker run --rm \
-    -v ./certs/cert.pem:/workspace/BOOT-INF/classes/certs/cert.pem \
-    -v ./certs/key.pem:/workspace/BOOT-INF/classes/certs/key.pem \
+  && docker run --rm -it \
+    --name dbpxy-1 \
+    --hostname dbpxy-1 \
+    --network development \
+    --network-alias dbpxy \
+    --volume ./certs/cert.pem:/workspace/BOOT-INF/classes/certs/cert.pem \
+    --volume ./certs/key.pem:/workspace/BOOT-INF/classes/certs/key.pem \
     -p 9090:9090 \
     dbpxy-server:0.0.0-0-SNAPSHOT
 ```
+
+## Downloadable artifacts and images
+
+Pre-built Maven artifacts and Docker images can be found on:
+
+* [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server)
+* [Maven Central Repository](https://repo1.maven.org/maven2/com/dbpxy/)
 
 ## License
 
@@ -118,8 +138,3 @@ Unless required by applicable law or agreed to in writing, software distributed
 under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR
 CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
-
-### Downloadable artifacts and images
-
-* [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server)
-* [Maven Central](https://repo1.maven.org/maven2/com/dbpxy/)

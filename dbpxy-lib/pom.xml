@@ -9,7 +9,7 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
     <name>dbpxy-lib</name>
-    <description>Shareable Database Transactions for Microservices</description>
+    <description>JDBC connector that supports shareable database transactions for microservices</description>
     <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
     <developers>
         <developer>
