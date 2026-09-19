@@ -80,7 +80,7 @@ public class ConnectionHolder {
 
     public @Nullable Connection getConnection() {
         final org.springframework.jdbc.datasource.ConnectionHolder holder = (org.springframework.jdbc.datasource.ConnectionHolder) TransactionSynchronizationManager.getResource(dataSourceProvider.getObject());
-        return (Connection) holder.getConnection();
+        return holder == null ? null : (Connection) holder.getConnection();
     }
 
     public void clear() {
