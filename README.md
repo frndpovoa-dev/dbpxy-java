@@ -1,5 +1,7 @@
 [![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.10)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
-[![Maven](https://maven-badges.sml.io/sonatype-central/com.dbpxy/dbpxy-lib/badge.svg?subject=Maven&color=blue)](https://repo1.maven.org/maven2/com/dbpxy/)
+[![Maven](https://img.shields.io/maven-central/v/com.dbpxy/dbpxy-lib?label=Maven&color=blue)](https://repo1.maven.org/maven2/com/dbpxy/)
+[![Docker](https://img.shields.io/docker/v/dbpxy/dbpxy-server?logo=docker&logoColor=white&label=Docker&color=blue)](https://hub.docker.com/r/dbpxy/dbpxy-server)
+![License](https://img.shields.io/github/license/frndpovoa-dev/dbpxy-java?label=License&color=orange)
 ![scarf.sh pixel](https://static.scarf.sh/a.png?x-pxid=064ab4cf-e1ee-47b6-bfc1-4d0b82b96a15)
 
 # DBPXY - Shareable Database Transactions for Microservices
