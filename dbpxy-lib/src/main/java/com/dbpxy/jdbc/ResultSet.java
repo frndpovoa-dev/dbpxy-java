@@ -29,6 +29,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import io.grpc.Status;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.MDC;
 
 import java.io.InputStream;
@@ -37,16 +38,15 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.net.URL;
 import java.sql.*;
+import java.sql.Date;
 import java.sql.Statement;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Calendar;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.TimeUnit;
+import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 @Slf4j
 public class ResultSet implements java.sql.ResultSet {
@@ -56,6 +56,7 @@ public class ResultSet implements java.sql.ResultSet {
     private final Statement statement;
     private QueryResult queryResult;
     private ResultSetMetaData resultSetMetaData;
+    private Map<String, Integer> columnIndexByColumnLabelMap;
     private boolean closed = false;
     private boolean last = false;
     private int totalRow = -1;
@@ -76,6 +77,28 @@ public class ResultSet implements java.sql.ResultSet {
         return queryResult.getRows(localRow).getCols(col - 1);
     }
 
+    protected Integer getColumnIndexByColumnLabel(final String columnLabel) {
+        if (columnIndexByColumnLabelMap == null) {
+            this.columnIndexByColumnLabelMap = getFirstRow()
+                    .map(row -> IntStream.range(0, row.getColsCount())
+                            .mapToObj(i -> new AbstractMap.SimpleEntry<>(
+                                    Optional.of(row.getCols(i).getLabel()).filter(StringUtils::isNotBlank)
+                                            .or(() -> Optional.of(row.getCols(i).getName()).filter(StringUtils::isNotBlank))
+                                            .orElseThrow(),
+                                    i + 1))
+                            .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (a, b) -> b, TreeMap::new))
+                    )
+                    .orElseGet(TreeMap::new);
+        }
+        return columnIndexByColumnLabelMap.get(columnLabel);
+    }
+
+    protected Optional<Row> getFirstRow() {
+        return Optional.ofNullable(queryResult)
+                .filter(it -> it.getRowsCount() > 0)
+                .map(it -> it.getRows(0));
+    }
+
     @Override
     public boolean next() throws SQLException {
         log.trace("public boolean next() throws SQLException {");
@@ -90,7 +113,6 @@ public class ResultSet implements java.sql.ResultSet {
                 final Transaction transaction = connection.getOrCreateTransaction(false);
                 if (transaction != null) {
                     this.queryResult = connection.getBlockingStub()
-                            .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
                             .next(NextConfig.newBuilder()
                                     .setQueryResultId(queryResult.getId())
                                     .setTransaction(transaction)
@@ -127,7 +149,6 @@ public class ResultSet implements java.sql.ResultSet {
                 return;
             }
             connection.getBlockingStub()
-                    .withDeadlineAfter(connection.getDbpxyProperties().getTimeoutS(), TimeUnit.SECONDS)
                     .closeResultSet(NextConfig.newBuilder()
                             .setQueryResultId(queryResult.getId())
                             .setTransaction(transaction)
@@ -386,81 +407,81 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public String getString(String columnLabel) throws SQLException {
+    public String getString(final String columnLabel) throws SQLException {
         log.trace("public String getString(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getString(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public boolean getBoolean(String columnLabel) throws SQLException {
+    public boolean getBoolean(final String columnLabel) throws SQLException {
         log.trace("public boolean getBoolean(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getBoolean(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public byte getByte(String columnLabel) throws SQLException {
+    public byte getByte(final String columnLabel) throws SQLException {
         log.trace("public byte getByte(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getByte(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public short getShort(String columnLabel) throws SQLException {
+    public short getShort(final String columnLabel) throws SQLException {
         log.trace("public short getShort(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getShort(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public int getInt(String columnLabel) throws SQLException {
+    public int getInt(final String columnLabel) throws SQLException {
         log.trace("public int getInt(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getInt(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public long getLong(String columnLabel) throws SQLException {
+    public long getLong(final String columnLabel) throws SQLException {
         log.trace("public long getLong(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getLong(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public float getFloat(String columnLabel) throws SQLException {
+    public float getFloat(final String columnLabel) throws SQLException {
         log.trace("public float getFloat(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getFloat(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public double getDouble(String columnLabel) throws SQLException {
+    public double getDouble(final String columnLabel) throws SQLException {
         log.trace("public double getDouble(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getDouble(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
+    public BigDecimal getBigDecimal(final String columnLabel, final int scale) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getBigDecimal(getColumnIndexByColumnLabel(columnLabel), scale);
     }
 
     @Override
-    public byte[] getBytes(String columnLabel) throws SQLException {
+    public byte[] getBytes(final String columnLabel) throws SQLException {
         log.trace("public byte[] getBytes(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getBytes(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public Date getDate(String columnLabel) throws SQLException {
+    public Date getDate(final String columnLabel) throws SQLException {
         log.trace("public Date getDate(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getDate(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public Time getTime(String columnLabel) throws SQLException {
+    public Time getTime(final String columnLabel) throws SQLException {
         log.trace("public Time getTime(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getTime(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public Timestamp getTimestamp(String columnLabel) throws SQLException {
+    public Timestamp getTimestamp(final String columnLabel) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getTimestamp(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
@@ -501,7 +522,7 @@ public class ResultSet implements java.sql.ResultSet {
     @Override
     public ResultSetMetaData getMetaData() {
         if (resultSetMetaData == null) {
-            this.resultSetMetaData = new ResultSetMetaData(queryResult);
+            this.resultSetMetaData = new ResultSetMetaData(this);
         }
         return resultSetMetaData;
     }
@@ -558,15 +579,15 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Object getObject(String columnLabel) throws SQLException {
+    public Object getObject(final String columnLabel) throws SQLException {
         log.trace("public Object getObject(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getObject(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
-    public int findColumn(String columnLabel) throws SQLException {
+    public int findColumn(final String columnLabel) throws SQLException {
         log.trace("public int findColumn(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getColumnIndexByColumnLabel(columnLabel);
     }
 
     @Override
@@ -596,9 +617,9 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public BigDecimal getBigDecimal(String columnLabel) throws SQLException {
+    public BigDecimal getBigDecimal(final String columnLabel) throws SQLException {
         log.trace("public BigDecimal getBigDecimal(String columnLabel) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getBigDecimal(getColumnIndexByColumnLabel(columnLabel));
     }
 
     @Override
@@ -1108,9 +1129,9 @@ public class ResultSet implements java.sql.ResultSet {
     }
 
     @Override
-    public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {
+    public Timestamp getTimestamp(final String columnLabel, final Calendar cal) throws SQLException {
         log.trace("public Timestamp getTimestamp(String columnLabel, Calendar cal) throws SQLException {");
-        throw new SQLFeatureNotSupportedException();
+        return getTimestamp(getColumnIndexByColumnLabel(columnLabel), cal);
     }
 
     @Override

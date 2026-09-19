@@ -22,6 +22,7 @@ package com.dbpxy.service;
 
 import com.dbpxy.config.DbpxyGrpcProperties;
 import com.dbpxy.config.DbpxyPoolProperties;
+import com.dbpxy.exception.UnableToBorrowConnectionException;
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.grpc.DbpxyClient;
@@ -395,6 +396,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             final ExecuteResult result = ops.execute(config.getExecuteConfig());
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final UnableToBorrowConnectionException e) {
+            responseObserver.onError(Status.RESOURCE_EXHAUSTED
+                    .withDescription("UNABLE_TO_BEGIN_TRANSACTION")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final UnsupportedInReadOnlyModeException e) {
             responseObserver.onError(Status.PERMISSION_DENIED
                     .withDescription("READ_ONLY_MODE")
@@ -440,6 +446,11 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
             }
             responseObserver.onNext(result);
             responseObserver.onCompleted();
+        } catch (final UnableToBorrowConnectionException e) {
+            responseObserver.onError(Status.RESOURCE_EXHAUSTED
+                    .withDescription("UNABLE_TO_BEGIN_TRANSACTION")
+                    .withCause(e)
+                    .asRuntimeException());
         } catch (final UnsupportedInWriteOnlyModeException e) {
             responseObserver.onError(Status.PERMISSION_DENIED
                     .withDescription("WRITE_ONLY_MODE")
@@ -535,7 +546,8 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
     }
 
     @SuppressWarnings("java:S2445")
-    private DatabaseOperation activateTransaction(final DatabaseOperation ops) {
+    private DatabaseOperation activateTransaction(
+            final DatabaseOperation ops) throws UnableToBorrowConnectionException {
         final DatabaseOperation delegate = ops.getDelegate();
 
         if (delegate.getTransaction().getStatus() == Transaction.Status.NOT_STARTED) {
@@ -632,11 +644,16 @@ public class DatabaseService extends DbpxyGrpc.DbpxyImplBase {
 
     private Optional<DatabaseOperation> getDatabaseOperationByTransaction(
             final Transaction transaction,
-            final boolean shouldActivate) {
-        return Optional.ofNullable(transaction)
+            final boolean shouldActivate) throws UnableToBorrowConnectionException {
+        Optional<DatabaseOperation> maybeDatabaseOperation = Optional.ofNullable(transaction)
                 .map(it -> cryptoService.decrypt(it.getId()))
-                .map(transactionCache::getIfPresent)
-                .map(ops -> shouldActivate ? activateTransaction(ops) : ops);
+                .map(transactionCache::getIfPresent);
+
+        if (shouldActivate && maybeDatabaseOperation.isPresent()) {
+            maybeDatabaseOperation = Optional.of(activateTransaction(maybeDatabaseOperation.get()));
+        }
+
+        return maybeDatabaseOperation;
     }
 
     private void closeDatabaseOperationByTransaction(final Transaction transaction) {

@@ -10,6 +10,9 @@
     </parent>
     <artifactId>dbpxy-server</artifactId>
     <packaging>jar</packaging>
+    <properties>
+        <maven.deploy.skip>true</maven.deploy.skip>
+    </properties>
     <dependencyManagement>
         <dependencies>
             <dependency>
@@ -178,8 +181,8 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
-                                <source>${basedir}/target/generated-sources/protobuf/java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/grpc-java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
                     </execution>
@@ -235,6 +238,10 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
+                        <buildpacks>
+                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11.9.0</buildpack>
+                            <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
+                        </buildpacks>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
@@ -285,7 +292,14 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <skipAfterFailureCount>1</skipAfterFailureCount>
-                    <argLine>-javaagent:${org.mockito:mockito-core:jar} -Duser.timezone=UTC</argLine>
+                    <argLine>
+                        -javaagent:${org.mockito:mockito-core:jar}
+                        -Xmx1g
+                        -Duser.timezone=UTC
+                        -XX:ActiveProcessorCount=4
+                        -XX:CICompilerCount=2
+                        -XX:ParallelGCThreads=2
+                    </argLine>
                 </configuration>
             </plugin>
         </plugins>

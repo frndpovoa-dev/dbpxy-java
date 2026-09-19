@@ -27,7 +27,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import org.hibernate.cfg.JdbcSettings;
 import org.hibernate.cfg.SchemaToolingSettings;
-import org.springframework.beans.factory.ObjectFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.persistence.autoconfigure.EntityScanPackages;
@@ -51,8 +51,9 @@ public class JpaConfig {
     @Bean
     @Primary
     public ConnectionHolder connectionHolder(
-            final ObjectFactory<EntityManager> entityManagerObjectFactory) {
-        return new ConnectionHolder() {
+            final ObjectProvider<DataSource> dataSource,
+            final ObjectProvider<EntityManager> entityManagerObjectFactory) {
+        return new ConnectionHolder(dataSource) {
             @Override
             protected void entityManagerFlush() {
                 entityManagerObjectFactory.getObject().flush();

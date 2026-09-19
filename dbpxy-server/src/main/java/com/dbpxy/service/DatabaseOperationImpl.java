@@ -21,6 +21,7 @@ package com.dbpxy.service;
  */
 
 
+import com.dbpxy.exception.UnableToBorrowConnectionException;
 import com.dbpxy.jdbc.ConnectionProxy;
 import com.dbpxy.logging.MDC;
 import com.dbpxy.proto.*;
@@ -40,12 +41,10 @@ import org.jspecify.annotations.NonNull;
 
 import java.math.BigDecimal;
 import java.sql.*;
+import java.sql.Date;
 import java.time.*;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.IntStream;
 
@@ -96,7 +95,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
 
     public void openConnection(
             final ObjectPool<ConnectionProxy> connectionPool,
-            final ExecutorService taskExecutor) {
+            final ExecutorService taskExecutor) throws UnableToBorrowConnectionException {
         final CompletableFuture<Boolean> future = new CompletableFuture<>();
         CompletableFuture.runAsync(() -> {
 
@@ -138,6 +137,9 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 queryTaskMap.values()
                         .forEach(queue -> queue.add(null));
 
+            } catch (final NoSuchElementException e) {
+                log.error(e.getMessage(), e);
+                future.completeExceptionally(new UnableToBorrowConnectionException());
             } catch (final Exception e) {
                 log.error(e.getMessage(), e);
                 future.completeExceptionally(e);
@@ -153,7 +155,15 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 }
             }
         }, taskExecutor);
-        future.join();
+        try {
+            future.join();
+        } catch (final CompletionException e) {
+            if (e.getCause() instanceof UnableToBorrowConnectionException ubt) {
+                log.warn("unable to borrow connection from pool");
+                throw ubt;
+            }
+            throw e;
+        }
     }
 
     public void closeConnection() {
@@ -524,10 +534,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.BIGINT: {
                     return int64Value(metadata, rs, i);
                 }
-                case Types.BOOLEAN: {
-                    return booleanValue(metadata, rs, i);
-                }
-                case Types.BIT: {
+                case Types.BOOLEAN, Types.BIT: {
                     return booleanValue(metadata, rs, i);
                 }
                 case Types.BINARY: {
@@ -539,10 +546,7 @@ class DatabaseOperationImpl implements DatabaseOperation {
                 case Types.REAL, Types.NUMERIC, Types.DOUBLE: {
                     return float64Value(metadata, rs, i);
                 }
-                case Types.SMALLINT: {
-                    return int32Value(metadata, rs, i);
-                }
-                case Types.INTEGER: {
+                case Types.SMALLINT, Types.INTEGER: {
                     return int32Value(metadata, rs, i);
                 }
                 case Types.TIME: {

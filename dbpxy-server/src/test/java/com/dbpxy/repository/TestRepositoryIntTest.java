@@ -98,6 +98,10 @@ class TestRepositoryIntTest extends BaseIntTest {
         final String readOnlyTransactionId = connectionHolder.getConnection().getReadOnlyTransactionId();
         log.debug("tx readOnlyTransactionId({})", readOnlyTransactionId);
 
+        log.debug("read empty");
+        assertThat(repository.findById(-1L))
+                .isEmpty();
+
         log.debug("read before insert using JPA");
         assertThat(repository.findByGroupName("repo"))
                 .containsExactly(TEST_1);

@@ -20,6 +20,7 @@ package com.dbpxy.service;
  * #L%
  */
 
+import com.dbpxy.exception.UnableToBorrowConnectionException;
 import com.dbpxy.exception.UnsupportedInReadOnlyModeException;
 import com.dbpxy.exception.UnsupportedInWriteOnlyModeException;
 import com.dbpxy.jdbc.ConnectionProxy;
@@ -43,7 +44,7 @@ public interface DatabaseOperation {
 
     void openConnection(
             ObjectPool<ConnectionProxy> connectionPool,
-            ExecutorService taskExecutor);
+            ExecutorService taskExecutor) throws UnableToBorrowConnectionException;
 
     void closeConnection();
 

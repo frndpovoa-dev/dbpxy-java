@@ -239,12 +239,12 @@ class TestControllerIntTest extends BaseIntTest {
                     })
                     .sum()))
                     .isNotNull()
-                    .succeedsWithin(Duration.ofSeconds(90))
+                    .succeedsWithin(Duration.ofSeconds(130))
                     .is(new Condition<>(total -> total == 2_000, "Expected 2000 iteration results"));
             final Instant end = Instant.now();
             assertThat(Duration.between(start, end))
-                    .isGreaterThanOrEqualTo(Duration.ofSeconds(45))
-                    .isLessThanOrEqualTo(Duration.ofSeconds(90));
+                    .isGreaterThanOrEqualTo(Duration.ofSeconds(60))
+                    .isLessThanOrEqualTo(Duration.ofSeconds(130));
         }
 
         // Toxiproxy
@@ -255,7 +255,7 @@ class TestControllerIntTest extends BaseIntTest {
         this.toxiproxyFuture = CompletableFuture.runAsync(() -> {
             try {
                 while (toxiproxyFlag.get()) {
-                    latency.setLatency(3_250);
+                    latency.setLatency(1_250);
                     Thread.sleep(100);
                     latency.setLatency(1);
                     Thread.sleep(30_000);

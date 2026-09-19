@@ -8,6 +8,26 @@
         <version>${revision}</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
+    <name>dbpxy-lib</name>
+    <description>JDBC connector that supports shareable database transactions for microservices</description>
+    <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
+    <developers>
+        <developer>
+            <name>Fernando Lemes Povoa</name>
+            <email>frndpovoa.dev@gmail.com</email>
+        </developer>
+    </developers>
+    <scm>
+        <url>https://github.com/frndpovoa-dev/dbpxy-java</url>
+        <connection>scm:git:https://github.com/frndpovoa-dev/dbpxy-java.git</connection>
+        <developerConnection>scm:git:https://github.com/frndpovoa-dev/dbpxy-java.git</developerConnection>
+    </scm>
+    <licenses>
+        <license>
+            <name>Apache License, Version 2.0</name>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
     <artifactId>dbpxy-lib</artifactId>
     <packaging>jar</packaging>
     <properties>
@@ -117,6 +137,19 @@
         </extensions>
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>build-helper-maven-plugin</artifactId>
                 <executions>
@@ -135,10 +168,49 @@
                         </goals>
                         <configuration>
                             <sources>
-                                <source>${basedir}/target/generated-sources/protobuf/grpc-java</source>
-                                <source>${basedir}/target/generated-sources/protobuf/java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/grpc-java</source>
+                                <source>${project.basedir}/target/generated-sources/protobuf/java</source>
                             </sources>
                         </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+                <configuration>
+                    <updatePomFile>true</updatePomFile>
+                    <flattenMode>defaults</flattenMode>
+                    <pomElements>
+                        <parent>remove</parent>
+                        <name>keep</name>
+                        <description>keep</description>
+                        <url>keep</url>
+                        <scm>keep</scm>
+                        <developers>keep</developers>
+                        <properties>remove</properties>
+                        <profiles>remove</profiles>
+                        <dependencyManagement>remove</dependencyManagement>
+                        <dependencies>resolve</dependencies>
+                        <repositories>remove</repositories>
+                        <pluginRepositories>remove</pluginRepositories>
+                        <build>remove</build>
+                    </pomElements>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>flatten</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>flatten</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>flatten.clean</id>
+                        <phase>clean</phase>
+                        <goals>
+                            <goal>clean</goal>
+                        </goals>
                     </execution>
                 </executions>
             </plugin>
@@ -162,6 +234,14 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

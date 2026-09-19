@@ -20,7 +20,6 @@ package com.dbpxy.jdbc;
  * #L%
  */
 
-import com.dbpxy.ConnectionHolder;
 import com.dbpxy.config.DbpxyDatasourceProperties;
 import com.dbpxy.config.DbpxyProperties;
 import com.dbpxy.grpc.RetryLoggerInterceptor;
@@ -39,7 +38,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.slf4j.MDC;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -55,6 +53,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 public class Connection implements java.sql.Connection {
+    private static final String MDC_CONNECTION_ID = "dbpxy.conn.id";
     private static final String MDC_TRANSACTION_ID = "dbpxy.tx.id";
     private static final List<Transaction.Status> ACTIVE_TRANSACTION_STATUSES = List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE, Transaction.Status.JOINED);
     private static final long DEFAULT_QUERY_TIMEOUT_IN_MS = Duration.ofMinutes(1).toMillis();
@@ -88,7 +87,6 @@ public class Connection implements java.sql.Connection {
     @Getter
     @EqualsAndHashCode.Include
     private final String id = UUID.randomUUID().toString().replace("-", "");
-    private final ConnectionHolder connectionHolder;
     @Getter(AccessLevel.PACKAGE)
     private final DbpxyProperties dbpxyProperties;
     private final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties;
@@ -121,8 +119,8 @@ public class Connection implements java.sql.Connection {
                             dbpxyProperties.getPort(),
                             credentials)
                     .intercept(new RetryLoggerInterceptor())
-                    .keepAliveTime(dbpxyProperties.getKeepAliveIntervalS(), TimeUnit.SECONDS)
-                    .keepAliveTimeout(dbpxyProperties.getKeepAliveTimeoutS(), TimeUnit.SECONDS)
+                    .keepAliveTime(dbpxyProperties.getKeepAliveIntervalInMs(), TimeUnit.MILLISECONDS)
+                    .keepAliveTimeout(dbpxyProperties.getKeepAliveTimeoutInMs(), TimeUnit.MILLISECONDS)
                     .defaultServiceConfig(serviceConfig)
                     .enableRetry()
                     .build();
@@ -185,7 +183,6 @@ public class Connection implements java.sql.Connection {
 
                 try {
                     final Transaction transaction = blockingStub
-                            .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                             .beginTransaction(BeginTransactionConfig.newBuilder()
                                     .setActivation((maybeDbpxyDatasourceProperties.get().getActivation() == DbpxyDatasourceProperties.Activation.EAGER)
                                             ? BeginTransactionConfig.Activation.EAGER
@@ -196,7 +193,7 @@ public class Connection implements java.sql.Connection {
                                     .setReadOnly(readOnly)
                                     .build());
                     pushTransaction(transaction);
-                    log.debug("transaction began");
+                    log.debug("transaction started on {} at {}", transaction.getNode(), transaction.getCreation());
                 } catch (final RuntimeException e) {
                     throw new SQLException(e);
                 }
@@ -263,16 +260,14 @@ public class Connection implements java.sql.Connection {
     }
 
     public Connection(
-            final ConnectionHolder connectionHolder,
             final DbpxyProperties dbpxyProperties,
             final Optional<DbpxyDatasourceProperties> maybeDbpxyDatasourceProperties,
             final String dbpxyCertPath
     ) throws SQLException {
-        this.connectionHolder = connectionHolder;
         this.dbpxyProperties = dbpxyProperties;
         this.maybeDbpxyDatasourceProperties = maybeDbpxyDatasourceProperties;
         this.dbpxyCertPath = dbpxyCertPath;
-        connectionHolder.pushConnection(this);
+        MDC.put(MDC_CONNECTION_ID, DatabaseUtils.getMaskedId(getId()));
         log.debug("connection lazyly opened");
     }
 
@@ -317,7 +312,6 @@ public class Connection implements java.sql.Connection {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub
-                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                                 .commitTransaction(transaction);
                         log.debug("transaction commited");
                     } catch (final RuntimeException e) {
@@ -340,7 +334,6 @@ public class Connection implements java.sql.Connection {
                 if (List.of(Transaction.Status.NOT_STARTED, Transaction.Status.ACTIVE).contains(transaction.getStatus())) {
                     try {
                         blockingStub
-                                .withDeadlineAfter(dbpxyProperties.getTimeoutS(), TimeUnit.SECONDS)
                                 .rollbackTransaction(transaction);
                         log.debug("transaction rolled back");
                     } catch (final RuntimeException e) {
@@ -377,7 +370,7 @@ public class Connection implements java.sql.Connection {
         } finally {
             this.closed = true;
             this.channel = null;
-            connectionHolder.popConnection(this);
+            MDC.remove(MDC_CONNECTION_ID);
         }
     }
 
