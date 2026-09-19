@@ -1,4 +1,4 @@
-[![Build from a feature branch](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml/badge.svg?branch=feature%2F0.10)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
+[![GitHub](https://img.shields.io/github/actions/workflow/status/frndpovoa-dev/dbpxy-java/build.yaml?branch=feature%2F0.10&logo=github&logoColor=white&label=Build&color=green)](https://github.com/frndpovoa-dev/dbpxy-java/actions/workflows/build.yaml)
 [![Maven](https://img.shields.io/maven-central/v/com.dbpxy/dbpxy-lib?label=Maven&color=blue)](https://repo1.maven.org/maven2/com/dbpxy/)
 [![Docker](https://img.shields.io/docker/v/dbpxy/dbpxy-server?logo=docker&logoColor=white&label=Docker&color=blue)](https://hub.docker.com/r/dbpxy/dbpxy-server)
 ![License](https://img.shields.io/github/license/frndpovoa-dev/dbpxy-java?label=License&color=orange)
