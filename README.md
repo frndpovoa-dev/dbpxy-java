@@ -42,7 +42,7 @@ Build this Maven project from root folder using command-line below.
 true \
   && mvn clean install \
     spring-boot:build-image \
-    -Drevision=0.0.0-0-SNAPSHOT \
+    -Drevision=0.0.0.0-0-SNAPSHOT \
     -Dmaven.test.skip=false \
     -Dgpg.skip=true
 ```
@@ -57,7 +57,7 @@ For your Java client applications, start by adding the following Maven dependenc
 <dependency>
     <groupId>com.dbpxy</groupId>
     <artifactId>dbpxy-lib</artifactId>
-    <version>0.0.0-0-SNAPSHOT</version>
+    <version>0.0.0.0-0-SNAPSHOT</version>
 </dependency>
 ```
 
@@ -116,7 +116,7 @@ true \
     --volume ./certs/cert.pem:/workspace/BOOT-INF/classes/certs/cert.pem \
     --volume ./certs/key.pem:/workspace/BOOT-INF/classes/certs/key.pem \
     -p 9090:9090 \
-    dbpxy-server:0.0.0-0-SNAPSHOT
+    dbpxy-server:0.0.0.0-0-SNAPSHOT
 ```
 
 ## Downloadable artifacts and images
@@ -125,6 +125,10 @@ Pre-built Maven artifacts and Docker images can be found on:
 
 * [Docker Hub](https://hub.docker.com/r/dbpxy/dbpxy-server)
 * [Maven Central Repository](https://repo1.maven.org/maven2/com/dbpxy/)
+
+## Versioning
+
+We version all our releases using the format `0.0.0.0-0` which means `MAJOR.MINOR.PATCH.HOTFIX-RETRY`.
 
 ## License
 
