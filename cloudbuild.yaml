@@ -112,9 +112,9 @@ availableSecrets:
       env: MAVEN_DBPXY_GPG_KEY
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_GPG_PASSWORD/versions/1
       env: MAVEN_DBPXY_GPG_PASSWORD
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_USERNAME/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_USERNAME/versions/2
       env: MAVEN_DBPXY_USERNAME
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_PASSWORD/versions/1
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_PASSWORD/versions/2
       env: MAVEN_DBPXY_PASSWORD
 serviceAccount: projects/${_GCP_PROJECT_ID}/serviceAccounts/${_GCP_SVC_ACCOUNT}
 options:
