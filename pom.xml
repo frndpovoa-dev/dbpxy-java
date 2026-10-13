@@ -13,14 +13,14 @@
         <server.java.version>25</server.java.version>
         <project.build.sourceEncoding>${file.encoding}</project.build.sourceEncoding>
         <com.fasterxml.uuid_java-uuid-generator.version>5.2.0</com.fasterxml.uuid_java-uuid-generator.version>
-        <com.google.cloud_libraries-bom.version>26.88.1</com.google.cloud_libraries-bom.version>
+        <com.google.cloud_libraries-bom.version>26.90.0</com.google.cloud_libraries-bom.version>
         <com.google.cloud.sql_postgres-socket-factory.version>1.30.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.4</com.google.protobuf_protoc.version>
-        <com.h2database_h2.version>2.5.250</com.h2database_h2.version>
+        <com.h2database_h2.version>2.5.252</com.h2database_h2.version>
         <commons-io_commons-io.version>2.22.0</commons-io_commons-io.version>
-        <dev.langchain4j_langchain4j-bom.version>1.20.0</dev.langchain4j_langchain4j-bom.version>
+        <dev.langchain4j_langchain4j-bom.version>1.21.0</dev.langchain4j_langchain4j-bom.version>
         <io.grpc_grpc-bom.version>1.77.1</io.grpc_grpc-bom.version>
-        <org.apache.commons_commons-lang3.version>3.20.0</org.apache.commons_commons-lang3.version>
+        <org.apache.commons_commons-lang3.version>3.21.0</org.apache.commons_commons-lang3.version>
         <org.apache.commons_commons-pool2.version>2.13.1</org.apache.commons_commons-pool2.version>
         <org.apache.openjpa_openjpa-persistence-jdbc.version>4.1.1</org.apache.openjpa_openjpa-persistence-jdbc.version>
         <org.awaitility_awaitility.version>4.3.0</org.awaitility_awaitility.version>

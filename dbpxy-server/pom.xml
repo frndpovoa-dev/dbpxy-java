@@ -239,7 +239,7 @@
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
                         <buildpacks>
-                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11.9.0</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11.10.0</buildpack>
                             <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
                         </buildpacks>
                         <env>
