@@ -240,12 +240,18 @@
                     <image>
                         <buildpacks>
                             <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:11</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/ca-certificates:3</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/syft:2</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/executable-jar:6</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/dist-zip:5</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/spring-boot:5</buildpack>
                             <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
                         </buildpacks>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
                         </env>
+                        <pullPolicy>ALWAYS</pullPolicy>
                     </image>
                     <excludes>
                         <exclude>
