@@ -1,4 +1,11 @@
 steps:
+  - id: 'scan-repo-using-trivy'
+    name: ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}-remote/aquasec/trivy:latest
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        trivy repo --config trivy-config.yaml --disable-telemetry --offline-scan --no-progress ./
   - id: 'authenticate-docker-cli'
     name: gcr.io/cloud-builders/docker
     entrypoint: bash
@@ -19,7 +26,7 @@ steps:
         echo "$${MAVEN_DBPXY_GPG_KEY}" | gpg --batch --import
     secretEnv: [ 'MAVEN_DBPXY_GPG_KEY' ]
   - id: 'build-backend-using-maven'
-    name: maven:3.9-amazoncorretto-25-debian
+    name: ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}-remote/maven:3.9-amazoncorretto-25-debian
     entrypoint: bash
     args:
       - '-c'
@@ -58,12 +65,20 @@ steps:
       - '-c'
       - |
         docker build --tag dbpxy:${_VERSION} --build-arg VERSION=${_VERSION} --file dbpxy-server/Dockerfile dbpxy-server
+        docker save dbpxy:${_VERSION} -o /workspace/dbpxy.tar
         docker tag dbpxy:${_VERSION} ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}/dbpxy:${_VERSION}
         docker tag dbpxy:${_VERSION} dbpxy/dbpxy-server:${_VERSION}
     env:
       - DOCKER_BUILDKIT=1
+  - id: 'scan-image-using-trivy'
+    name: ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}-remote/aquasec/trivy:latest
+    entrypoint: sh
+    args:
+      - '-c'
+      - |
+        trivy image --input /workspace/dbpxy.tar --config trivy-config.yaml --disable-telemetry --no-progress
   - id: 'push-public-maven-artifacts'
-    name: maven:3.9-amazoncorretto-25-debian
+    name: ${_GCP_REGION}-docker.pkg.dev/${_GCP_PROJECT_ID}/${_DOCKER_REPOSITORY}-remote/maven:3.9-amazoncorretto-25-debian
     entrypoint: bash
     args:
       - '-c'

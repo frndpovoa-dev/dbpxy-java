@@ -1,0 +1,21 @@
+exit-code: 1
+
+format: json
+
+pkg:
+  include-dev-deps: true
+  types:
+    - library
+
+scan:
+  scanners:
+    - vuln
+    - misconfig
+    - secret
+
+severity:
+  - HIGH
+  - CRITICAL
+
+vulnerability:
+  ignore-unfixed: true
