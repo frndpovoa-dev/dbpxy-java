@@ -8,3 +8,5 @@ RUN true \
 
 FROM dbpxy-server:${VERSION}
 COPY --from=builder --chmod=755 /staging/grpc_health_probe /workspace/grpc_health_probe
+USER 1000
+HEALTHCHECK NONE
