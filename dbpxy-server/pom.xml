@@ -238,17 +238,7 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
-                        <builder>docker.io/paketobuildpacks/builder-noble-java-tiny:latest</builder>
-                        <buildpacks>
-                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/ca-certificates:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/syft:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/executable-jar:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/dist-zip:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/spring-boot:latest</buildpack>
-                            <buildpack>docker.io/paketobuildpacks/java:latest</buildpack>
-                            <buildpack>urn:cnb:builder:paketo-buildpacks/java</buildpack>
-                        </buildpacks>
+                        <builder>docker.io/paketobuildpacks/ubuntu-resolute-builder:latest</builder>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
