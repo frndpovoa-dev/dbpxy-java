@@ -52,7 +52,7 @@ import org.apache.commons.pool2.impl.DefaultPooledObject;
 import org.apache.commons.pool2.impl.GenericObjectPool;
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 import org.springframework.aot.hint.annotation.RegisterReflectionForBinding;
-import org.springframework.grpc.server.service.GrpcService;
+import org.springframework.stereotype.Service;
 
 import java.nio.charset.StandardCharsets;
 import java.sql.DriverManager;
@@ -66,7 +66,7 @@ import java.util.concurrent.Executors;
 import java.util.stream.Stream;
 
 @Slf4j
-@GrpcService
+@Service
 @RegisterReflectionForBinding({
         BeginTransactionConfig.class,
         ExecuteTxConfig.class,
