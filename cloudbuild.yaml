@@ -120,9 +120,9 @@ availableSecrets:
       env: DHI_IO_USERNAME
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/DHI_IO_PASSWORD/versions/1
       env: DHI_IO_PASSWORD
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_USERNAME/versions/2
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_USERNAME/versions/latest
       env: DOCKERHUB_DBPXY_USERNAME
-    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_PASSWORD/versions/3
+    - versionName: projects/${_GCP_PROJECT_ID}/secrets/DOCKERHUB_DBPXY_PASSWORD/versions/latest
       env: DOCKERHUB_DBPXY_PASSWORD
     - versionName: projects/${_GCP_PROJECT_ID}/secrets/MAVEN_DBPXY_GPG_KEY/versions/1
       env: MAVEN_DBPXY_GPG_KEY
