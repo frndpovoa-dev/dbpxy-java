@@ -243,7 +243,11 @@
                 <configuration>
                     <mainClass>com.dbpxy.Application</mainClass>
                     <image>
-                        <builder>docker.io/paketobuildpacks/ubuntu-resolute-builder:latest</builder>
+                        <builder>docker.io/paketobuildpacks/builder-noble-java-tiny:latest</builder>
+                        <buildpacks>
+                            <buildpack>docker.io/paketobuildpacks/java:latest</buildpack>
+                            <buildpack>docker.io/paketobuildpacks/bellsoft-liberica:latest</buildpack>
+                        </buildpacks>
                         <env>
                             <BP_JVM_VERSION>${server.java.version}</BP_JVM_VERSION>
                             <BP_NATIVE_IMAGE>false</BP_NATIVE_IMAGE>
