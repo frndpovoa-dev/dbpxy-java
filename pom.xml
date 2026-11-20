@@ -16,7 +16,6 @@
         <com.google.cloud_libraries-bom.version>26.93.0</com.google.cloud_libraries-bom.version>
         <com.google.cloud.sql_postgres-socket-factory.version>1.31.0</com.google.cloud.sql_postgres-socket-factory.version>
         <com.google.protobuf_protoc.version>4.33.6</com.google.protobuf_protoc.version>
-        <com.h2database_h2.version>2.5.252</com.h2database_h2.version>
         <commons-io_commons-io.version>2.22.0</commons-io_commons-io.version>
         <dev.langchain4j_langchain4j-bom.version>1.23.0</dev.langchain4j_langchain4j-bom.version>
         <io.grpc_grpc-bom.version>1.85.1</io.grpc_grpc-bom.version>
@@ -28,7 +27,7 @@
         <org.projectlombok_lombok.version>1.18.48</org.projectlombok_lombok.version>
         <org.testcontainers_junit-jupiter.version>1.21.4</org.testcontainers_junit-jupiter.version>
         <org.testcontainers_testcontainers-toxiproxy.version>2.0.5</org.testcontainers_testcontainers-toxiproxy.version>
-        <spring-boot.version>4.0.9</spring-boot.version>
+        <spring-boot.version>4.0.10</spring-boot.version>
     </properties>
     <modules>
         <module>dbpxy-version</module>
